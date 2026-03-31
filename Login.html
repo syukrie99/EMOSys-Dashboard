@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EMOSys — Sign In</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="assets/css/main.css"/>
+  <link rel="stylesheet" href="assets/css/login.css"/>
+</head>
+<body>
+  <div class="panel-left">
+    <div class="brand-area">
+      <div class="brand-wordmark">
+        <div class="brand-chip"></div>
+        <div class="brand-name">EMO<span>Sys</span></div>
+      </div>
+      <div class="panel-headline">Environmental<br/><em>Intelligence</em></div>
+      <p class="panel-desc">
+        Real-time environmental monitoring powered by ESPHome sensor networks.
+        Track temperature, air quality, humidity and more across every department.
+      </p>
+    </div>
+    <div class="panel-stats">
+      <div>
+        <div class="stat-num">24<span>/7</span></div>
+        <div class="stat-label">Live Monitoring</div>
+      </div>
+      <div>
+        <div class="stat-num">6<span>+</span></div>
+        <div class="stat-label">Sensor Types</div>
+      </div>
+      <div>
+        <div class="stat-num">30<span>s</span></div>
+        <div class="stat-label">Refresh Rate</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-right">
+    <div class="form-eyebrow">System Access</div>
+    <h1 class="form-title">Sign In</h1>
+    <p class="form-subtitle">Access the EMOSys dashboard</p>
+    <div class="error-bar" id="errorBar"></div>
+
+    <div class="form-group">
+      <label for="email">Email Address</label>
+      <input type="email" id="email" placeholder="admin@company.com" autocomplete="email"/>
+    </div>
+
+    <div class="form-group">
+      <div class="row">
+        <label for="password" style="margin:0">Password</label>
+        <a href="#" class="forgot">Forgot Password</a>
+      </div>
+      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" style="margin-top:8px"/>
+    </div>
+
+    <button class="btn-signin" id="loginBtn" onclick="doLogin()">Sign In</button>
+    <div class="divider"><span>Test Credentials</span></div>
+    <div class="cred-box">
+      <div class="cred-row"><span>Email</span>    <strong>admin@company.com</strong></div>
+      <div class="cred-row"><span>Password</span> <strong>admin123</strong></div>
+    </div>
+
+    <div class="form-footer">&copy; 2026 EMOSys. Confidential Internal System.</div>
+  </div>
+
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/login.js"></script>
+</body>
+</html>
