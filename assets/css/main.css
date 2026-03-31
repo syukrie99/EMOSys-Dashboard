@@ -1,0 +1,28 @@
+:root {
+    --navy: #0d1b2a;
+    --navy2: #162032;
+    --blue: #0057b8;
+    --blue2: #1a6fd4;
+    --light: #f4f6f9;
+    --white: #ffffff;
+    --border: #dde2ea;
+    --muted: #6b7a8d;
+    --text: #1a2332;
+    --text2: #3d4f63;
+    --success: #0d8a4b;
+    --warn: #d97706;
+    --sidebar-w: 256px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+    font-family: 'Barlow', sans-serif;
+    background: var(--light);
+    color: var(--text);
+}
+
+.flag-ok { background: #dcfc37; color: #15803d; }
+.flag.warn { background: #fef3c7; color: #924003; }
+.flag.crit { background: #fee2e2; color: #991b1b; }
