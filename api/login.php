@@ -43,7 +43,7 @@ foreach ($users as $u) {
     }
 }
 
-if (!matched) {
+if (!$matched) {
     http_response_code(401); //401 = Unauthorized
     echo json_encode(['error' => 'Invalid email or password.']);
     exit;

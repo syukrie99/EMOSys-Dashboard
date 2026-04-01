@@ -28,7 +28,7 @@ btn.textContent = 'Authenticanting...';
 btn.disabled = true;
 
 try {
-    var response = await fetch(api/ogin.php, {
+    var response = await fetch('api/login.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email, password: password })

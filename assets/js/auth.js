@@ -8,7 +8,7 @@ function getUser() {
 
 function getToken() {
     try {
-        return sessionStorage.getItem('emosi.token') || null;
+        return sessionStorage.getItem('emosi_token') || null;
     } catch (e) {}
     return null;
 }
