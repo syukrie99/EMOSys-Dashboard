@@ -12,7 +12,22 @@ var mainChartOptions = {
             titleColor:      '#ffffff',
             bodyColor:       '#9ca3af',
             borderColor:     '#1e2d40',
-            borderWidth:     1
+            borderWidth:     1,
+            padding:         12,
+            cornerRadius:    0,
+            titleFont:       { family: 'Barlow Condensed', size:13, weight: 'bold' },
+            bodyFont:        { family: 'Barlow', size:12 },
+            callbacks: {
+                label: function(context) {
+                    var label = context.dataset.label || '';
+                    var value = context.parsed.y;
+                    if (label.includes('°C'))  return '  ' + label + ': ' + value + ' °C';
+                    if (label.includes('%'))   return '  ' + label + ': ' + value + ' %';
+                    if (label.includes('ppm')) return '  ' + label + ': ' + value + ' ppm';
+                    if (label.includes('ppb')) return '  ' + label + ': ' + value + ' ppb';
+                    return '  ' + label + ': ' + value;
+                }
+            } 
         }
     },
     scales: {

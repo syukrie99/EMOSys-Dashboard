@@ -122,6 +122,13 @@
 
     <!-- ── TOPBAR -->
     <div class="topbar">
+      <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
       <div class="breadcrumb">
         <span class="breadcrumb-home">EMOSys</span>
         <span class="breadcrumb-sep">›</span>
@@ -161,9 +168,12 @@
             <span class="sensor-tag">Temperature</span>
             <span class="status-flag flag-ok" id="tempBadge">Normal</span>
           </div>
-          <div class="sensor-value" id="tempVal">—</div>
+          <div class="sensor-value loading" id="tempVal">—</div>
+            <span class="skeleton"></span>
           <div class="sensor-unit">Celsius (°C)</div>
-          <div class="sensor-spark"><canvas id="tempSpark" aria-label="Temperature sparkline"></canvas></div>
+          <div class="sensor-spark loading">
+            <span class="skeleton"></span>
+            <canvas id="tempSpark" aria-label="Temperature sparkline"></canvas></div>
         </div>
 
         <!-- Humidity card -->
@@ -172,9 +182,12 @@
             <span class="sensor-tag">Humidity</span>
             <span class="status-flag flag-ok" id="humBadge">Normal</span>
           </div>
-          <div class="sensor-value" id="humVal">—</div>
+          <div class="sensor-value loading" id="humVal">—</div>
+            <span class="skeleton"></span>
           <div class="sensor-unit">Relative Humidity (%RH)</div>
-          <div class="sensor-spark"><canvas id="humSpark" aria-label="Humidity sparkline"></canvas></div>
+          <div class="sensor-spark loading">
+            <span class="skeleton"></span>
+            <canvas id="humSpark" aria-label="Humidity sparkline"></canvas></div>
         </div>
 
         <!-- Air Quality Index card -->
@@ -183,10 +196,13 @@
             <span class="sensor-tag">Air Quality Index</span>
             <span class="status-flag flag-ok" id="aqiBadge">Good</span>
           </div>
-          <div class="sensor-value" id="aqiVal">—</div>
+          <div class="sensor-value loading" id="aqiVal">—</div>
+            <span class="skeleton"></span>
           <div class="sensor-unit">AQI (0 – 500 scale)</div>
           <div class="aqi-label" id="aqiLabel" style="color:#15803d">Good</div>
-          <div class="sensor-spark"><canvas id="aqiSpark" aria-label="AQI sparkline"></canvas></div>
+          <div class="sensor-spark loading">
+            <span class="skeleton"></span>
+            <canvas id="aqiSpark" aria-label="AQI sparkline"></canvas></div>
         </div>
 
         <!-- CO₂ card -->
@@ -195,9 +211,12 @@
             <span class="sensor-tag">CO₂</span>
             <span class="status-flag flag-ok" id="co2Badge">Normal</span>
           </div>
-          <div class="sensor-value" id="co2Val">—</div>
+          <div class="sensor-value loading" id="co2Val">—</div>
+            <span class="skeleton"></span>
           <div class="sensor-unit">Parts per Million (ppm)</div>
-          <div class="sensor-spark"><canvas id="co2Spark" aria-label="CO2 sparkline"></canvas></div>
+          <div class="sensor-spark loading">
+            <span class="skeleton"></span>
+            <canvas id="co2Spark" aria-label="CO2 sparkline"></canvas></div>
         </div>
 
         <!-- VOC card -->
@@ -206,9 +225,332 @@
             <span class="sensor-tag">VOC</span>
             <span class="status-flag flag-ok" id="vocBadge">Normal</span>
           </div>
-          <div class="sensor-value" id="vocVal">—</div>
+          <div class="sensor-value loading" id="vocVal">—</div>
+            <span class="skeleton"></span>
           <div class="sensor-unit">Parts per Billion (ppb)</div>
-          <div class="sensor-spark"><canvas id="vocSpark" aria-label="VOC sparkline"></canvas></div>
+          <div class="sensor-spark loading">
+            <span class="skeleton"></span>
+            <canvas id="vocSpark" aria-label="VOC sparkline"></canvas></div>
+        </div>
+
+      </div>
+
+      <!-- ── 24-HOUR TREND CHARTS -->
+      <div class="section-head"><h3>24-Hour Trend</h3></div>
+      <div class="charts-grid">
+
+        <div class="chart-card">
+          <h4>Temperature &amp; Humidity</h4>
+          <p>Rolling 24-hour history</p>
+          <div class="chart-wrap">
+            <canvas id="mainTempChart" aria-label="Temperature and Humidity chart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h4>Air Quality — AQI, CO₂ &amp; VOC</h4>
+          <p>Concentration levels over 24h</p>
+          <div class="chart-wrap">
+            <canvas id="mainAqiChart" aria-label="AQI CO2 and VOC chart"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── ESPHOME DEVICES TABLE -->
+      <div class="section-head"><h3>ESPHome Devices</h3></div>
+      <div class="table-card">
+        <div class="table-head">
+          <h4>Connected Devices</h4>
+          <span class="count-badge">2 registered · 2 online</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Device</th>
+              <th>IP Address</th>
+              <th>Location</th>
+              <th>Status</th>
+              <th>Last Seen</th>
+              <th>Sensors</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="device-name">ESP32-EnvSensor-01</div>
+                <div class="device-fw">ESPHome v2024.1</div>
+              </td>
+              <td>192.168.1.101</td>
+              <td>Server Room A</td><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EMOSys — Dashboard</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet"/>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <link rel="stylesheet" href="assets/css/main.css"/>
+  <link rel="stylesheet" href="assets/css/dashboard.css"/>
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════
+       SIDEBAR
+  ══════════════════════════════════════════════ -->
+  <aside class="sidebar">
+
+    <div class="sidebar-logo">
+      <div class="logo-wrap">
+        <div class="logo-chip"></div>
+        <div class="logo-text">
+          <h2>EMOSys</h2>
+          <p>Monitoring System</p>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+
+      <div class="nav-section">Overview</div>
+
+      <a class="nav-item active" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/>
+          <rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        Dashboard
+      </a>
+
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+        Live Readings
+      </a>
+
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        History &amp; Logs
+      </a>
+
+      <div class="nav-section">Devices</div>
+
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="7" width="20" height="14" rx="2"/>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+        </svg>
+        ESPHome Devices
+      </a>
+
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+        </svg>
+        Network Status
+      </a>
+
+      <div class="nav-section">Management</div>
+
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 20V10M12 20V4M6 20v-6"/>
+        </svg>
+        Reports
+      </a>
+
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        </svg>
+        Alerts
+        <span class="nav-badge" id="alertCount">0</span>
+      </a>
+
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M20 21a8 8 0 1 0-16 0"/>
+        </svg>
+        Users
+      </a>
+
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="avatar" id="userAvatar">A</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Admin</div>
+          <div class="user-role" id="userRole">Administrator</div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()" title="Logout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ══════════════════════════════════════════════
+       MAIN CONTENT
+  ══════════════════════════════════════════════ -->
+  <main class="main">
+
+    <!-- ── TOPBAR -->
+    <div class="topbar">
+
+      <!-- Hamburger — only visible on mobile via CSS -->
+      <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6"  x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+
+      <div class="breadcrumb">
+        <span class="breadcrumb-home">EMOSys</span>
+        <span class="breadcrumb-sep">›</span>
+        <span class="breadcrumb-current">Dashboard</span>
+      </div>
+
+      <div class="topbar-right">
+
+        <div class="status-pill">
+          <div class="pulse-dot"></div>
+          All Systems Online
+        </div>
+
+        <!-- Dark mode toggle — icon and label swapped by dashboard.js -->
+        <button class="topbar-btn" onclick="toggleDarkMode()" id="darkBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          Dark
+        </button>
+
+        <button class="topbar-btn" onclick="updateCards()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          Refresh
+        </button>
+
+        <span style="font-size:0.75rem;color:rgba(255,255,255,0.4)" id="currentDate"></span>
+
+      </div>
+    </div>
+
+    <!-- ── PAGE -->
+    <div class="page">
+
+      <div class="page-title-bar">
+        <h1>
+          <span>Environmental Monitoring</span>
+          Live Dashboard
+        </h1>
+        <div class="last-updated" id="lastUpdated">Last updated: —</div>
+      </div>
+
+      <!-- ── 5 SENSOR CARDS -->
+      <div class="section-head"><h3>Live Sensor Readings</h3></div>
+      <div class="sensor-grid">
+
+        <!-- Temperature -->
+        <div class="sensor-card temp">
+          <div class="sensor-row">
+            <span class="sensor-tag">Temperature</span>
+            <span class="status-flag flag-ok" id="tempBadge">Normal</span>
+          </div>
+          <!-- skeleton is INSIDE the value div -->
+          <div class="sensor-value loading" id="tempVal">
+            <span class="skeleton"></span>
+          </div>
+          <div class="sensor-unit">Celsius (°C)</div>
+          <div class="sensor-spark loading">
+            <span class="skeleton"></span>
+            <canvas id="tempSpark" aria-label="Temperature sparkline"></canvas>
+          </div>
+        </div>
+
+        <!-- Humidity -->
+        <div class="sensor-card humid">
+          <div class="sensor-row">
+            <span class="sensor-tag">Humidity</span>
+            <span class="status-flag flag-ok" id="humBadge">Normal</span>
+          </div>
+          <div class="sensor-value loading" id="humVal">
+            <span class="skeleton"></span>
+          </div>
+          <div class="sensor-unit">Relative Humidity (%RH)</div>
+          <div class="sensor-spark loading">
+            <span class="skeleton"></span>
+            <canvas id="humSpark" aria-label="Humidity sparkline"></canvas>
+          </div>
+        </div>
+
+        <!-- Air Quality Index -->
+        <div class="sensor-card aqi">
+          <div class="sensor-row">
+            <span class="sensor-tag">Air Quality Index</span>
+            <span class="status-flag flag-ok" id="aqiBadge">Good</span>
+          </div>
+          <div class="sensor-value loading" id="aqiVal">
+            <span class="skeleton"></span>
+          </div>
+          <div class="sensor-unit">AQI (0 – 500 scale)</div>
+          <div class="aqi-label" id="aqiLabel" style="color:#15803d">Good</div>
+          <div class="sensor-spark loading">
+            <span class="skeleton"></span>
+            <canvas id="aqiSpark" aria-label="AQI sparkline"></canvas>
+          </div>
+        </div>
+
+        <!-- CO₂ -->
+        <div class="sensor-card co2">
+          <div class="sensor-row">
+            <span class="sensor-tag">CO₂</span>
+            <span class="status-flag flag-ok" id="co2Badge">Normal</span>
+          </div>
+          <div class="sensor-value loading" id="co2Val">
+            <span class="skeleton"></span>
+          </div>
+          <div class="sensor-unit">Parts per Million (ppm)</div>
+          <div class="sensor-spark loading">
+            <span class="skeleton"></span>
+            <canvas id="co2Spark" aria-label="CO2 sparkline"></canvas>
+          </div>
+        </div>
+
+        <!-- VOC -->
+        <div class="sensor-card voc">
+          <div class="sensor-row">
+            <span class="sensor-tag">VOC</span>
+            <span class="status-flag flag-ok" id="vocBadge">Normal</span>
+          </div>
+          <div class="sensor-value loading" id="vocVal">
+            <span class="skeleton"></span>
+          </div>
+          <div class="sensor-unit">Parts per Billion (ppb)</div>
+          <div class="sensor-spark loading">
+            <span class="skeleton"></span>
+            <canvas id="vocSpark" aria-label="VOC sparkline"></canvas>
+          </div>
         </div>
 
       </div>
@@ -281,6 +623,49 @@
       </div>
 
       <!-- ── ALERTS PANEL -->
+      <div class="section-head"><h3>Active Alerts</h3></div>
+      <div class="alerts-card" id="alertsCard">
+        <div style="padding:24px;font-size:0.88rem;color:var(--muted)">Loading alerts…</div>
+      </div>
+
+    </div><!-- end .page -->
+
+    <div class="page-footer">
+      <span>&copy; 2026 EMOSys · Environmental Monitoring System</span>
+      <span id="footerDate"></span>
+    </div>
+
+  </main>
+
+  <!-- Overlay behind sidebar on mobile -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+  <!-- Scripts: order matters -->
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/charts.js"></script>
+  <script src="assets/js/dashboard.js"></script>
+</body>
+</html>
+              <td><span class="online"><i class="dot-on"></i>Online</span></td>
+              <td>Just now</td>
+              <td>Temp, Humidity, CO₂, VOC, AQI</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="device-name">ESP32-EnvSensor-02</div>
+                <div class="device-fw">ESPHome v2024.1</div>
+              </td>
+              <td>192.168.1.102</td>
+              <td>Office Floor 2</td>
+              <td><span class="online"><i class="dot-on"></i>Online</span></td>
+              <td>18s ago</td>
+              <td>Temp, Humidity, CO₂, VOC, AQI</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── ALERTS PANEL -->
       <!-- Content is built dynamically by dashboard.js updateAlerts() -->
       <div class="section-head"><h3>Active Alerts</h3></div>
       <div class="alerts-card" id="alertsCard">
@@ -296,6 +681,8 @@
     </div>
 
   </main>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
   <script src="assets/js/auth.js"></script>
   <script src="assets/js/charts.js"></script>
   <script src="assets/js/dashboard.js"></script>
