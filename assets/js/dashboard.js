@@ -68,20 +68,33 @@ document.addEventListener('DOMContentLoaded', function () {
     var co2 = hist.co2[n];
     var voc = hist.voc[n];
 
-    document.getElementById('tempVal').textContent = t;
-    document.getElementById('tempVal').classList.remove('loading');
+    /* innerHTML wipes out the skeleton <span> and replaces with the number */
+    var tempEl = document.getElementById('tempVal');
+    tempEl.innerHTML = t;
+    tempEl.classList.remove('loading');
 
-    document.getElementById('humVal').textContent  = h;
-    document.getElementById('humVal').classList.remove('loading');
+    var humEl = document.getElementById('humVal');
+    humEl.innerHTML = h;
+    humEl.classList.remove('loading');
 
-    document.getElementById('aqiVal').textContent  = aqi;
-    document.getElementById('aqiVal').classList.remove('loading');
+    var aqiEl = document.getElementById('aqiVal');
+    aqiEl.innerHTML = aqi;
+    aqiEl.classList.remove('loading');
 
-    document.getElementById('co2Val').textContent  = co2;
-    document.getElementById('co2Val').classList.remove('loading');
+    var co2El = document.getElementById('co2Val');
+    co2El.innerHTML = co2;
+    co2El.classList.remove('loading');
 
-    document.getElementById('vocVal').textContent  = voc;
-    document.getElementById('vocVal').classList.remove('loading');
+    var vocEl = document.getElementById('vocVal');
+    vocEl.innerHTML = voc;
+    vocEl.classList.remove('loading');
+
+    /* Remove loading from sparkline divs so canvas becomes visible */
+    document.querySelector('.sensor-card.temp  .sensor-spark').classList.remove('loading');
+    document.querySelector('.sensor-card.humid .sensor-spark').classList.remove('loading');
+    document.querySelector('.sensor-card.aqi   .sensor-spark').classList.remove('loading');
+    document.querySelector('.sensor-card.co2   .sensor-spark').classList.remove('loading');
+    document.querySelector('.sensor-card.voc   .sensor-spark').classList.remove('loading');
 
     setBadge('tempBadge', t > 28 ? 'crit' : t > 26 ? 'warn' : 'ok');
     setBadge('humBadge',  h > 70 ? 'crit' : h > 65 ? 'warn' : 'ok');
@@ -191,9 +204,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 /* ══════════════════════════════════════════
    GLOBAL FUNCTIONS
-   These must be OUTSIDE DOMContentLoaded
-   because they are called from onclick=""
-   attributes in the HTML
+   Outside DOMContentLoaded — called from
+   onclick="" attributes in the HTML
 ══════════════════════════════════════════ */
 
 /* ── HAMBURGER MENU (mobile) */
