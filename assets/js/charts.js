@@ -11,12 +11,12 @@ var mainChartOptions = {
             backgroundColor: '#0d1b2a',
             titleColor:      '#ffffff',
             bodyColor:       '#9ca3af',
-            borderColor:     '#1e2d40',
+            borderColor:     '#0057B8',
             borderWidth:     1,
             padding:         12,
             cornerRadius:    0,
-            titleFont:       { family: 'Barlow Condensed', size:13, weight: 'bold' },
-            bodyFont:        { family: 'Barlow', size:12 },
+            titleFont:       { family: 'Barlow Condensed', size: 13, weight: 'bold' },
+            bodyFont:        { family: 'Barlow', size: 12 },
             callbacks: {
                 label: function(context) {
                     var label = context.dataset.label || '';
@@ -27,7 +27,7 @@ var mainChartOptions = {
                     if (label.includes('ppb')) return '  ' + label + ': ' + value + ' ppb';
                     return '  ' + label + ': ' + value;
                 }
-            } 
+            }
         }
     },
     scales: {
@@ -82,7 +82,9 @@ function drawAllSparklines(hist) {
 }
 
 function drawMainCharts(hist) {
-    new Chart(document.getElementById('mainTempChart'), {
+
+    /* Save to window so dashboard.js can call .update() when new data arrives */
+    window.tempChart = new Chart(document.getElementById('mainTempChart'), {
         type: 'line',
         data: {
             labels: hist.labels,
@@ -106,7 +108,7 @@ function drawMainCharts(hist) {
         options: mainChartOptions
     });
 
-    new Chart(document.getElementById('mainAqiChart'), {
+    window.aqiChart = new Chart(document.getElementById('mainAqiChart'), {
         type: 'line',
         data: {
             labels: hist.labels,

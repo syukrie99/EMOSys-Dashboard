@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         FROM sensors s
         LEFT JOIN readings r ON r.id = (
             SELECT id from readings
-            WHERE sensors_id = s.id
+            WHERE sensor_id = s.id
             ORDER BY recorded_at DESC
             LIMIT 1
             )
@@ -75,4 +75,4 @@ if ($SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 http_response_code(405);
-echo json_encode(['error' => ;'Method not allowed.']);
+echo json_encode(['error' => 'Method not allowed.']);

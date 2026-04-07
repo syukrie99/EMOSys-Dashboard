@@ -24,20 +24,14 @@ document.addEventListener('DOMContentLoaded', function () {
       month: 'short',   year: 'numeric'
     });
 
-  /* ── MOCK HISTORY DATA */
+  /* ── FOOTER DATE */
+  document.getElementById('footerDate').textContent =
+    'System time: ' + new Date().toLocaleTimeString();
+
+  /* ── HISTORY DATA (filled by fetchData) */
   var hist = { labels: [], temp: [], hum: [], aqi: [], co2: [], voc: [] };
 
-  for (var i = 23; i >= 0; i--) {
-    var d = new Date(Date.now() - i * 3600000);
-    hist.labels.push(d.getHours() + ':00');
-    hist.temp.push(+(22 + Math.sin(i / 4) * 3   + Math.random() * 0.5).toFixed(1));
-    hist.hum.push( +(55 + Math.cos(i / 5) * 10  + Math.random()).toFixed(1));
-    hist.aqi.push( +(35 + Math.sin(i / 3) * 20  + Math.random() * 5).toFixed(0));
-    hist.co2.push( +(900 + Math.sin(i / 3) * 200 + Math.random() * 50).toFixed(0));
-    hist.voc.push( +(120 + Math.random() * 80).toFixed(0));
-  }
-
-  /* ── DRAW CHARTS */
+  /* ── DRAW EMPTY CHARTS FIRST (they update after fetchData returns) */
   drawAllSparklines(hist);
   drawMainCharts(hist);
 
@@ -68,7 +62,6 @@ document.addEventListener('DOMContentLoaded', function () {
     var co2 = hist.co2[n];
     var voc = hist.voc[n];
 
-    /* innerHTML wipes out the skeleton <span> and replaces with the number */
     var tempEl = document.getElementById('tempVal');
     tempEl.innerHTML = t;
     tempEl.classList.remove('loading');
@@ -89,7 +82,6 @@ document.addEventListener('DOMContentLoaded', function () {
     vocEl.innerHTML = voc;
     vocEl.classList.remove('loading');
 
-    /* Remove loading from sparkline divs so canvas becomes visible */
     document.querySelector('.sensor-card.temp  .sensor-spark').classList.remove('loading');
     document.querySelector('.sensor-card.humid .sensor-spark').classList.remove('loading');
     document.querySelector('.sensor-card.aqi   .sensor-spark').classList.remove('loading');
@@ -113,6 +105,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('lastUpdated').textContent =
       'Last updated: ' + new Date().toLocaleTimeString();
+
+    /* ── REFRESH CHARTS with latest hist data */
+    if (window.tempChart) {
+      window.tempChart.data.labels            = hist.labels;
+      window.tempChart.data.datasets[0].data  = hist.temp;
+      window.tempChart.data.datasets[1].data  = hist.hum;
+      window.tempChart.update();
+    }
+
+    if (window.aqiChart) {
+      window.aqiChart.data.labels            = hist.labels;
+      window.aqiChart.data.datasets[0].data  = hist.aqi;
+      window.aqiChart.data.datasets[1].data  = hist.co2;
+      window.aqiChart.data.datasets[2].data  = hist.voc;
+      window.aqiChart.update();
+    }
 
     updateAlerts(t, h, aqi, co2, voc);
   }
@@ -181,23 +189,49 @@ document.addEventListener('DOMContentLoaded', function () {
     }).join('');
   }
 
-  /* ── LIVE SIMULATION */
-  setInterval(function () {
-    var n = hist.temp.length - 1;
-    hist.temp.push(+(hist.temp[n] + (Math.random() - 0.5) * 0.4).toFixed(1));
-    hist.hum.push( +(hist.hum[n]  + (Math.random() - 0.5) * 1  ).toFixed(1));
-    hist.aqi.push( +(Math.max(0, Math.min(200, hist.aqi[n] + (Math.random() - 0.5) * 5))).toFixed(0));
-    hist.co2.push( +(hist.co2[n]  + (Math.random() - 0.5) * 30 ).toFixed(0));
-    hist.voc.push( +(hist.voc[n]  + (Math.random() - 0.5) * 10 ).toFixed(0));
-    updateCards();
-  }, 10000);
+  /* ── FETCH REAL DATA FROM DATABASE */
+  function fetchData() {
+    fetch('api/sensor-data.php')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
 
-  /* ── FOOTER DATE */
-  document.getElementById('footerDate').textContent =
-    'System time: ' + new Date().toLocaleTimeString();
+        /* Fill hist arrays from 24h history */
+        if (data.history && data.history.length > 0) {
+          hist.labels = [];
+          hist.temp   = [];
+          hist.hum    = [];
+          hist.aqi    = [];
+          hist.co2    = [];
+          hist.voc    = [];
 
-  /* ── INITIAL RENDER */
-  updateCards();
+          data.history.forEach(function(row) {
+            var d = new Date(row.recorded_at);
+            hist.labels.push(d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'));
+            hist.temp.push(parseFloat(row.temperature) || 0);
+            hist.hum.push( parseFloat(row.humidity)    || 0);
+            hist.aqi.push( parseInt(row.aqi)            || 0);
+            hist.co2.push( parseInt(row.co2)            || 0);
+            hist.voc.push( parseInt(row.voc)            || 0);
+          });
+        }
+
+        /* Only update cards if we have at least one sensor with data */
+        if (data.sensors && data.sensors.length > 0) {
+          var s = data.sensors[0];
+          if (s.temperature !== null) {
+            updateCards();
+          }
+        }
+
+      })
+      .catch(function(err) {
+        console.log('API fetch error:', err);
+      });
+  }
+
+  /* Fetch immediately then every 30 seconds */
+  fetchData();
+  setInterval(fetchData, 30000);
 
 }); /* end DOMContentLoaded */
 
