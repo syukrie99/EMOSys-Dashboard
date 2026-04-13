@@ -191,12 +191,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* ── FETCH REAL DATA FROM DATABASE */
   function fetchData() {
-    fetch('api/sensor-data.php')
+    fetch('http://localhost:3000/api/history')
       .then(function(res) { return res.json(); })
-      .then(function(data) {
+      .then(function(history) {
 
-        /* Fill hist arrays from 24h history */
-        if (data.history && data.history.length > 0) {
+        if (history && history.length > 0) {
           hist.labels = [];
           hist.temp   = [];
           hist.hum    = [];
@@ -204,8 +203,9 @@ document.addEventListener('DOMContentLoaded', function () {
           hist.co2    = [];
           hist.voc    = [];
 
-          data.history.forEach(function(row) {
-            var d = new Date(row.recorded_at);
+          history.forEach(function(row) {
+            /* InfluxDB returns time as a Unix timestamp in milliseconds */
+            var d = new Date(row.time / 1000000);
             hist.labels.push(d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'));
             hist.temp.push(parseFloat(row.temperature) || 0);
             hist.hum.push( parseFloat(row.humidity)    || 0);
@@ -213,14 +213,8 @@ document.addEventListener('DOMContentLoaded', function () {
             hist.co2.push( parseInt(row.co2)            || 0);
             hist.voc.push( parseInt(row.voc)            || 0);
           });
-        }
 
-        /* Only update cards if we have at least one sensor with data */
-        if (data.sensors && data.sensors.length > 0) {
-          var s = data.sensors[0];
-          if (s.temperature !== null) {
-            updateCards();
-          }
+          updateCards();
         }
 
       })
