@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (co2 > 1000) alerts.push({
       type:  co2 > 1500 ? 'crit' : 'warn',
-      msg:   'CO\u2082 level ' + (co2 > 1500 ? 'critical' : 'elevated') + ' \u2014 Server Room A',
+      msg:   'CO\u2082 level ' + (co2 > 1500 ? 'critical' : 'elevated') + ' \u2014 Sam\'s WorkStation',
       meta:  'Reading: ' + co2 + ' ppm \xb7 Threshold: 1,000 ppm',
       label: co2 > 1500 ? 'Critical' : 'Warning',
       time:  'Just now'
@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (voc > 200) alerts.push({
       type:  voc > 300 ? 'crit' : 'warn',
-      msg:   'VOC level ' + (voc > 300 ? 'critical' : 'elevated') + ' \u2014 Server Room A',
+      msg:   'VOC level ' + (voc > 300 ? 'critical' : 'elevated') + ' \u2014 Sam\'s WorkStation',
       meta:  'Reading: ' + voc + ' ppb \xb7 Threshold: 200 ppb',
       label: voc > 300 ? 'Critical' : 'Warning',
       time:  'Just now'
@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (aqi > 50) alerts.push({
       type:  aqi > 100 ? 'crit' : 'warn',
-      msg:   'Air Quality ' + (aqi > 100 ? 'unhealthy' : 'moderate') + ' \u2014 Office Floor 2',
+      msg:   'Air Quality ' + (aqi > 100 ? 'unhealthy' : 'moderate') + ' \u2014 Sam\'s WorkStation',
       meta:  'AQI: ' + aqi + ' \xb7 Threshold: 50 (Good)',
       label: aqi > 100 ? 'Unhealthy' : 'Moderate',
       time:  'Just now'
@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (t > 26) alerts.push({
       type:  t > 28 ? 'crit' : 'warn',
-      msg:   'Temperature ' + (t > 28 ? 'critical' : 'elevated') + ' \u2014 Server Room A',
+      msg:   'Temperature ' + (t > 28 ? 'critical' : 'elevated') + ' \u2014 Sam\'s WorkStation',
       meta:  'Reading: ' + t + '\u00b0C \xb7 Threshold: 26\u00b0C',
       label: t > 28 ? 'Critical' : 'Warning',
       time:  'Just now'
@@ -189,43 +189,66 @@ document.addEventListener('DOMContentLoaded', function () {
     }).join('');
   }
 
-  /* ── FETCH REAL DATA FROM DATABASE */
+  /* ── FETCH LIVE DATA FROM HOME ASSISTANT */
   function fetchData() {
-    fetch('http://localhost:3000/api/history')
+
+    // 1️⃣ Fetch live sensor values from Home Assistant
+    fetch('http://localhost:3000/api/ha/latest')
       .then(function(res) { return res.json(); })
-      .then(function(history) {
+      .then(function(live) {
 
-        if (history && history.length > 0) {
-          hist.labels = [];
-          hist.temp   = [];
-          hist.hum    = [];
-          hist.aqi    = [];
-          hist.co2    = [];
-          hist.voc    = [];
+        if (live && live.temperature) {
+          var now   = new Date();
+          var label = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
 
-          history.forEach(function(row) {
-            /* InfluxDB returns time as a Unix timestamp in milliseconds */
-            var d = new Date(row.time / 1000000);
-            hist.labels.push(d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'));
-            hist.temp.push(parseFloat(row.temperature) || 0);
-            hist.hum.push( parseFloat(row.humidity)    || 0);
-            hist.aqi.push( parseInt(row.aqi)            || 0);
-            hist.co2.push( parseInt(row.co2)            || 0);
-            hist.voc.push( parseInt(row.voc)            || 0);
-          });
+          hist.labels.push(label);
+          hist.temp.push(parseFloat(live.temperature) || 0);
+          hist.hum.push( parseFloat(live.humidity)    || 0);
+          hist.aqi.push( parseInt(live.aqi)            || 0);
+          hist.co2.push( parseInt(live.co2)            || 0);
+          hist.voc.push( parseInt(live.voc)            || 0);
+
+          // Keep only last 48 points
+          var MAX = 48;
+          if (hist.labels.length > MAX) {
+            hist.labels = hist.labels.slice(-MAX);
+            hist.temp   = hist.temp.slice(-MAX);
+            hist.hum    = hist.hum.slice(-MAX);
+            hist.aqi    = hist.aqi.slice(-MAX);
+            hist.co2    = hist.co2.slice(-MAX);
+            hist.voc    = hist.voc.slice(-MAX);
+          }
 
           updateCards();
         }
 
       })
       .catch(function(err) {
-        console.log('API fetch error:', err);
+        console.log('HA fetch error:', err);
       });
-  }
+
+    // 2️⃣ Update device status pill
+    fetch('http://localhost:3000/api/ha/status')
+      .then(function(res) { return res.json(); })
+      .then(function(status) {
+        var pill = document.querySelector('.status-pill');
+        if (pill) {
+          if (status.online) {
+            pill.innerHTML = '<div class="pulse-dot"></div> Sam\'s WorkStation Online';
+          } else {
+            pill.innerHTML = '<div class="pulse-dot" style="background:#ef4444"></div> Sam\'s WorkStation Offline';
+          }
+        }
+      })
+      .catch(function(err) {
+        console.log('HA status error:', err);
+      });
+
+  } /* ── end fetchData */
 
   /* Fetch immediately then every 30 seconds */
   fetchData();
-  setInterval(fetchData, 30000);
+  setInterval(fetchData, 5000);
 
 }); /* end DOMContentLoaded */
 
@@ -253,4 +276,11 @@ function toggleDarkMode() {
     ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg> Light'
     : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> Dark';
   localStorage.setItem('emosys_darkmode', isDark ? '1' : '0');
+}
+
+/* ── MANUAL REFRESH BUTTON */
+function updateCards() {
+  /* This global version is called by the Refresh button in the topbar.
+     The real work happens inside fetchData() so we just trigger that. */
+  if (typeof fetchData === 'function') fetchData();
 }
