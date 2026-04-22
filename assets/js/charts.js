@@ -114,7 +114,7 @@ function drawMainCharts(hist) {
             labels: hist.labels,
             datasets: [
                 {
-                    label:           'AQI',
+                    label:           'PM2.5 (μg/m³)',
                     data:            hist.aqi,
                     borderColor:     '#10b981',
                     backgroundColor: 'rgba(16,185,129,0.06)',

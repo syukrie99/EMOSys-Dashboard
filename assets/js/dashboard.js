@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function () {
     'System time: ' + new Date().toLocaleTimeString();
 
   /* ── HISTORY DATA (filled by fetchData) */
-  var hist = { labels: [], temp: [], hum: [], aqi: [], co2: [], voc: [] };
+  var hist = { labels: [], temp: [], hum: [], pm25: [], aqi: [], co2: [], voc: [] };
 
   /* ── DRAW EMPTY CHARTS FIRST (they update after fetchData returns) */
   drawAllSparklines(hist);
@@ -58,6 +58,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var n   = hist.temp.length - 1;
     var t   = hist.temp[n];
     var h   = hist.hum[n];
+    var pm25 = parseFloat(hist.pm25[n]);
     var aqi = parseInt(hist.aqi[n]);
     var co2 = hist.co2[n];
     var voc = hist.voc[n];
@@ -71,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function () {
     humEl.classList.remove('loading');
 
     var aqiEl = document.getElementById('aqiVal');
-    aqiEl.innerHTML = aqi;
+    aqiEl.innerHTML = pm25;
     aqiEl.classList.remove('loading');
 
     var co2El = document.getElementById('co2Val');
@@ -91,14 +92,13 @@ document.addEventListener('DOMContentLoaded', function () {
     setBadge('tempBadge', t > 28 ? 'crit' : t > 26 ? 'warn' : 'ok');
     setBadge('humBadge',  h > 70 ? 'crit' : h > 65 ? 'warn' : 'ok');
 
-    var cat      = aqiCategory(aqi);
     var aqiBadge = document.getElementById('aqiBadge');
-    aqiBadge.className   = 'status-flag ' + cat.flag;
-    aqiBadge.textContent = aqi <= 50 ? 'Good' : aqi <= 100 ? 'Moderate' : 'Unhealthy';
-
-    var aqiLabelEl = document.getElementById('aqiLabel');
-    aqiLabelEl.textContent = cat.label;
-    aqiLabelEl.style.color = cat.color;
+    var aqiLabelE1 = document.getElementById('aqiLabel');
+    var cat = aqiCategory(aqi);
+    aqiBadge.className = 'status-flag ' + (pm25 > 55.4 ? 'flag-crit' : pm25 > 35.4 ? 'flag-warn' : 'flag-ok');
+    aqiBadge.textContent = pm25 > 55.4 ? 'Unhealthy' : pm25 > 35.4 ? 'Elevated' : 'Good';
+    aqiLabelE1.textContent = 'AQI: ' + aqi;
+    aqiLabelE1.style.color = cat.color;
 
     setBadge('co2Badge', co2 > 1500 ? 'crit' : co2 > 1000 ? 'warn' : 'ok');
     setBadge('vocBadge', voc > 300  ? 'crit' : voc > 200  ? 'warn' : 'ok');
@@ -116,17 +116,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (window.aqiChart) {
       window.aqiChart.data.labels            = hist.labels;
-      window.aqiChart.data.datasets[0].data  = hist.aqi;
+      window.aqiChart.data.datasets[0].data  = hist.pm25;
       window.aqiChart.data.datasets[1].data  = hist.co2;
       window.aqiChart.data.datasets[2].data  = hist.voc;
       window.aqiChart.update();
     }
 
-    updateAlerts(t, h, aqi, co2, voc);
+    updateAlerts(t, h, pm25, aqi, co2, voc);
   }
 
   /* ── BUILD ALERTS PANEL */
-  function updateAlerts(t, h, aqi, co2, voc) {
+  function updateAlerts(t, h, pm25, aqi, co2, voc) {
     var alerts = [];
 
     if (co2 > 1000) alerts.push({
@@ -202,8 +202,9 @@ document.addEventListener('DOMContentLoaded', function () {
           var label = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
 
           hist.labels.push(label);
-          hist.temp.push(parseFloat(live.temperature) || 0);
-          hist.hum.push( parseFloat(live.humidity)    || 0);
+          hist.temp.push(parseFloat(live.temperature)  || 0);
+          hist.hum.push( parseFloat(live.humidity)     || 0);
+          hist.pm25.push( parseFloat(live.pm25)        || 0);
           hist.aqi.push( parseInt(live.aqi)            || 0);
           hist.co2.push( parseInt(live.co2)            || 0);
           hist.voc.push( parseInt(live.voc)            || 0);
@@ -214,6 +215,7 @@ document.addEventListener('DOMContentLoaded', function () {
             hist.labels = hist.labels.slice(-MAX);
             hist.temp   = hist.temp.slice(-MAX);
             hist.hum    = hist.hum.slice(-MAX);
+            hist.pm25   = hist.pm25.slice(-MAX);
             hist.aqi    = hist.aqi.slice(-MAX);
             hist.co2    = hist.co2.slice(-MAX);
             hist.voc    = hist.voc.slice(-MAX);

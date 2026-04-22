@@ -7,6 +7,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const path = require('path');
+app.use(express.static(path.join(__dirname, '..')));
+
 // ── InfluxDB config ─────────────────────────────────────────
 const INFLUX_HOST  = 'http://localhost:8181';
 const INFLUX_TOKEN = 'apiv3_aSkSo316S8chEPJ1WVVNr1q825S7coFZnpfAoKMI_xtMH66FIBgaWOhsZKmEhLtMp2LbRSCtKXNa6SIJiTJ1Fw';

@@ -223,17 +223,17 @@
         <!-- Air Quality Index -->
         <div class="sensor-card aqi">
           <div class="sensor-row">
-            <span class="sensor-tag">Air Quality Index</span>
+            <span class="sensor-tag">AQI PM2.5</span>
             <span class="status-flag flag-ok" id="aqiBadge">Good</span>
           </div>
           <div class="sensor-value loading" id="aqiVal">
             <span class="skeleton"></span>
           </div>
-          <div class="sensor-unit">AQI (0 – 500 scale)</div>
-          <div class="aqi-label" id="aqiLabel" style="color:#15803d">Good</div>
+          <div class="sensor-unit">Micrograms per m³ (μg/m³)</div>
+          <div class="aqi-label" id="aqiLabel" style="color:#15803d">AQI: -</div>
           <div class="sensor-spark loading">
             <span class="skeleton"></span>
-            <canvas id="aqiSpark" aria-label="AQI sparkline"></canvas>
+            <canvas id="aqiSpark" aria-label="PM2.5 sparkline"></canvas>
           </div>
         </div>
 
@@ -284,7 +284,7 @@
         </div>
 
         <div class="chart-card">
-          <h4>Air Quality — AQI, CO₂ &amp; VOC</h4>
+          <h4>Air Quality — PM2.5, CO₂ &amp; VOC</h4>
           <p>Concentration levels over 24h</p>
           <div class="chart-wrap">
             <canvas id="mainAqiChart" aria-label="AQI CO2 and VOC chart"></canvas>
