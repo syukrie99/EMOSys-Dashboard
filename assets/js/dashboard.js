@@ -28,13 +28,16 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('footerDate').textContent =
     'System time: ' + new Date().toLocaleTimeString();
 
-  /* ── DEVICE LIST — matches your ESPHome devices */
-  var devices = [
-    { id: 'sensor_01', label: 'ESP32-EnvSensor-01', location: 'Server Room A' },
-    { id: 'sensor_02', label: 'ESP32-EnvSensor-02', location: 'Office Floor 2' }
-  ];
+  /* ── DEVICE LIST — fetched dynamically from /api/devices */
+  var devices = [];
+  var activeDevice = 'sams_workstation'; // default until API responds
 
-  var activeDevice = devices[0].id; // default to first device
+  /* ── HISTORY DATA */
+  var hist = { labels: [], temp: [], hum: [], pm25: [], aqi: [], co2: [], voc: [] };
+
+  /* ── DRAW EMPTY CHARTS FIRST */
+  drawAllSparklines(hist);
+  drawMainCharts(hist);
 
   /* ── BUILD DEVICE SELECTOR in topbar */
   var topbarRight = document.querySelector('.topbar-right');
@@ -49,32 +52,37 @@ document.addEventListener('DOMContentLoaded', function () {
       'background:#1e2d3d;color:#fff;border:1px solid rgba(255,255,255,0.15);' +
       'padding:4px 8px;font-size:0.78rem;font-family:Barlow,sans-serif;' +
       'border-radius:4px;cursor:pointer;outline:none' +
-    '">' +
-    devices.map(function(d) {
-      return '<option value="' + d.id + '">' + d.label + ' — ' + d.location + '</option>';
-    }).join('') +
-    '</select>';
+    '"><option>Loading devices…</option></select>';
 
-  /* Insert before the date span */
   var dateSpan = document.getElementById('currentDate');
   topbarRight.insertBefore(selectorWrap, dateSpan);
+
+  /* ── FETCH DEVICE LIST then populate dropdown */
+  fetch('/api/devices')
+    .then(function(res) { return res.json(); })
+    .then(function(list) {
+      devices = list;
+      activeDevice = list[0].id;
+      var select = document.getElementById('deviceSelect');
+      select.innerHTML = list.map(function(d) {
+        return '<option value="' + d.id + '">' + d.label + '</option>';
+      }).join('');
+      /* Start fetching data now that we have devices */
+      fetchData();
+      setInterval(fetchData, 30000);
+    })
+    .catch(function(err) {
+      console.error('Failed to load devices:', err);
+    });
 
   /* Listen for device change */
   document.getElementById('deviceSelect').addEventListener('change', function() {
     activeDevice = this.value;
-    /* Reset history when switching device */
     hist.labels = []; hist.temp = []; hist.hum = [];
     hist.pm25 = []; hist.aqi = []; hist.co2 = []; hist.voc = [];
     drawMainCharts(hist);
     fetchData();
   });
-
-  /* ── HISTORY DATA */
-  var hist = { labels: [], temp: [], hum: [], pm25: [], aqi: [], co2: [], voc: [] };
-
-  /* ── DRAW EMPTY CHARTS FIRST */
-  drawAllSparklines(hist);
-  drawMainCharts(hist);
 
   /* ── AQI CATEGORY HELPER */
   function aqiCategory(v) {
@@ -96,13 +104,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* ── UPDATE SENSOR CARDS */
   function updateCards() {
-    var n   = hist.temp.length - 1;
-    var t   = hist.temp[n];
-    var h   = hist.hum[n];
+    var n    = hist.temp.length - 1;
+    var t    = hist.temp[n];
+    var h    = hist.hum[n];
     var pm25 = parseFloat(hist.pm25[n]);
-    var aqi = parseInt(hist.aqi[n]);
-    var co2 = hist.co2[n];
-    var voc = hist.voc[n];
+    var aqi  = parseInt(hist.aqi[n]);
+    var co2  = hist.co2[n];
+    var voc  = hist.voc[n];
 
     var tempEl = document.getElementById('tempVal');
     tempEl.innerHTML = t;
@@ -301,10 +309,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* Expose fetchData globally for the Refresh button */
   window.fetchData = fetchData;
-
-  /* Fetch immediately then every 30 seconds */
-  fetchData();
-  setInterval(fetchData, 30000);
 
 }); /* end DOMContentLoaded */
 
