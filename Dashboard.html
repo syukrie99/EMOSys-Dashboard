@@ -11,6 +11,11 @@
 
   <link rel="stylesheet" href="assets/css/main.css"/>
   <link rel="stylesheet" href="assets/css/dashboard.css"/>
+  <style>
+    .offline { display:inline-flex; align-items:center; gap:5px; color:#ef4444; font-size:0.82rem; font-weight:500; }
+    .dot-off { display:inline-block; width:7px; height:7px; border-radius:50%; background:#ef4444; }
+    .dot-on  { display:inline-block; width:7px; height:7px; border-radius:50%; background:#22c55e; }
+  </style>
 </head>
 <body>
 
@@ -223,17 +228,17 @@
         <!-- Air Quality Index -->
         <div class="sensor-card aqi">
           <div class="sensor-row">
-            <span class="sensor-tag">AQI PM2.5</span>
+            <span class="sensor-tag">Air Quality Index</span>
             <span class="status-flag flag-ok" id="aqiBadge">Good</span>
           </div>
           <div class="sensor-value loading" id="aqiVal">
             <span class="skeleton"></span>
           </div>
-          <div class="sensor-unit">Micrograms per m³ (μg/m³)</div>
-          <div class="aqi-label" id="aqiLabel" style="color:#15803d">AQI: -</div>
+          <div class="sensor-unit">AQI (0 – 500 scale)</div>
+          <div class="aqi-label" id="aqiLabel" style="color:#15803d">Good</div>
           <div class="sensor-spark loading">
             <span class="skeleton"></span>
-            <canvas id="aqiSpark" aria-label="PM2.5 sparkline"></canvas>
+            <canvas id="aqiSpark" aria-label="AQI sparkline"></canvas>
           </div>
         </div>
 
@@ -284,7 +289,7 @@
         </div>
 
         <div class="chart-card">
-          <h4>Air Quality — PM2.5, CO₂ &amp; VOC</h4>
+          <h4>Air Quality — AQI, CO₂ &amp; VOC</h4>
           <p>Concentration levels over 24h</p>
           <div class="chart-wrap">
             <canvas id="mainAqiChart" aria-label="AQI CO2 and VOC chart"></canvas>
@@ -298,42 +303,20 @@
       <div class="table-card">
         <div class="table-head">
           <h4>Connected Devices</h4>
-          <span class="count-badge">2 registered · 2 online</span>
+          <span class="count-badge" id="deviceCountBadge">Loading…</span>
         </div>
         <table>
           <thead>
             <tr>
               <th>Device</th>
-              <th>IP Address</th>
               <th>Location</th>
               <th>Status</th>
               <th>Last Seen</th>
               <th>Sensors</th>
             </tr>
           </thead>
-          <tbody>
-            <tr>
-              <td>
-                <div class="device-name">ESP32-EnvSensor-01</div>
-                <div class="device-fw">ESPHome v2024.1</div>
-              </td>
-              <td>192.168.1.101</td>
-              <td>Server Room A</td>
-              <td><span class="online"><i class="dot-on"></i>Online</span></td>
-              <td>Just now</td>
-              <td>Temp, Humidity, CO₂, VOC, AQI</td>
-            </tr>
-            <tr>
-              <td>
-                <div class="device-name">ESP32-EnvSensor-02</div>
-                <div class="device-fw">ESPHome v2024.1</div>
-              </td>
-              <td>192.168.1.102</td>
-              <td>Office Floor 2</td>
-              <td><span class="online"><i class="dot-on"></i>Online</span></td>
-              <td>18s ago</td>
-              <td>Temp, Humidity, CO₂, VOC, AQI</td>
-            </tr>
+          <tbody id="devicesTableBody">
+            <tr><td colspan="5" style="padding:20px;color:var(--muted);text-align:center">Loading devices…</td></tr>
           </tbody>
         </table>
       </div>

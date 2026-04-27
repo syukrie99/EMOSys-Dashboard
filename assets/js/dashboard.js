@@ -310,6 +310,61 @@ document.addEventListener('DOMContentLoaded', function () {
   /* Expose fetchData globally for the Refresh button */
   window.fetchData = fetchData;
 
+  /* ── LOAD DEVICES TABLE ─────────────────────────── */
+  function formatLastSeen(secondsAgo) {
+    if (secondsAgo < 10)  return 'Just now';
+    if (secondsAgo < 60)  return secondsAgo + 's ago';
+    if (secondsAgo < 3600) return Math.floor(secondsAgo / 60) + 'm ago';
+    return Math.floor(secondsAgo / 3600) + 'h ago';
+  }
+
+  function loadDevicesTable() {
+    fetch('/api/devices')
+      .then(function(res) { return res.json(); })
+      .then(function(list) {
+        /* Fetch status for ALL devices in parallel */
+        var statusPromises = list.map(function(d) {
+          return fetch('/api/ha/status?device=' + d.id)
+            .then(function(res) { return res.json(); })
+            .catch(function() { return { device: d.id, online: false, seconds_ago: null }; });
+        });
+
+        Promise.all(statusPromises).then(function(statuses) {
+          var onlineCount = statuses.filter(function(s) { return s.online; }).length;
+          document.getElementById('deviceCountBadge').textContent =
+            list.length + ' registered · ' + onlineCount + ' online';
+
+          var tbody = document.getElementById('devicesTableBody');
+          tbody.innerHTML = list.map(function(d, i) {
+            var s       = statuses[i];
+            var online  = s.online;
+            var lastSeen = s.seconds_ago !== null ? formatLastSeen(s.seconds_ago) : 'Unknown';
+            return (
+              '<tr>' +
+                '<td><div class="device-name">' + d.label + '</div></td>' +
+                '<td>' + d.location + '</td>' +
+                '<td>' +
+                  '<span class="' + (online ? 'online' : 'offline') + '">' +
+                    '<i class="' + (online ? 'dot-on' : 'dot-off') + '"></i>' +
+                    (online ? 'Online' : 'Offline') +
+                  '</span>' +
+                '</td>' +
+                '<td>' + lastSeen + '</td>' +
+                '<td>Temp, Humidity, CO&#x2082;, VOC, PM2.5</td>' +
+              '</tr>'
+            );
+          }).join('');
+        });
+      })
+      .catch(function(err) {
+        console.error('Devices table error:', err);
+      });
+  }
+
+  /* Load table on start, refresh every 60 seconds */
+  loadDevicesTable();
+  setInterval(loadDevicesTable, 60000);
+
 }); /* end DOMContentLoaded */
 
 
