@@ -11,9 +11,9 @@ const path = require('path');
 app.use(express.static(path.join(__dirname, '..')));
 
 // ── InfluxDB config ─────────────────────────────────────────
-const INFLUX_HOST  = 'http://localhost:8181';
-const INFLUX_TOKEN = 'apiv3_aSkSo316S8chEPJ1WVVNr1q825S7coFZnpfAoKMI_xtMH66FIBgaWOhsZKmEhLtMp2LbRSCtKXNa6SIJiTJ1Fw';
-const INFLUX_DB    = 'emosys';
+const INFLUX_HOST  = process.env.INFLUXDB_URL;
+const INFLUX_TOKEN = process.env.INFLUXDB_TOKEN;
+const INFLUX_DB    = process.env.INFLUXDB_DATABASE;
 
 const client = new InfluxDBClient({
     host: INFLUX_HOST,
