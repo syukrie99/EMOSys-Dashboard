@@ -27,7 +27,7 @@ async function doLogin() {
   btn.disabled    = true;
 
   try {
-    var response = await fetch('http://10.0.30.7:3000/api/login', {
+    var response = await fetch('/api/login', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ email: email, password: password })
