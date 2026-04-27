@@ -28,10 +28,51 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('footerDate').textContent =
     'System time: ' + new Date().toLocaleTimeString();
 
-  /* ── HISTORY DATA (filled by fetchData) */
+  /* ── DEVICE LIST — matches your ESPHome devices */
+  var devices = [
+    { id: 'sensor_01', label: 'ESP32-EnvSensor-01', location: 'Server Room A' },
+    { id: 'sensor_02', label: 'ESP32-EnvSensor-02', location: 'Office Floor 2' }
+  ];
+
+  var activeDevice = devices[0].id; // default to first device
+
+  /* ── BUILD DEVICE SELECTOR in topbar */
+  var topbarRight = document.querySelector('.topbar-right');
+  var selectorWrap = document.createElement('div');
+  selectorWrap.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:0.78rem;color:rgba(255,255,255,0.6)';
+  selectorWrap.innerHTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">' +
+      '<rect x="2" y="7" width="20" height="14" rx="2"/>' +
+      '<path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>' +
+    '</svg>' +
+    '<select id="deviceSelect" style="' +
+      'background:#1e2d3d;color:#fff;border:1px solid rgba(255,255,255,0.15);' +
+      'padding:4px 8px;font-size:0.78rem;font-family:Barlow,sans-serif;' +
+      'border-radius:4px;cursor:pointer;outline:none' +
+    '">' +
+    devices.map(function(d) {
+      return '<option value="' + d.id + '">' + d.label + ' — ' + d.location + '</option>';
+    }).join('') +
+    '</select>';
+
+  /* Insert before the date span */
+  var dateSpan = document.getElementById('currentDate');
+  topbarRight.insertBefore(selectorWrap, dateSpan);
+
+  /* Listen for device change */
+  document.getElementById('deviceSelect').addEventListener('change', function() {
+    activeDevice = this.value;
+    /* Reset history when switching device */
+    hist.labels = []; hist.temp = []; hist.hum = [];
+    hist.pm25 = []; hist.aqi = []; hist.co2 = []; hist.voc = [];
+    drawMainCharts(hist);
+    fetchData();
+  });
+
+  /* ── HISTORY DATA */
   var hist = { labels: [], temp: [], hum: [], pm25: [], aqi: [], co2: [], voc: [] };
 
-  /* ── DRAW EMPTY CHARTS FIRST (they update after fetchData returns) */
+  /* ── DRAW EMPTY CHARTS FIRST */
   drawAllSparklines(hist);
   drawMainCharts(hist);
 
@@ -92,13 +133,13 @@ document.addEventListener('DOMContentLoaded', function () {
     setBadge('tempBadge', t > 28 ? 'crit' : t > 26 ? 'warn' : 'ok');
     setBadge('humBadge',  h > 70 ? 'crit' : h > 65 ? 'warn' : 'ok');
 
-    var aqiBadge = document.getElementById('aqiBadge');
-    var aqiLabelE1 = document.getElementById('aqiLabel');
+    var aqiBadge   = document.getElementById('aqiBadge');
+    var aqiLabelEl = document.getElementById('aqiLabel');
     var cat = aqiCategory(aqi);
-    aqiBadge.className = 'status-flag ' + (pm25 > 55.4 ? 'flag-crit' : pm25 > 35.4 ? 'flag-warn' : 'flag-ok');
+    aqiBadge.className   = 'status-flag ' + (pm25 > 55.4 ? 'flag-crit' : pm25 > 35.4 ? 'flag-warn' : 'flag-ok');
     aqiBadge.textContent = pm25 > 55.4 ? 'Unhealthy' : pm25 > 35.4 ? 'Elevated' : 'Good';
-    aqiLabelE1.textContent = 'AQI: ' + aqi;
-    aqiLabelE1.style.color = cat.color;
+    aqiLabelEl.textContent = 'AQI: ' + aqi;
+    aqiLabelEl.style.color = cat.color;
 
     setBadge('co2Badge', co2 > 1500 ? 'crit' : co2 > 1000 ? 'warn' : 'ok');
     setBadge('vocBadge', voc > 300  ? 'crit' : voc > 200  ? 'warn' : 'ok');
@@ -108,18 +149,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /* ── REFRESH CHARTS with latest hist data */
     if (window.tempChart) {
-      window.tempChart.data.labels            = hist.labels;
-      window.tempChart.data.datasets[0].data  = hist.temp;
-      window.tempChart.data.datasets[1].data  = hist.hum;
+      window.tempChart.data.labels           = hist.labels;
+      window.tempChart.data.datasets[0].data = hist.temp;
+      window.tempChart.data.datasets[1].data = hist.hum;
       window.tempChart.update();
     }
 
     if (window.aqiChart) {
-      window.aqiChart.data.labels            = hist.labels;
-      window.aqiChart.data.datasets[0].data  = hist.pm25;
-      window.aqiChart.data.datasets[1].data  = hist.co2;
-      window.aqiChart.data.datasets[2].data  = hist.voc;
+      window.aqiChart.data.labels           = hist.labels;
+      window.aqiChart.data.datasets[0].data = hist.pm25;
+      window.aqiChart.data.datasets[1].data = hist.co2;
+      window.aqiChart.data.datasets[2].data = hist.voc;
       window.aqiChart.update();
+    }
+
+    /* ── REFRESH SPARKLINES */
+    drawAllSparklines(hist);
+
+    /* ── UPDATE STATUS PILL with active device name */
+    var activeInfo = devices.find(function(d) { return d.id === activeDevice; });
+    var pill = document.querySelector('.status-pill');
+    if (pill && activeInfo) {
+      pill.innerHTML = '<div class="pulse-dot"></div> ' + activeInfo.label + ' — ' + activeInfo.location;
     }
 
     updateAlerts(t, h, pm25, aqi, co2, voc);
@@ -127,11 +178,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* ── BUILD ALERTS PANEL */
   function updateAlerts(t, h, pm25, aqi, co2, voc) {
+    var activeInfo = devices.find(function(d) { return d.id === activeDevice; });
+    var devLabel   = activeInfo ? activeInfo.label : 'Unknown Device';
     var alerts = [];
 
     if (co2 > 1000) alerts.push({
       type:  co2 > 1500 ? 'crit' : 'warn',
-      msg:   'CO\u2082 level ' + (co2 > 1500 ? 'critical' : 'elevated') + ' \u2014 Sam\'s WorkStation',
+      msg:   'CO\u2082 level ' + (co2 > 1500 ? 'critical' : 'elevated') + ' \u2014 ' + devLabel,
       meta:  'Reading: ' + co2 + ' ppm \xb7 Threshold: 1,000 ppm',
       label: co2 > 1500 ? 'Critical' : 'Warning',
       time:  'Just now'
@@ -139,7 +192,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (voc > 200) alerts.push({
       type:  voc > 300 ? 'crit' : 'warn',
-      msg:   'VOC level ' + (voc > 300 ? 'critical' : 'elevated') + ' \u2014 Sam\'s WorkStation',
+      msg:   'VOC level ' + (voc > 300 ? 'critical' : 'elevated') + ' \u2014 ' + devLabel,
       meta:  'Reading: ' + voc + ' ppb \xb7 Threshold: 200 ppb',
       label: voc > 300 ? 'Critical' : 'Warning',
       time:  'Just now'
@@ -147,7 +200,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (aqi > 50) alerts.push({
       type:  aqi > 100 ? 'crit' : 'warn',
-      msg:   'Air Quality ' + (aqi > 100 ? 'unhealthy' : 'moderate') + ' \u2014 Sam\'s WorkStation',
+      msg:   'Air Quality ' + (aqi > 100 ? 'unhealthy' : 'moderate') + ' \u2014 ' + devLabel,
       meta:  'AQI: ' + aqi + ' \xb7 Threshold: 50 (Good)',
       label: aqi > 100 ? 'Unhealthy' : 'Moderate',
       time:  'Just now'
@@ -155,7 +208,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (t > 26) alerts.push({
       type:  t > 28 ? 'crit' : 'warn',
-      msg:   'Temperature ' + (t > 28 ? 'critical' : 'elevated') + ' \u2014 Sam\'s WorkStation',
+      msg:   'Temperature ' + (t > 28 ? 'critical' : 'elevated') + ' \u2014 ' + devLabel,
       meta:  'Reading: ' + t + '\u00b0C \xb7 Threshold: 26\u00b0C',
       label: t > 28 ? 'Critical' : 'Warning',
       time:  'Just now'
@@ -189,27 +242,26 @@ document.addEventListener('DOMContentLoaded', function () {
     }).join('');
   }
 
-  /* ── FETCH LIVE DATA FROM HOME ASSISTANT */
+  /* ── FETCH LIVE DATA — passes device ID as query param */
   function fetchData() {
 
-    // 1️⃣ Fetch live sensor values from Home Assistant
-    fetch('/api/ha/latest')
+    fetch('/api/ha/latest?device=' + activeDevice)
       .then(function(res) { return res.json(); })
       .then(function(live) {
 
-        if (live && live.temperature) {
+        if (live && live.temperature !== undefined) {
           var now   = new Date();
           var label = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
 
           hist.labels.push(label);
-          hist.temp.push(parseFloat(live.temperature)  || 0);
-          hist.hum.push( parseFloat(live.humidity)     || 0);
+          hist.temp.push( parseFloat(live.temperature) || 0);
+          hist.hum.push(  parseFloat(live.humidity)    || 0);
           hist.pm25.push( parseFloat(live.pm25)        || 0);
-          hist.aqi.push( parseInt(live.aqi)            || 0);
-          hist.co2.push( parseInt(live.co2)            || 0);
-          hist.voc.push( parseInt(live.voc)            || 0);
+          hist.aqi.push(  parseInt(live.aqi)           || 0);
+          hist.co2.push(  parseInt(live.co2)           || 0);
+          hist.voc.push(  parseInt(live.voc)           || 0);
 
-          // Keep only last 48 points
+          /* Keep only last 48 points */
           var MAX = 48;
           if (hist.labels.length > MAX) {
             hist.labels = hist.labels.slice(-MAX);
@@ -223,30 +275,32 @@ document.addEventListener('DOMContentLoaded', function () {
 
           updateCards();
         }
-
       })
       .catch(function(err) {
-        console.log('HA fetch error:', err);
+        console.log('Fetch error:', err);
       });
 
-    // 2️⃣ Update device status pill
-    fetch('/api/ha/status')
+    /* Device status pill */
+    fetch('/api/ha/status?device=' + activeDevice)
       .then(function(res) { return res.json(); })
       .then(function(status) {
         var pill = document.querySelector('.status-pill');
-        if (pill) {
-          if (status.online) {
-            pill.innerHTML = '<div class="pulse-dot"></div> Sam\'s WorkStation Online';
-          } else {
-            pill.innerHTML = '<div class="pulse-dot" style="background:#ef4444"></div> Sam\'s WorkStation Offline';
-          }
+        var activeInfo = devices.find(function(d) { return d.id === activeDevice; });
+        if (pill && activeInfo) {
+          var online = status.online;
+          pill.innerHTML =
+            '<div class="pulse-dot" style="' + (online ? '' : 'background:#ef4444') + '"></div> ' +
+            activeInfo.label + (online ? ' Online' : ' Offline');
         }
       })
       .catch(function(err) {
-        console.log('HA status error:', err);
+        console.log('Status error:', err);
       });
 
-  } /* ── end fetchData */
+  }
+
+  /* Expose fetchData globally for the Refresh button */
+  window.fetchData = fetchData;
 
   /* Fetch immediately then every 30 seconds */
   fetchData();
@@ -257,11 +311,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 /* ══════════════════════════════════════════
    GLOBAL FUNCTIONS
-   Outside DOMContentLoaded — called from
-   onclick="" attributes in the HTML
 ══════════════════════════════════════════ */
 
-/* ── HAMBURGER MENU (mobile) */
 function toggleSidebar() {
   var sidebar = document.querySelector('.sidebar');
   var overlay = document.getElementById('sidebarOverlay');
@@ -269,7 +320,6 @@ function toggleSidebar() {
   overlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none';
 }
 
-/* ── DARK MODE TOGGLE */
 function toggleDarkMode() {
   document.body.classList.toggle('dark-mode');
   var btn    = document.getElementById('darkBtn');
@@ -280,9 +330,6 @@ function toggleDarkMode() {
   localStorage.setItem('emosys_darkmode', isDark ? '1' : '0');
 }
 
-/* ── MANUAL REFRESH BUTTON */
 function updateCards() {
-  /* This global version is called by the Refresh button in the topbar.
-     The real work happens inside fetchData() so we just trigger that. */
-  if (typeof fetchData === 'function') fetchData();
+  if (typeof window.fetchData === 'function') window.fetchData();
 }
