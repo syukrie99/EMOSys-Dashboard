@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function fetchData() {
 
     // 1️⃣ Fetch live sensor values from Home Assistant
-    fetch('http://localhost:3000/api/ha/latest')
+    fetch('/api/ha/latest')
       .then(function(res) { return res.json(); })
       .then(function(live) {
 
@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function () {
       });
 
     // 2️⃣ Update device status pill
-    fetch('http://localhost:3000/api/ha/status')
+    fetch('/api/ha/status')
       .then(function(res) { return res.json(); })
       .then(function(status) {
         var pill = document.querySelector('.status-pill');
@@ -250,7 +250,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* Fetch immediately then every 30 seconds */
   fetchData();
-  setInterval(fetchData, 5000);
+  setInterval(fetchData, 30000);
 
 }); /* end DOMContentLoaded */
 
