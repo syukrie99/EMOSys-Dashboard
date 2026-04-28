@@ -11,9 +11,9 @@ const path = require('path');
 app.use(express.static(path.join(__dirname, '..')));
 
 // ── InfluxDB config ─────────────────────────────────────────
-const INFLUX_HOST  = process.env.INFLUXDB_URL;
-const INFLUX_TOKEN = process.env.INFLUXDB_TOKEN;
-const INFLUX_DB    = process.env.INFLUXDB_DATABASE;
+const INFLUX_HOST  = 'http://localhost:8181';
+const INFLUX_TOKEN = 'apiv3_aSkSo316S8chEPJ1WVVNr1q825S7coFZnpfAoKMI_xtMH66FIBgaWOhsZKmEhLtMp2LbRSCtKXNa6SIJiTJ1Fw';
+const INFLUX_DB    = 'emosys';
 
 const client = new InfluxDBClient({
     host: INFLUX_HOST,
@@ -324,10 +324,13 @@ app.get('/api/latest', async (req, res) => {
 
 app.get('/api/history', async (req, res) => {
     try {
+        const deviceId = req.query.device || 'sams_workstation';
+        const hours    = parseInt(req.query.hours) || 24;
         const query = `
-        SELECT temperature, humidity, aqi, co2, voc, time
+        SELECT temperature, humidity, aqi, co2, voc, pm25, time
         FROM sensors
-        WHERE time >= now() - INTERVAL '24 hours'
+        WHERE device_id = '${deviceId}'
+        AND time >= now() - INTERVAL '${hours} hours'
         ORDER BY time ASC
         `;
         const rows = [];
