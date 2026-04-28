@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EMOSys — History & Logs</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <link rel="stylesheet" href="assets/css/main.css"/>
+  <link rel="stylesheet" href="assets/css/dashboard.css"/>
+  <style>
+    /* ── History-specific styles ── */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+      background: var(--card, #fff);
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 4px;
+      padding: 16px 20px;
+    }
+    .filter-bar label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted, #6b7a8d);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .filter-select {
+      background: var(--surface, #f8fafc);
+      color: var(--text, #0d1b2a);
+      border: 1px solid var(--border, #e5e7eb);
+      padding: 7px 12px;
+      font-size: 0.82rem;
+      font-family: 'Barlow', sans-serif;
+      border-radius: 4px;
+      cursor: pointer;
+      outline: none;
+      min-width: 200px;
+    }
+    .filter-select:focus { border-color: #0057B8; }
+    .btn-apply {
+      background: #0057B8;
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      font-size: 0.82rem;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-apply:hover { background: #0046a0; }
+    .filter-divider {
+      width: 1px;
+      height: 28px;
+      background: var(--border, #e5e7eb);
+    }
+
+    /* ── Stats row ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--card, #fff);
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 4px;
+      padding: 16px 18px;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+    .stat-card.temp::before  { background: #e53e3e; }
+    .stat-card.hum::before   { background: #0ea5e9; }
+    .stat-card.pm25::before  { background: #10b981; }
+    .stat-card.co2::before   { background: #7c3aed; }
+    .stat-card.voc::before   { background: #f59e0b; }
+    .stat-label { font-size: 0.72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .stat-values { display: flex; gap: 16px; }
+    .stat-item .sv-label { font-size: 0.68rem; color: var(--muted); }
+    .stat-item .sv-val   { font-size: 1.05rem; font-weight: 700; font-family: 'Barlow Condensed', sans-serif; color: var(--text); }
+
+    /* ── Chart cards ── */
+    .history-chart-card {
+      background: var(--card, #fff);
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 4px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+    }
+    .history-chart-card h4 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0 0 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .history-chart-card p {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin: 0 0 16px;
+    }
+    .history-chart-wrap { position: relative; height: 220px; }
+
+    /* ── Data table ── */
+    .data-table-wrap { overflow-x: auto; }
+    .data-table-wrap table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .data-table-wrap thead th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 2px solid var(--border);
+      background: var(--surface, #f8fafc);
+    }
+    .data-table-wrap tbody tr { border-bottom: 1px solid var(--border); }
+    .data-table-wrap tbody tr:hover { background: var(--surface, #f8fafc); }
+    .data-table-wrap tbody td { padding: 9px 14px; color: var(--text); }
+    .data-table-wrap tbody td.muted { color: var(--muted); }
+
+    .no-data {
+      padding: 40px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    /* dark mode overrides for filter-select */
+    body.dark-mode .filter-select {
+      background: #1e2d3d;
+      color: #fff;
+      border-color: rgba(255,255,255,0.12);
+    }
+    body.dark-mode .filter-bar {
+      background: #0d1b2a;
+      border-color: rgba(255,255,255,0.08);
+    }
+
+    @media (max-width: 768px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══ SIDEBAR (same as dashboard) ══ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-wrap">
+        <div class="logo-chip"></div>
+        <div class="logo-text"><h2>EMOSys</h2><p>Monitoring System</p></div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">Overview</div>
+      <a class="nav-item" href="Dashboard.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Live Readings
+      </a>
+      <a class="nav-item active" href="History.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        History &amp; Logs
+      </a>
+      <div class="nav-section">Devices</div>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        ESPHome Devices
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        Network Status
+      </a>
+      <div class="nav-section">Management</div>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        Reports
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        Alerts
+        <span class="nav-badge" id="alertCount">0</span>
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+        Users
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="avatar" id="userAvatar">A</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Admin</div>
+          <div class="user-role" id="userRole">Administrator</div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()" title="Logout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══ MAIN ══ -->
+  <main class="main">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="breadcrumb">
+        <span class="breadcrumb-home">EMOSys</span>
+        <span class="breadcrumb-sep">›</span>
+        <span class="breadcrumb-current">History &amp; Logs</span>
+      </div>
+      <div class="topbar-right">
+        <div class="status-pill"><div class="pulse-dot"></div>Live Collection Active</div>
+        <button class="topbar-btn" onclick="toggleDarkMode()" id="darkBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          Dark
+        </button>
+        <span style="font-size:0.75rem;color:rgba(255,255,255,0.4)" id="currentDate"></span>
+      </div>
+    </div>
+
+    <!-- PAGE -->
+    <div class="page">
+
+      <div class="page-title-bar">
+        <h1><span>Sensor Data</span>History &amp; Logs</h1>
+        <div class="last-updated" id="lastUpdated">Last updated: —</div>
+      </div>
+
+      <!-- FILTER BAR -->
+      <div class="filter-bar">
+        <label>Device</label>
+        <select class="filter-select" id="deviceSelect">
+          <option value="">Loading devices…</option>
+        </select>
+
+        <div class="filter-divider"></div>
+
+        <label>Time Range</label>
+        <select class="filter-select" id="hoursSelect" style="min-width:140px">
+          <option value="1">Last 1 Hour</option>
+          <option value="6">Last 6 Hours</option>
+          <option value="12">Last 12 Hours</option>
+          <option value="24" selected>Last 24 Hours</option>
+          <option value="48">Last 48 Hours</option>
+        </select>
+
+        <button class="btn-apply" onclick="loadHistory()">Apply</button>
+        <div style="margin-left:auto;font-size:0.78rem;color:var(--muted)" id="recordCount"></div>
+      </div>
+
+      <!-- STATS ROW -->
+      <div class="stats-row">
+        <div class="stat-card temp">
+          <div class="stat-label">Temperature (°C)</div>
+          <div class="stat-values">
+            <div class="stat-item"><div class="sv-label">Min</div><div class="sv-val" id="tempMin">—</div></div>
+            <div class="stat-item"><div class="sv-label">Avg</div><div class="sv-val" id="tempAvg">—</div></div>
+            <div class="stat-item"><div class="sv-label">Max</div><div class="sv-val" id="tempMax">—</div></div>
+          </div>
+        </div>
+        <div class="stat-card hum">
+          <div class="stat-label">Humidity (%RH)</div>
+          <div class="stat-values">
+            <div class="stat-item"><div class="sv-label">Min</div><div class="sv-val" id="humMin">—</div></div>
+            <div class="stat-item"><div class="sv-label">Avg</div><div class="sv-val" id="humAvg">—</div></div>
+            <div class="stat-item"><div class="sv-label">Max</div><div class="sv-val" id="humMax">—</div></div>
+          </div>
+        </div>
+        <div class="stat-card pm25">
+          <div class="stat-label">PM2.5 (μg/m³)</div>
+          <div class="stat-values">
+            <div class="stat-item"><div class="sv-label">Min</div><div class="sv-val" id="pm25Min">—</div></div>
+            <div class="stat-item"><div class="sv-label">Avg</div><div class="sv-val" id="pm25Avg">—</div></div>
+            <div class="stat-item"><div class="sv-label">Max</div><div class="sv-val" id="pm25Max">—</div></div>
+          </div>
+        </div>
+        <div class="stat-card co2">
+          <div class="stat-label">CO₂ (ppm)</div>
+          <div class="stat-values">
+            <div class="stat-item"><div class="sv-label">Min</div><div class="sv-val" id="co2Min">—</div></div>
+            <div class="stat-item"><div class="sv-label">Avg</div><div class="sv-val" id="co2Avg">—</div></div>
+            <div class="stat-item"><div class="sv-label">Max</div><div class="sv-val" id="co2Max">—</div></div>
+          </div>
+        </div>
+        <div class="stat-card voc">
+          <div class="stat-label">VOC (ppb)</div>
+          <div class="stat-values">
+            <div class="stat-item"><div class="sv-label">Min</div><div class="sv-val" id="vocMin">—</div></div>
+            <div class="stat-item"><div class="sv-label">Avg</div><div class="sv-val" id="vocAvg">—</div></div>
+            <div class="stat-item"><div class="sv-label">Max</div><div class="sv-val" id="vocMax">—</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHARTS -->
+      <div class="section-head"><h3>Trend Charts</h3></div>
+
+      <div class="history-chart-card">
+        <h4>Temperature &amp; Humidity</h4>
+        <p id="chartSubTemp">Historical trend</p>
+        <div class="history-chart-wrap">
+          <canvas id="histTempChart"></canvas>
+        </div>
+      </div>
+
+      <div class="history-chart-card">
+        <h4>Air Quality — PM2.5, CO₂ &amp; VOC</h4>
+        <p id="chartSubAqi">Concentration levels</p>
+        <div class="history-chart-wrap">
+          <canvas id="histAqiChart"></canvas>
+        </div>
+      </div>
+
+      <!-- DATA TABLE -->
+      <div class="section-head"><h3>Raw Data Log</h3></div>
+      <div class="table-card">
+        <div class="table-head">
+          <h4>Sensor Readings</h4>
+          <span class="count-badge" id="tableCount">— records</span>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Temp (°C)</th>
+                <th>Humidity (%)</th>
+                <th>PM2.5 (μg/m³)</th>
+                <th>AQI</th>
+                <th>CO₂ (ppm)</th>
+                <th>VOC (ppb)</th>
+              </tr>
+            </thead>
+            <tbody id="dataTableBody">
+              <tr><td colspan="7" class="no-data">Select a device and click Apply to load data.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- end .page -->
+
+    <div class="page-footer">
+      <span>&copy; 2026 EMOSys · Environmental Monitoring System</span>
+      <span id="footerDate"></span>
+    </div>
+
+  </main>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+  <script src="assets/js/auth.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+
+    var user = requireAuth();
+    if (!user) return;
+
+    /* Dark mode */
+    if (localStorage.getItem('emosys_darkmode') === '1') {
+      document.body.classList.add('dark-mode');
+      document.getElementById('darkBtn').innerHTML =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg> Light';
+    }
+
+    /* User info */
+    document.getElementById('userName').textContent   = user.name || 'Admin';
+    document.getElementById('userRole').textContent   = user.role || 'User';
+    document.getElementById('userAvatar').textContent = (user.name || 'A')[0].toUpperCase();
+
+    /* Date */
+    var now = new Date();
+    document.getElementById('currentDate').textContent = now.toLocaleDateString('en-MY', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+    document.getElementById('footerDate').textContent  = 'System time: ' + now.toLocaleTimeString();
+
+    /* Chart instances */
+    var tempChart = null;
+    var aqiChart  = null;
+
+    /* Chart colors */
+    var isDark = function() { return document.body.classList.contains('dark-mode'); };
+    var gridColor  = function() { return isDark() ? 'rgba(255,255,255,0.06)' : '#f0f2f5'; };
+    var tickColor  = function() { return isDark() ? '#6b7a8d' : '#9ca3af'; };
+
+    /* Load device list */
+    fetch('/api/devices')
+      .then(function(r) { return r.json(); })
+      .then(function(list) {
+        var sel = document.getElementById('deviceSelect');
+        sel.innerHTML = list.map(function(d) {
+          return '<option value="' + d.id + '">' + d.label + '</option>';
+        }).join('');
+        loadHistory();
+      });
+
+    /* ── LOAD HISTORY ── */
+    window.loadHistory = function() {
+      var deviceId = document.getElementById('deviceSelect').value;
+      var hours    = document.getElementById('hoursSelect').value;
+      if (!deviceId) return;
+
+      document.getElementById('recordCount').textContent = 'Loading…';
+      document.getElementById('dataTableBody').innerHTML =
+        '<tr><td colspan="7" class="no-data">Loading data…</td></tr>';
+
+      fetch('/api/history?device=' + deviceId + '&hours=' + hours)
+        .then(function(r) { return r.json(); })
+        .then(function(rows) {
+          if (!rows.length) {
+            document.getElementById('recordCount').textContent = 'No data found';
+            document.getElementById('dataTableBody').innerHTML =
+              '<tr><td colspan="7" class="no-data">No data found for this device and time range.</td></tr>';
+            return;
+          }
+
+          document.getElementById('recordCount').textContent = rows.length + ' records';
+          document.getElementById('tableCount').textContent  = rows.length + ' records';
+          document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+
+          /* Thin out data for charts — max 100 points */
+          var step = Math.max(1, Math.floor(rows.length / 100));
+          var thinned = rows.filter(function(_, i) { return i % step === 0; });
+
+          var labels = thinned.map(function(r) {
+            var d = new Date(r.time);
+            return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+          });
+
+          var temps = thinned.map(function(r) { return parseFloat(r.temperature).toFixed(1); });
+          var hums  = thinned.map(function(r) { return parseFloat(r.humidity).toFixed(1); });
+          var pm25s = thinned.map(function(r) { return parseFloat(r.pm25).toFixed(1); });
+          var co2s  = thinned.map(function(r) { return parseFloat(r.co2).toFixed(0); });
+          var vocs  = thinned.map(function(r) { return parseFloat(r.voc).toFixed(0); });
+
+          /* Stats */
+          function stats(arr) {
+            var nums = arr.map(Number);
+            return {
+              min: Math.min.apply(null, nums).toFixed(1),
+              max: Math.max.apply(null, nums).toFixed(1),
+              avg: (nums.reduce(function(a,b){return a+b;},0)/nums.length).toFixed(1)
+            };
+          }
+          var ts = stats(temps), hs = stats(hums), ps = stats(pm25s), cs = stats(co2s), vs = stats(vocs);
+
+          document.getElementById('tempMin').textContent = ts.min;
+          document.getElementById('tempAvg').textContent = ts.avg;
+          document.getElementById('tempMax').textContent = ts.max;
+          document.getElementById('humMin').textContent  = hs.min;
+          document.getElementById('humAvg').textContent  = hs.avg;
+          document.getElementById('humMax').textContent  = hs.max;
+          document.getElementById('pm25Min').textContent = ps.min;
+          document.getElementById('pm25Avg').textContent = ps.avg;
+          document.getElementById('pm25Max').textContent = ps.max;
+          document.getElementById('co2Min').textContent  = cs.min;
+          document.getElementById('co2Avg').textContent  = cs.avg;
+          document.getElementById('co2Max').textContent  = cs.max;
+          document.getElementById('vocMin').textContent  = vs.min;
+          document.getElementById('vocAvg').textContent  = vs.avg;
+          document.getElementById('vocMax').textContent  = vs.max;
+
+          /* Charts */
+          var baseOpts = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { labels: { color: tickColor(), font: { size: 11 }, boxWidth: 12 } },
+              tooltip: {
+                backgroundColor: '#0d1b2a', titleColor: '#fff', bodyColor: '#9ca3af',
+                borderColor: '#0057B8', borderWidth: 1, padding: 10, cornerRadius: 0
+              }
+            }
+          };
+
+          if (tempChart) tempChart.destroy();
+          tempChart = new Chart(document.getElementById('histTempChart'), {
+            type: 'line',
+            data: {
+              labels: labels,
+              datasets: [
+                { label: 'Temperature (°C)', data: temps, borderColor: '#e53e3e', backgroundColor: 'rgba(229,62,62,0.07)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2, yAxisID: 'yTemp' },
+                { label: 'Humidity (%)',     data: hums,  borderColor: '#0ea5e9', backgroundColor: 'rgba(14,165,233,0.05)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2, yAxisID: 'yHum' }
+              ]
+            },
+            options: Object.assign({}, baseOpts, {
+              scales: {
+                x:     { ticks: { color: tickColor(), font: { size: 10 }, maxTicksLimit: 8 }, grid: { color: gridColor() } },
+                yTemp: { type: 'linear', position: 'left',  title: { display: true, text: '°C',  color: '#e53e3e', font: { size: 10 } }, ticks: { color: '#e53e3e', font: { size: 10 } }, grid: { color: gridColor() }, suggestedMin: 15, suggestedMax: 40 },
+                yHum:  { type: 'linear', position: 'right', title: { display: true, text: '%RH', color: '#0ea5e9', font: { size: 10 } }, ticks: { color: '#0ea5e9', font: { size: 10 } }, grid: { drawOnChartArea: false }, suggestedMin: 0, suggestedMax: 100 }
+              }
+            })
+          });
+
+          if (aqiChart) aqiChart.destroy();
+          aqiChart = new Chart(document.getElementById('histAqiChart'), {
+            type: 'line',
+            data: {
+              labels: labels,
+              datasets: [
+                { label: 'PM2.5 (μg/m³)', data: pm25s, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.06)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2, yAxisID: 'yPM' },
+                { label: 'CO₂ (ppm)',      data: co2s,  borderColor: '#7c3aed', backgroundColor: 'rgba(124,58,237,0.05)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2, yAxisID: 'yCO2' },
+                { label: 'VOC (ppb)',      data: vocs,  borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.05)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2, yAxisID: 'yCO2' }
+              ]
+            },
+            options: Object.assign({}, baseOpts, {
+              scales: {
+                x:    { ticks: { color: tickColor(), font: { size: 10 }, maxTicksLimit: 8 }, grid: { color: gridColor() } },
+                yPM:  { type: 'linear', position: 'left',  title: { display: true, text: 'μg/m³',    color: '#10b981', font: { size: 10 } }, ticks: { color: '#10b981', font: { size: 10 } }, grid: { color: gridColor() }, suggestedMin: 0, suggestedMax: 100 },
+                yCO2: { type: 'linear', position: 'right', title: { display: true, text: 'ppm / ppb', color: '#7c3aed', font: { size: 10 } }, ticks: { color: '#7c3aed', font: { size: 10 } }, grid: { drawOnChartArea: false } }
+              }
+            })
+          });
+
+          /* Table — show latest 100 rows, newest first */
+          var tableRows = rows.slice().reverse().slice(0, 100);
+          document.getElementById('dataTableBody').innerHTML = tableRows.map(function(r) {
+            var d = new Date(r.time);
+            var ts = d.toLocaleDateString('en-MY') + ' ' + d.toLocaleTimeString();
+            return (
+              '<tr>' +
+                '<td class="muted">' + ts + '</td>' +
+                '<td>' + parseFloat(r.temperature).toFixed(2) + '</td>' +
+                '<td>' + parseFloat(r.humidity).toFixed(2) + '</td>' +
+                '<td>' + parseFloat(r.pm25).toFixed(1) + '</td>' +
+                '<td>' + (r.aqi || 0) + '</td>' +
+                '<td>' + parseFloat(r.co2).toFixed(0) + '</td>' +
+                '<td>' + parseFloat(r.voc).toFixed(1) + '</td>' +
+              '</tr>'
+            );
+          }).join('');
+        })
+        .catch(function(err) {
+          console.error('History fetch error:', err);
+          document.getElementById('recordCount').textContent = 'Error loading data';
+        });
+    };
+
+  });
+
+  /* Global functions */
+  function toggleSidebar() {
+    var sidebar = document.querySelector('.sidebar');
+    var overlay = document.getElementById('sidebarOverlay');
+    sidebar.classList.toggle('open');
+    overlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none';
+  }
+
+  function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    var btn    = document.getElementById('darkBtn');
+    var isDark = document.body.classList.contains('dark-mode');
+    btn.innerHTML = isDark
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg> Light'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> Dark';
+    localStorage.setItem('emosys_darkmode', isDark ? '1' : '0');
+  }
+  </script>
+</body>
+</html>
