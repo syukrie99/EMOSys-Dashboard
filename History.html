@@ -155,6 +155,60 @@
       border-color: rgba(255,255,255,0.08);
     }
 
+
+
+    /* ── Value badges in table ── */
+    .val-ok   { color: #15803d; font-weight: 600; }
+    .val-warn { color: #b45309; font-weight: 600; }
+    .val-crit { color: #dc2626; font-weight: 600; }
+
+    /* ── Pagination ── */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+    }
+    .page-btn {
+      background: var(--surface, #f8fafc);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 5px 11px;
+      font-size: 0.78rem;
+      font-family: Barlow, sans-serif;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .page-btn:hover { background: #0057B8; color: #fff; border-color: #0057B8; }
+    .page-btn.active { background: #0057B8; color: #fff; border-color: #0057B8; }
+    .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .page-info { font-size: 0.78rem; color: var(--muted); padding: 0 6px; }
+    body.dark-mode .page-btn { background: #1e2d3d; border-color: rgba(255,255,255,0.12); color: #fff; }
+    /* ── Loading spinner ── */
+    .spinner-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px;
+      gap: 14px;
+    }
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--border, #e5e7eb);
+      border-top-color: #0057B8;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-text {
+      font-size: 0.82rem;
+      color: var(--muted);
+      font-family: Barlow, sans-serif;
+    }
     @media (max-width: 768px) {
       .stats-row { grid-template-columns: repeat(2, 1fr); }
     }
@@ -274,6 +328,9 @@
         </select>
 
         <button class="btn-apply" onclick="loadHistory()">Apply</button>
+        <button class="btn-apply" onclick="exportCSV()" style="background:#15803d;margin-left:4px">
+          &#8595; Export CSV
+        </button>
         <div style="margin-left:auto;font-size:0.78rem;color:var(--muted)" id="recordCount"></div>
       </div>
 
@@ -365,6 +422,7 @@
             </tbody>
           </table>
         </div>
+        <div class="pagination" id="pagination"></div>
       </div>
 
     </div><!-- end .page -->
@@ -422,6 +480,10 @@
         loadHistory();
       });
 
+    /* Auto-load when device or hours changes */
+    document.getElementById('deviceSelect').addEventListener('change', function() { loadHistory(); });
+    document.getElementById('hoursSelect').addEventListener('change',  function() { loadHistory(); });
+
     /* ── LOAD HISTORY ── */
     window.loadHistory = function() {
       var deviceId = document.getElementById('deviceSelect').value;
@@ -430,7 +492,7 @@
 
       document.getElementById('recordCount').textContent = 'Loading…';
       document.getElementById('dataTableBody').innerHTML =
-        '<tr><td colspan="7" class="no-data">Loading data…</td></tr>';
+        '<tr><td colspan="7"><div class="spinner-wrap"><div class="spinner"></div><div class="spinner-text">Fetching sensor data…</div></div></td></tr>';
 
       fetch('/api/history?device=' + deviceId + '&hours=' + hours)
         .then(function(r) { return r.json(); })
@@ -442,9 +504,17 @@
             return;
           }
 
+          window._lastRows = rows;
+          window._lastRows = rows;
           document.getElementById('recordCount').textContent = rows.length + ' records';
           document.getElementById('tableCount').textContent  = rows.length + ' records';
           document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+
+          /* Update chart subtitles with device name and range */
+          var deviceLabel = document.getElementById('deviceSelect').options[document.getElementById('deviceSelect').selectedIndex].text;
+          var hoursLabel  = document.getElementById('hoursSelect').options[document.getElementById('hoursSelect').selectedIndex].text;
+          document.getElementById('chartSubTemp').textContent = deviceLabel + ' — ' + hoursLabel;
+          document.getElementById('chartSubAqi').textContent  = deviceLabel + ' — ' + hoursLabel;
 
           /* Thin out data for charts — max 100 points */
           var step = Math.max(1, Math.floor(rows.length / 100));
@@ -540,23 +610,60 @@
             })
           });
 
-          /* Table — show latest 100 rows, newest first */
-          var tableRows = rows.slice().reverse().slice(0, 100);
-          document.getElementById('dataTableBody').innerHTML = tableRows.map(function(r) {
-            var d = new Date(r.time);
-            var ts = d.toLocaleDateString('en-MY') + ' ' + d.toLocaleTimeString();
-            return (
-              '<tr>' +
-                '<td class="muted">' + ts + '</td>' +
-                '<td>' + parseFloat(r.temperature).toFixed(2) + '</td>' +
-                '<td>' + parseFloat(r.humidity).toFixed(2) + '</td>' +
-                '<td>' + parseFloat(r.pm25).toFixed(1) + '</td>' +
-                '<td>' + (r.aqi || 0) + '</td>' +
-                '<td>' + parseFloat(r.co2).toFixed(0) + '</td>' +
-                '<td>' + parseFloat(r.voc).toFixed(1) + '</td>' +
-              '</tr>'
-            );
-          }).join('');
+          /* Table with pagination — 20 rows per page */
+          function valClass(v, warn, crit) {
+            return v >= crit ? 'val-crit' : v >= warn ? 'val-warn' : 'val-ok';
+          }
+          var PAGE_SIZE   = 20;
+          var currentPage = 1;
+          var sortedRows  = rows.slice().reverse();
+
+          function renderPage(page) {
+            currentPage = page;
+            var start = (page - 1) * PAGE_SIZE;
+            var end   = start + PAGE_SIZE;
+            var slice = sortedRows.slice(start, end);
+            document.getElementById('dataTableBody').innerHTML = slice.map(function(r) {
+              var d   = new Date(r.time);
+              var ts  = d.toLocaleDateString('en-MY') + ' ' + d.toLocaleTimeString();
+              var t   = parseFloat(r.temperature).toFixed(2);
+              var h   = parseFloat(r.humidity).toFixed(2);
+              var p   = parseFloat(r.pm25).toFixed(1);
+              var aqi = r.aqi || 0;
+              var c   = parseFloat(r.co2).toFixed(0);
+              var v   = parseFloat(r.voc).toFixed(1);
+              return (
+                '<tr>' +
+                  '<td class="muted">' + ts + '</td>' +
+                  '<td class="' + valClass(t, 26, 28)    + '">' + t   + '</td>' +
+                  '<td class="' + valClass(h, 65, 70)    + '">' + h   + '</td>' +
+                  '<td class="' + valClass(p, 35.4, 55.4)+ '">' + p   + '</td>' +
+                  '<td class="' + valClass(aqi, 50, 100) + '">' + aqi + '</td>' +
+                  '<td class="' + valClass(c, 1000, 1500)+ '">' + c   + '</td>' +
+                  '<td class="' + valClass(v, 200, 300)  + '">' + v   + '</td>' +
+                '</tr>'
+              );
+            }).join('');
+
+            /* Render pagination controls */
+            var totalPages = Math.ceil(sortedRows.length / PAGE_SIZE);
+            var pag = document.getElementById('pagination');
+            if (totalPages <= 1) { pag.innerHTML = ''; return; }
+            var html = '';
+            html += '<button class="page-btn" onclick="renderPage(' + (page-1) + ')"' + (page===1?' disabled':'') + '>&laquo; Prev</button>';
+            /* Show max 5 page buttons */
+            var start_p = Math.max(1, page - 2);
+            var end_p   = Math.min(totalPages, start_p + 4);
+            for (var i = start_p; i <= end_p; i++) {
+              html += '<button class="page-btn' + (i===page?' active':'') + '" onclick="renderPage(' + i + ')">' + i + '</button>';
+            }
+            html += '<button class="page-btn" onclick="renderPage(' + (page+1) + ')"' + (page===totalPages?' disabled':'') + '>Next &raquo;</button>';
+            html += '<span class="page-info">Page ' + page + ' of ' + totalPages + ' (' + sortedRows.length + ' records)</span>';
+            pag.innerHTML = html;
+          }
+
+          window.renderPage = renderPage;
+          renderPage(1);
         })
         .catch(function(err) {
           console.error('History fetch error:', err);
@@ -567,6 +674,33 @@
   });
 
   /* Global functions */
+  function exportCSV() {
+    var rows = window._lastRows;
+    if (!rows || !rows.length) { alert('No data to export. Please load data first.'); return; }
+    var deviceId = document.getElementById('deviceSelect').value;
+    var hours    = document.getElementById('hoursSelect').value;
+    var header   = 'Timestamp,Temperature(C),Humidity(%),PM2.5(ug/m3),AQI,CO2(ppm),VOC(ppb)';
+    var csv = [header].concat(rows.map(function(r) {
+      var d = new Date(r.time);
+      return [
+        d.toLocaleDateString('en-MY') + ' ' + d.toLocaleTimeString(),
+        parseFloat(r.temperature).toFixed(2),
+        parseFloat(r.humidity).toFixed(2),
+        parseFloat(r.pm25).toFixed(1),
+        r.aqi || 0,
+        parseFloat(r.co2).toFixed(0),
+        parseFloat(r.voc).toFixed(1)
+      ].join(',');
+    })).join('');
+    var blob = new Blob([csv], { type: 'text/csv' });
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'emosys_' + deviceId + '_' + hours + 'h.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function toggleSidebar() {
     var sidebar = document.querySelector('.sidebar');
     var overlay = document.getElementById('sidebarOverlay');
