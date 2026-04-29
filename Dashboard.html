@@ -14,9 +14,28 @@
   <style>
     /* ── Prevent horizontal scroll ── */
     html, body { overflow-x: hidden; max-width: 100vw; }
+    .main { min-width: 0; }
+    .page { min-width: 0; box-sizing: border-box; }
+    /* Sensor grid — always show all 5 cards, wrap if needed */
+    .sensor-grid { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)) !important; }
+    .charts-grid { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important; }
+    #allDevicesCard table { table-layout: fixed; width: 100%; }
+    #allDevicesCard table th, #allDevicesCard table td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .main { min-width: 0; overflow-x: hidden; }
-    .page { min-width: 0; overflow-x: hidden; }
-    .sensor-grid { overflow-x: hidden; }
+    .page { min-width: 0; overflow-x: hidden; box-sizing: border-box; }
+    /* Force sensor grid to always show all 5 cards wrapped */
+    .sensor-grid {
+      display: grid !important;
+      grid-template-columns: repeat(5, 1fr) !important;
+      gap: 12px !important;
+      overflow: visible !important;
+    }
+    @media (max-width: 1200px) {
+      .sensor-grid { grid-template-columns: repeat(3, 1fr) !important; }
+    }
+    @media (max-width: 768px) {
+      .sensor-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    }
     .charts-grid { overflow-x: hidden; }
     table { table-layout: fixed; word-break: break-word; }
     #allDevicesCard table th, #allDevicesCard table td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
