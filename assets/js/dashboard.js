@@ -67,9 +67,11 @@ document.addEventListener('DOMContentLoaded', function () {
       select.innerHTML = list.map(function(d) {
         return '<option value="' + d.id + '">' + d.label + '</option>';
       }).join('');
-      /* Start fetching data now that we have devices */
-      fetchData();
-      setInterval(fetchData, 30000);
+      /* Load 24h history first, then start live polling */
+      loadHistory24h(function() {
+        fetchData();
+        setInterval(fetchData, 30000);
+      });
     })
     .catch(function(err) {
       console.error('Failed to load devices:', err);
@@ -81,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function () {
     hist.labels = []; hist.temp = []; hist.hum = [];
     hist.pm25 = []; hist.aqi = []; hist.co2 = []; hist.voc = [];
     drawMainCharts(hist);
-    fetchData();
+    loadHistory24h(function() { fetchData(); });
   });
 
   /* ── AQI CATEGORY HELPER */
@@ -248,6 +250,38 @@ document.addEventListener('DOMContentLoaded', function () {
         '</div>'
       );
     }).join('');
+  }
+
+  /* ── LOAD 24H HISTORY from InfluxDB on startup/device switch */
+  function loadHistory24h(callback) {
+    fetch('/api/history?device=' + activeDevice + '&hours=24')
+      .then(function(res) { return res.json(); })
+      .then(function(rows) {
+        if (!Array.isArray(rows) || rows.length === 0) {
+          if (callback) callback();
+          return;
+        }
+        /* Thin to max 48 points for chart performance */
+        var step    = Math.max(1, Math.floor(rows.length / 48));
+        var thinned = rows.filter(function(_, i) { return i % step === 0; });
+        hist.labels = thinned.map(function(r) {
+          var d = new Date(r.time);
+          return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+        });
+        hist.temp = thinned.map(function(r) { return parseFloat(r.temperature) || 0; });
+        hist.hum  = thinned.map(function(r) { return parseFloat(r.humidity)    || 0; });
+        hist.pm25 = thinned.map(function(r) { return parseFloat(r.pm25)        || 0; });
+        hist.aqi  = thinned.map(function(r) { return parseInt(r.aqi)           || 0; });
+        hist.co2  = thinned.map(function(r) { return parseInt(r.co2)           || 0; });
+        hist.voc  = thinned.map(function(r) { return parseInt(r.voc)           || 0; });
+        drawMainCharts(hist);
+        drawAllSparklines(hist);
+        if (callback) callback();
+      })
+      .catch(function(err) {
+        console.log('History load error:', err);
+        if (callback) callback();
+      });
   }
 
   /* ── FETCH LIVE DATA — passes device ID as query param */
