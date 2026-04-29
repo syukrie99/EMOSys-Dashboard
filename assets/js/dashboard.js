@@ -433,87 +433,63 @@ document.addEventListener('DOMContentLoaded', function () {
     return Math.floor(secondsAgo / 3600) + 'h ago';
   }
 
-  var devAllRows   = [];
-  var devPage      = 1;
-  var DEV_PER_PAGE = 5;
 
-  function renderDevPage(page) {
-    devPage = page;
-    var total     = devAllRows.length;
-    var totalPages = Math.ceil(total / DEV_PER_PAGE);
-    var start     = (page - 1) * DEV_PER_PAGE;
-    var slice     = devAllRows.slice(start, start + DEV_PER_PAGE);
 
-    document.getElementById('devicesTableBody').innerHTML = slice.map(function(r) {
+  /* ── ALL DEVICES OVERVIEW TABLE ── */
+  var overviewAllRows = [];
+  var overviewPage    = 1;
+  var OV_PER_PAGE     = 5;
+
+  function renderOverviewPage(page) {
+    overviewPage = page;
+    var total      = overviewAllRows.length;
+    var totalPages = Math.ceil(total / OV_PER_PAGE);
+    var slice      = overviewAllRows.slice((page-1)*OV_PER_PAGE, page*OV_PER_PAGE);
+
+    function vc(v, warn, crit) {
+      return v >= crit ? 'color:#dc2626;font-weight:600' : v >= warn ? 'color:#b45309;font-weight:600' : '';
+    }
+
+    document.getElementById('overviewTableBody').innerHTML = slice.map(function(row) {
+      if (!row.data) {
+        return '<tr><td><div class="device-name">' + row.label + '</div></td>' +
+          '<td><span class="offline"><i class="dot-off"></i>Offline</span></td>' +
+          '<td colspan="5" style="color:var(--muted)">No data</td></tr>';
+      }
+      var t = parseFloat(row.data.temperature).toFixed(1);
+      var h = parseFloat(row.data.humidity).toFixed(1);
+      var p = parseFloat(row.data.pm25).toFixed(1);
+      var c = parseFloat(row.data.co2).toFixed(0);
+      var v = parseFloat(row.data.voc).toFixed(0);
       return (
-        '<tr>' +
-          '<td><div class="device-name">' + r.label + '</div></td>' +
-          '<td>' + r.location + '</td>' +
-          '<td>' +
-            '<span class="' + (r.online ? 'online' : 'offline') + '">' +
-              '<i class="' + (r.online ? 'dot-on' : 'dot-off') + '"></i>' +
-              (r.online ? 'Online' : 'Offline') +
-            '</span>' +
-          '</td>' +
-          '<td>' + r.lastSeen + '</td>' +
-          '<td>Temp, Humidity, CO&#x2082;, VOC, PM2.5</td>' +
+        '<tr style="cursor:pointer" onclick="switchToDevice(this.dataset.id)" data-id="' + row.id + '" title="Click to view">' +
+          '<td><div class="device-name">' + row.label + '</div></td>' +
+          '<td><span class="online"><i class="dot-on"></i>Online</span></td>' +
+          '<td style="' + vc(t,26,28)     + '">' + t + '</td>' +
+          '<td style="' + vc(h,65,70)     + '">' + h + '</td>' +
+          '<td style="' + vc(p,35.4,55.4) + '">' + p + '</td>' +
+          '<td style="' + vc(c,1000,1500) + '">' + c + '</td>' +
+          '<td style="' + vc(v,200,300)   + '">' + v + '</td>' +
         '</tr>'
       );
     }).join('');
 
     /* Pagination controls */
-    var pag = document.getElementById('devPagination');
+    var pag = document.getElementById('overviewPagination');
+    if (!pag) return;
     if (totalPages <= 1) { pag.innerHTML = ''; return; }
     var html = '';
-    html += '<button class="dev-page-btn" onclick="renderDevPage(' + (page-1) + ')"' + (page===1?' disabled':'') + '>&laquo;</button>';
+    html += '<button class="dev-page-btn" onclick="renderOverviewPage(' + (page-1) + ')"' + (page===1?' disabled':'') + '>&laquo;</button>';
     for (var i = 1; i <= totalPages; i++) {
-      html += '<button class="dev-page-btn' + (i===page?' active':'') + '" onclick="renderDevPage(' + i + ')">' + i + '</button>';
+      html += '<button class="dev-page-btn' + (i===page?' active':'') + '" onclick="renderOverviewPage(' + i + ')">' + i + '</button>';
     }
-    html += '<button class="dev-page-btn" onclick="renderDevPage(' + (page+1) + ')"' + (page===totalPages?' disabled':'') + '>&raquo;</button>';
-    html += '<span class="dev-page-info">Page ' + page + ' of ' + totalPages + '</span>';
+    html += '<button class="dev-page-btn" onclick="renderOverviewPage(' + (page+1) + ')"' + (page===totalPages?' disabled':'') + '>&raquo;</button>';
+    html += '<span class="dev-page-info">Page ' + page + ' of ' + totalPages + ' (' + total + ' devices)</span>';
     pag.innerHTML = html;
   }
 
-  window.renderDevPage = renderDevPage;
+  window.renderOverviewPage = renderOverviewPage;
 
-  function loadDevicesTable() {
-    fetch('/api/devices')
-      .then(function(res) { return res.json(); })
-      .then(function(list) {
-        var statusPromises = list.map(function(d) {
-          return fetch('/api/ha/status?device=' + d.id)
-            .then(function(res) { return res.json(); })
-            .catch(function() { return { device: d.id, online: false, seconds_ago: null }; });
-        });
-
-        Promise.all(statusPromises).then(function(statuses) {
-          var onlineCount = statuses.filter(function(s) { return s.online; }).length;
-          document.getElementById('deviceCountBadge').textContent =
-            list.length + ' registered · ' + onlineCount + ' online';
-
-          devAllRows = list.map(function(d, i) {
-            var s = statuses[i];
-            return {
-              label   : d.label,
-              location: d.location,
-              online  : s.online,
-              lastSeen: s.seconds_ago !== null ? formatLastSeen(s.seconds_ago) : 'Unknown'
-            };
-          });
-
-          renderDevPage(1);
-        });
-      })
-      .catch(function(err) {
-        console.error('Devices table error:', err);
-      });
-  }
-
-  /* Load table on start, refresh every 60 seconds */
-  loadDevicesTable();
-  setInterval(loadDevicesTable, 60000);
-
-  /* ── ALL DEVICES OVERVIEW TABLE ── */
   function loadOverviewTable() {
     fetch('/api/devices')
       .then(function(res) { return res.json(); })
@@ -525,33 +501,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         Promise.all(promises).then(function(results) {
           document.getElementById('overviewBadge').textContent = list.length + ' devices';
-          function vc(v, warn, crit) {
-            return v >= crit ? 'color:#dc2626;font-weight:600' : v >= warn ? 'color:#b45309;font-weight:600' : '';
-          }
-          document.getElementById('overviewTableBody').innerHTML = list.map(function(d, i) {
+          overviewAllRows = list.map(function(d, i) {
             var r = results[i];
-            if (!r || r.error) {
-              return '<tr><td><div class="device-name">' + d.label + '</div></td>' +
-                '<td><span class="offline"><i class="dot-off"></i>Offline</span></td>' +
-                '<td colspan="5" style="color:var(--muted)">No data</td></tr>';
-            }
-            var t = parseFloat(r.temperature).toFixed(1);
-            var h = parseFloat(r.humidity).toFixed(1);
-            var p = parseFloat(r.pm25).toFixed(1);
-            var c = parseFloat(r.co2).toFixed(0);
-            var v = parseFloat(r.voc).toFixed(0);
-            return (
-              '<tr style="cursor:pointer" onclick="switchToDevice(this.dataset.id)" data-id="' + d.id + '" title="Click to view this device">' +
-                '<td><div class="device-name">' + d.label + '</div></td>' +
-                '<td><span class="online"><i class="dot-on"></i>Online</span></td>' +
-                '<td style="' + vc(t,26,28)     + '">' + t + '</td>' +
-                '<td style="' + vc(h,65,70)     + '">' + h + '</td>' +
-                '<td style="' + vc(p,35.4,55.4) + '">' + p + '</td>' +
-                '<td style="' + vc(c,1000,1500) + '">' + c + '</td>' +
-                '<td style="' + vc(v,200,300)   + '">' + v + '</td>' +
-              '</tr>'
-            );
-          }).join('');
+            return {
+              id   : d.id,
+              label: d.label,
+              data : (r && !r.error) ? r : null
+            };
+          });
+          renderOverviewPage(1);
         });
       });
   }
