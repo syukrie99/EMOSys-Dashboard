@@ -237,6 +237,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('alertCount').textContent = alerts.length;
 
+    /* Play beep and send notification if new critical alerts appeared */
+    var critCount = alerts.filter(function(a) { return a.type === 'crit'; }).length;
+    if (alerts.length > lastAlertCount && critCount > 0) {
+      playAlertBeep();
+      sendNotification('EMOSys Alert', alerts[0].msg);
+    }
+    lastAlertCount = alerts.length;
+
     card.innerHTML = alerts.map(function (a) {
       return (
         '<div class="alert-row">' +
@@ -250,6 +258,69 @@ document.addEventListener('DOMContentLoaded', function () {
         '</div>'
       );
     }).join('');
+  }
+
+  /* ── BROWSER NOTIFICATIONS + ALERT SOUND ── */
+  var lastAlertCount = 0;
+
+  function requestNotifyPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }
+  requestNotifyPermission();
+
+  function playAlertBeep() {
+    try {
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.4);
+    } catch(e) {}
+  }
+
+  function sendNotification(title, body) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, { body: body, icon: '' });
+    }
+  }
+
+  /* ── QUICK STATS BAR ── */
+  function updateQuickStats() {
+    if (!hist.temp.length) return;
+    function s(arr) {
+      var n = arr.map(Number).filter(function(v) { return !isNaN(v); });
+      if (!n.length) return { min:'—', avg:'—', max:'—' };
+      return {
+        min: Math.min.apply(null,n).toFixed(1),
+        avg: (n.reduce(function(a,b){return a+b;},0)/n.length).toFixed(1),
+        max: Math.max.apply(null,n).toFixed(1)
+      };
+    }
+    var t=s(hist.temp), h=s(hist.hum), p=s(hist.pm25), c=s(hist.co2), v=s(hist.voc);
+    document.getElementById('qs-tMin').textContent = t.min;
+    document.getElementById('qs-tAvg').textContent = t.avg;
+    document.getElementById('qs-tMax').textContent = t.max;
+    document.getElementById('qs-hMin').textContent = h.min;
+    document.getElementById('qs-hAvg').textContent = h.avg;
+    document.getElementById('qs-hMax').textContent = h.max;
+    document.getElementById('qs-pMin').textContent = p.min;
+    document.getElementById('qs-pAvg').textContent = p.avg;
+    document.getElementById('qs-pMax').textContent = p.max;
+    document.getElementById('qs-cMin').textContent = c.min;
+    document.getElementById('qs-cAvg').textContent = c.avg;
+    document.getElementById('qs-cMax').textContent = c.max;
+    document.getElementById('qs-vMin').textContent = v.min;
+    document.getElementById('qs-vAvg').textContent = v.avg;
+    document.getElementById('qs-vMax').textContent = v.max;
+    document.getElementById('quickStatsBar').style.display = 'block';
   }
 
   /* ── LOAD 24H HISTORY from InfluxDB on startup/device switch */
@@ -276,6 +347,7 @@ document.addEventListener('DOMContentLoaded', function () {
         hist.voc  = thinned.map(function(r) { return parseInt(r.voc)           || 0; });
         drawMainCharts(hist);
         drawAllSparklines(hist);
+        updateQuickStats();
         if (callback) callback();
       })
       .catch(function(err) {
@@ -290,6 +362,10 @@ document.addEventListener('DOMContentLoaded', function () {
     fetch('/api/ha/latest?device=' + activeDevice)
       .then(function(res) { return res.json(); })
       .then(function(live) {
+
+        /* Hide error banner on successful fetch */
+        var banner = document.getElementById('errorBanner');
+        if (banner) banner.style.display = 'none';
 
         if (live && live.temperature !== undefined) {
           var now   = new Date();
@@ -320,6 +396,11 @@ document.addEventListener('DOMContentLoaded', function () {
       })
       .catch(function(err) {
         console.log('Fetch error:', err);
+        var banner = document.getElementById('errorBanner');
+        if (banner) {
+          document.getElementById('errorBannerMsg').textContent = 'Connection error — could not reach the API. Retrying in 30s.';
+          banner.style.display = 'flex';
+        }
       });
 
     /* Device status pill */
@@ -352,11 +433,53 @@ document.addEventListener('DOMContentLoaded', function () {
     return Math.floor(secondsAgo / 3600) + 'h ago';
   }
 
+  var devAllRows   = [];
+  var devPage      = 1;
+  var DEV_PER_PAGE = 5;
+
+  function renderDevPage(page) {
+    devPage = page;
+    var total     = devAllRows.length;
+    var totalPages = Math.ceil(total / DEV_PER_PAGE);
+    var start     = (page - 1) * DEV_PER_PAGE;
+    var slice     = devAllRows.slice(start, start + DEV_PER_PAGE);
+
+    document.getElementById('devicesTableBody').innerHTML = slice.map(function(r) {
+      return (
+        '<tr>' +
+          '<td><div class="device-name">' + r.label + '</div></td>' +
+          '<td>' + r.location + '</td>' +
+          '<td>' +
+            '<span class="' + (r.online ? 'online' : 'offline') + '">' +
+              '<i class="' + (r.online ? 'dot-on' : 'dot-off') + '"></i>' +
+              (r.online ? 'Online' : 'Offline') +
+            '</span>' +
+          '</td>' +
+          '<td>' + r.lastSeen + '</td>' +
+          '<td>Temp, Humidity, CO&#x2082;, VOC, PM2.5</td>' +
+        '</tr>'
+      );
+    }).join('');
+
+    /* Pagination controls */
+    var pag = document.getElementById('devPagination');
+    if (totalPages <= 1) { pag.innerHTML = ''; return; }
+    var html = '';
+    html += '<button class="dev-page-btn" onclick="renderDevPage(' + (page-1) + ')"' + (page===1?' disabled':'') + '>&laquo;</button>';
+    for (var i = 1; i <= totalPages; i++) {
+      html += '<button class="dev-page-btn' + (i===page?' active':'') + '" onclick="renderDevPage(' + i + ')">' + i + '</button>';
+    }
+    html += '<button class="dev-page-btn" onclick="renderDevPage(' + (page+1) + ')"' + (page===totalPages?' disabled':'') + '>&raquo;</button>';
+    html += '<span class="dev-page-info">Page ' + page + ' of ' + totalPages + '</span>';
+    pag.innerHTML = html;
+  }
+
+  window.renderDevPage = renderDevPage;
+
   function loadDevicesTable() {
     fetch('/api/devices')
       .then(function(res) { return res.json(); })
       .then(function(list) {
-        /* Fetch status for ALL devices in parallel */
         var statusPromises = list.map(function(d) {
           return fetch('/api/ha/status?device=' + d.id)
             .then(function(res) { return res.json(); })
@@ -368,26 +491,17 @@ document.addEventListener('DOMContentLoaded', function () {
           document.getElementById('deviceCountBadge').textContent =
             list.length + ' registered · ' + onlineCount + ' online';
 
-          var tbody = document.getElementById('devicesTableBody');
-          tbody.innerHTML = list.map(function(d, i) {
-            var s       = statuses[i];
-            var online  = s.online;
-            var lastSeen = s.seconds_ago !== null ? formatLastSeen(s.seconds_ago) : 'Unknown';
-            return (
-              '<tr>' +
-                '<td><div class="device-name">' + d.label + '</div></td>' +
-                '<td>' + d.location + '</td>' +
-                '<td>' +
-                  '<span class="' + (online ? 'online' : 'offline') + '">' +
-                    '<i class="' + (online ? 'dot-on' : 'dot-off') + '"></i>' +
-                    (online ? 'Online' : 'Offline') +
-                  '</span>' +
-                '</td>' +
-                '<td>' + lastSeen + '</td>' +
-                '<td>Temp, Humidity, CO&#x2082;, VOC, PM2.5</td>' +
-              '</tr>'
-            );
-          }).join('');
+          devAllRows = list.map(function(d, i) {
+            var s = statuses[i];
+            return {
+              label   : d.label,
+              location: d.location,
+              online  : s.online,
+              lastSeen: s.seconds_ago !== null ? formatLastSeen(s.seconds_ago) : 'Unknown'
+            };
+          });
+
+          renderDevPage(1);
         });
       })
       .catch(function(err) {
@@ -398,6 +512,52 @@ document.addEventListener('DOMContentLoaded', function () {
   /* Load table on start, refresh every 60 seconds */
   loadDevicesTable();
   setInterval(loadDevicesTable, 60000);
+
+  /* ── ALL DEVICES OVERVIEW TABLE ── */
+  function loadOverviewTable() {
+    fetch('/api/devices')
+      .then(function(res) { return res.json(); })
+      .then(function(list) {
+        var promises = list.map(function(d) {
+          return fetch('/api/ha/latest?device=' + d.id)
+            .then(function(res) { return res.json(); })
+            .catch(function() { return null; });
+        });
+        Promise.all(promises).then(function(results) {
+          document.getElementById('overviewBadge').textContent = list.length + ' devices';
+          function vc(v, warn, crit) {
+            return v >= crit ? 'color:#dc2626;font-weight:600' : v >= warn ? 'color:#b45309;font-weight:600' : '';
+          }
+          document.getElementById('overviewTableBody').innerHTML = list.map(function(d, i) {
+            var r = results[i];
+            if (!r || r.error) {
+              return '<tr><td><div class="device-name">' + d.label + '</div></td>' +
+                '<td><span class="offline"><i class="dot-off"></i>Offline</span></td>' +
+                '<td colspan="5" style="color:var(--muted)">No data</td></tr>';
+            }
+            var t = parseFloat(r.temperature).toFixed(1);
+            var h = parseFloat(r.humidity).toFixed(1);
+            var p = parseFloat(r.pm25).toFixed(1);
+            var c = parseFloat(r.co2).toFixed(0);
+            var v = parseFloat(r.voc).toFixed(0);
+            return (
+              '<tr style="cursor:pointer" onclick="switchToDevice(this.dataset.id)" data-id="' + d.id + '" title="Click to view this device">' +
+                '<td><div class="device-name">' + d.label + '</div></td>' +
+                '<td><span class="online"><i class="dot-on"></i>Online</span></td>' +
+                '<td style="' + vc(t,26,28)     + '">' + t + '</td>' +
+                '<td style="' + vc(h,65,70)     + '">' + h + '</td>' +
+                '<td style="' + vc(p,35.4,55.4) + '">' + p + '</td>' +
+                '<td style="' + vc(c,1000,1500) + '">' + c + '</td>' +
+                '<td style="' + vc(v,200,300)   + '">' + v + '</td>' +
+              '</tr>'
+            );
+          }).join('');
+        });
+      });
+  }
+
+  loadOverviewTable();
+  setInterval(loadOverviewTable, 60000);
 
 }); /* end DOMContentLoaded */
 
@@ -425,4 +585,19 @@ function toggleDarkMode() {
 
 function updateCards() {
   if (typeof window.fetchData === 'function') window.fetchData();
+}
+
+function switchToDevice(elOrId) {
+  var deviceId = (typeof elOrId === 'string') ? elOrId : elOrId.dataset.id;
+  var sel = document.getElementById('deviceSelect');
+  if (!sel) return;
+  sel.value = deviceId;
+  sel.dispatchEvent(new Event('change'));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goToHistory() {
+  var device = document.getElementById('deviceSelect');
+  var deviceId = device ? device.value : '';
+  window.location.href = 'History.html' + (deviceId ? '?device=' + deviceId : '');
 }

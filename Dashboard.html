@@ -11,11 +11,6 @@
 
   <link rel="stylesheet" href="assets/css/main.css"/>
   <link rel="stylesheet" href="assets/css/dashboard.css"/>
-  <style>
-    .offline { display:inline-flex; align-items:center; gap:5px; color:#ef4444; font-size:0.82rem; font-weight:500; }
-    .dot-off { display:inline-block; width:7px; height:7px; border-radius:50%; background:#ef4444; }
-    .dot-on  { display:inline-block; width:7px; height:7px; border-radius:50%; background:#22c55e; }
-  </style>
 </head>
 <body>
 
@@ -55,7 +50,7 @@
         Live Readings
       </a>
 
-      <a class="nav-item" href="History.html">
+      <a class="nav-item" href="#">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
         </svg>
@@ -69,7 +64,7 @@
           <rect x="2" y="7" width="20" height="14" rx="2"/>
           <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
         </svg>
-        ESPHome Devices
+        EMOSys Devices
       </a>
 
       <a class="nav-item" href="#">
@@ -177,6 +172,13 @@
       </div>
     </div>
 
+    <!-- ── CONNECTION ERROR BANNER -->
+    <div id="errorBanner" style="display:none;background:#dc2626;color:#fff;padding:10px 24px;font-size:0.82rem;font-family:Barlow,sans-serif;display:none;align-items:center;gap:10px">
+      <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' width='16' height='16'><circle cx='12' cy='12' r='10'/><line x1='12' y1='8' x2='12' y2='12'/><line x1='12' y1='16' x2='12.01' y2='16'/></svg>
+      <span id="errorBannerMsg">Connection error — could not reach the API server.</span>
+      <button onclick="document.getElementById('errorBanner').style.display='none'" style="margin-left:auto;background:rgba(255,255,255,0.2);border:none;color:#fff;padding:3px 10px;border-radius:4px;cursor:pointer;font-family:Barlow,sans-serif">Dismiss</button>
+    </div>
+
     <!-- ── PAGE -->
     <div class="page">
 
@@ -188,12 +190,58 @@
         <div class="last-updated" id="lastUpdated">Last updated: —</div>
       </div>
 
+      <!-- ── QUICK STATS BAR -->
+      <div id="quickStatsBar" style="display:none;margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">
+          <div style="background:var(--card,#fff);border:1px solid var(--border,#e5e7eb);border-top:3px solid #e53e3e;border-radius:4px;padding:12px 14px">
+            <div style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Temperature (°C)</div>
+            <div style="display:flex;gap:12px">
+              <div><div style="font-size:0.65rem;color:var(--muted)">Min</div><div style="font-size:0.95rem;font-weight:700;font-family:Barlow Condensed,sans-serif" id="qs-tMin">—</div></div>
+              <div><div style="font-size:0.65rem;color:var(--muted)">Avg</div><div style="font-size:0.95rem;font-weight:700;font-family:Barlow Condensed,sans-serif" id="qs-tAvg">—</div></div>
+              <div><div style="font-size:0.65rem;color:var(--muted)">Max</div><div style="font-size:0.95rem;font-weight:700;font-family:Barlow Condensed,sans-serif" id="qs-tMax">—</div></div>
+            </div>
+          </div>
+          <div style="background:var(--card,#fff);border:1px solid var(--border,#e5e7eb);border-top:3px solid #0ea5e9;border-radius:4px;padding:12px 14px">
+            <div style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Humidity (%RH)</div>
+            <div style="display:flex;gap:12px">
+              <div><div style="font-size:0.65rem;color:var(--muted)">Min</div><div style="font-size:0.95rem;font-weight:700;font-family:Barlow Condensed,sans-serif" id="qs-hMin">—</div></div>
+              <div><div style="font-size:0.65rem;color:var(--muted)">Avg</div><div style="font-size:0.95rem;font-weight:700;font-family:Barlow Condensed,sans-serif" id="qs-hAvg">—</div></div>
+              <div><div style="font-size:0.65rem;color:var(--muted)">Max</div><div style="font-size:0.95rem;font-weight:700;font-family:Barlow Condensed,sans-serif" id="qs-hMax">—</div></div>
+            </div>
+          </div>
+          <div style="background:var(--card,#fff);border:1px solid var(--border,#e5e7eb);border-top:3px solid #10b981;border-radius:4px;padding:12px 14px">
+            <div style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">PM2.5 (μg/m³)</div>
+            <div style="display:flex;gap:12px">
+              <div><div style="font-size:0.65rem;color:var(--muted)">Min</div><div style="font-size:0.95rem;font-weight:700;font-family:Barlow Condensed,sans-serif" id="qs-pMin">—</div></div>
+              <div><div style="font-size:0.65rem;color:var(--muted)">Avg</div><div style="font-size:0.95rem;font-weight:700;font-family:Barlow Condensed,sans-serif" id="qs-pAvg">—</div></div>
+              <div><div style="font-size:0.65rem;color:var(--muted)">Max</div><div style="font-size:0.95rem;font-weight:700;font-family:Barlow Condensed,sans-serif" id="qs-pMax">—</div></div>
+            </div>
+          </div>
+          <div style="background:var(--card,#fff);border:1px solid var(--border,#e5e7eb);border-top:3px solid #7c3aed;border-radius:4px;padding:12px 14px">
+            <div style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">CO₂ (ppm)</div>
+            <div style="display:flex;gap:12px">
+              <div><div style="font-size:0.65rem;color:var(--muted)">Min</div><div style="font-size:0.95rem;font-weight:700;font-family:Barlow Condensed,sans-serif" id="qs-cMin">—</div></div>
+              <div><div style="font-size:0.65rem;color:var(--muted)">Avg</div><div style="font-size:0.95rem;font-weight:700;font-family:Barlow Condensed,sans-serif" id="qs-cAvg">—</div></div>
+              <div><div style="font-size:0.65rem;color:var(--muted)">Max</div><div style="font-size:0.95rem;font-weight:700;font-family:Barlow Condensed,sans-serif" id="qs-cMax">—</div></div>
+            </div>
+          </div>
+          <div style="background:var(--card,#fff);border:1px solid var(--border,#e5e7eb);border-top:3px solid #f59e0b;border-radius:4px;padding:12px 14px">
+            <div style="font-size:0.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">VOC (ppb)</div>
+            <div style="display:flex;gap:12px">
+              <div><div style="font-size:0.65rem;color:var(--muted)">Min</div><div style="font-size:0.95rem;font-weight:700;font-family:Barlow Condensed,sans-serif" id="qs-vMin">—</div></div>
+              <div><div style="font-size:0.65rem;color:var(--muted)">Avg</div><div style="font-size:0.95rem;font-weight:700;font-family:Barlow Condensed,sans-serif" id="qs-vAvg">—</div></div>
+              <div><div style="font-size:0.65rem;color:var(--muted)">Max</div><div style="font-size:0.95rem;font-weight:700;font-family:Barlow Condensed,sans-serif" id="qs-vMax">—</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ── 5 SENSOR CARDS -->
       <div class="section-head"><h3>Live Sensor Readings</h3></div>
       <div class="sensor-grid">
 
         <!-- Temperature -->
-        <div class="sensor-card temp">
+        <div class="sensor-card temp" onclick="goToHistory()" title="View history" style="cursor:pointer">
           <div class="sensor-row">
             <span class="sensor-tag">Temperature</span>
             <span class="status-flag flag-ok" id="tempBadge">Normal</span>
@@ -210,7 +258,7 @@
         </div>
 
         <!-- Humidity -->
-        <div class="sensor-card humid">
+        <div class="sensor-card humid" onclick="goToHistory()" title="View history" style="cursor:pointer">
           <div class="sensor-row">
             <span class="sensor-tag">Humidity</span>
             <span class="status-flag flag-ok" id="humBadge">Normal</span>
@@ -226,7 +274,7 @@
         </div>
 
         <!-- Air Quality Index -->
-        <div class="sensor-card aqi">
+        <div class="sensor-card aqi" onclick="goToHistory()" title="View history" style="cursor:pointer">
           <div class="sensor-row">
             <span class="sensor-tag">Air Quality Index</span>
             <span class="status-flag flag-ok" id="aqiBadge">Good</span>
@@ -243,7 +291,7 @@
         </div>
 
         <!-- CO₂ -->
-        <div class="sensor-card co2">
+        <div class="sensor-card co2" onclick="goToHistory()" title="View history" style="cursor:pointer">
           <div class="sensor-row">
             <span class="sensor-tag">CO₂</span>
             <span class="status-flag flag-ok" id="co2Badge">Normal</span>
@@ -259,7 +307,7 @@
         </div>
 
         <!-- VOC -->
-        <div class="sensor-card voc">
+        <div class="sensor-card voc" onclick="goToHistory()" title="View history" style="cursor:pointer">
           <div class="sensor-row">
             <span class="sensor-tag">VOC</span>
             <span class="status-flag flag-ok" id="vocBadge">Normal</span>
@@ -298,27 +346,75 @@
 
       </div>
 
-      <!-- ── ESPHOME DEVICES TABLE -->
-      <div class="section-head"><h3>ESPHome Devices</h3></div>
-      <div class="table-card">
+      <!-- ── ALL DEVICES OVERVIEW -->
+      <div class="section-head"><h3>All Devices Overview</h3></div>
+      <div class="table-card" id="allDevicesCard">
         <div class="table-head">
-          <h4>Connected Devices</h4>
-          <span class="count-badge" id="deviceCountBadge">Loading…</span>
+          <h4>Latest Readings — All Devices</h4>
+          <span class="count-badge" id="overviewBadge">Loading…</span>
         </div>
         <table>
           <thead>
             <tr>
               <th>Device</th>
+              <th>Status</th>
+              <th>Temp (°C)</th>
+              <th>Humidity (%)</th>
+              <th>PM2.5</th>
+              <th>CO₂ (ppm)</th>
+              <th>VOC (ppb)</th>
+            </tr>
+          </thead>
+          <tbody id="overviewTableBody">
+            <tr><td colspan="7" style="padding:20px;color:var(--muted);text-align:center">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── EMOSYS DEVICES TABLE -->
+      <div class="section-head"><h3>EMOSys Devices</h3></div>
+      <div class="table-card">
+        <div class="table-head">
+          <h4>EMOSys Connected Devices</h4>
+          <span class="count-badge">2 registered · 2 online</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Device</th>
+              <th>IP Address</th>
               <th>Location</th>
               <th>Status</th>
               <th>Last Seen</th>
               <th>Sensors</th>
             </tr>
           </thead>
-          <tbody id="devicesTableBody">
-            <tr><td colspan="5" style="padding:20px;color:var(--muted);text-align:center">Loading devices…</td></tr>
+          <tbody>
+            <tr>
+              <td>
+                <div class="device-name">ESP32-EnvSensor-01</div>
+                <div class="device-fw">ESPHome v2024.1</div>
+              </td>
+              <td>192.168.1.101</td>
+              <td>Server Room A</td>
+              <td><span class="online"><i class="dot-on"></i>Online</span></td>
+              <td>Just now</td>
+              <td>Temp, Humidity, CO₂, VOC, AQI</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="device-name">ESP32-EnvSensor-02</div>
+                <div class="device-fw">ESPHome v2024.1</div>
+              </td>
+              <td>192.168.1.102</td>
+              <td>Office Floor 2</td>
+              <td><span class="online"><i class="dot-on"></i>Online</span></td>
+              <td>18s ago</td>
+              <td>Temp, Humidity, CO₂, VOC, AQI</td>
+            </tr>
           </tbody>
         </table>
+        <div class="dev-pagination" id="devPagination"></div>
       </div>
 
       <!-- ── ALERTS PANEL -->
