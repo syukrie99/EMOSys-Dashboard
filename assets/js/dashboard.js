@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* ── DEVICE LIST — fetched dynamically from /api/devices */
   var devices = [];
-  var activeDevice = 'sams_workstation'; // default until API responds
+  var activeDevice = 'sams_workstation'; // default
 
   /* ── HISTORY DATA */
   var hist = { labels: [], temp: [], hum: [], pm25: [], aqi: [], co2: [], voc: [] };
