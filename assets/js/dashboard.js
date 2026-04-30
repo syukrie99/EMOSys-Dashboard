@@ -528,7 +528,7 @@ function toggleSidebar() {
   var sidebar = document.querySelector('.sidebar');
   var overlay = document.getElementById('sidebarOverlay');
   sidebar.classList.toggle('open');
-  overlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none';
+  overlay.classList.toggle('active');
 }
 
 function toggleDarkMode() {

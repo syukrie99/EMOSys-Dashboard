@@ -519,10 +519,14 @@ tbody tr:hover td { background: var(--light); }
     .hamburger svg { width: 18px; height: 18px; }
 
     .sidebar-overlay {
-        display: block;
+        display: none;
         position: fixed; inset: 0;
         background: rgba(0,0,0,0.5);
         z-index: 99;
+    }
+
+    .sidebar-overlay.active {
+        display: block;
     }
 
     /* Hide status pill to save topbar space */
@@ -598,3 +602,49 @@ body.dark-mode thead tr     { background: var(--navy); }
 body.dark-mode th           { color: var(--muted); }
 body.dark-mode td           { border-color: var(--border); }
 body.dark-mode tbody tr:hover td { background: var(--navy); }
+
+/* TOPBAR MOBILE: hide less important item */
+@media (max-width: 768px) {
+    /* Hide the data */
+    #currentDate { display: npne !important; }
+
+    /* Hide "Dark" and "Refresh" text labels, keep only icons */
+    .topbar-btn { padding: 6px 8px; }
+
+    /* Shrink breadcrumb text */
+    .breadcrum-home { display: none; }
+    .breadcrum-sep  { display: none; }
+
+    /* Device selector smaller */
+    #deviceSelect {
+        max-width: 120px;
+        font-size: 0.72rem !important;
+        padding: 3px 5px !important;
+    }
+
+    /* Topbar right: tighter gap */
+    .topbar-right { gap: 4px; }
+}
+
+/* QUICK STATS BAR: 2 colums on mobile */
+@media (max-width: 768px) {
+    #quickStatsBar > div {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+    }
+
+    /*Last card (VOC) spans full width so it centers */
+    #quickStatsBar > div > div:last-child {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 480px) {
+    #quickStatsBar > div {
+        grid-template-columns: 1fr 1fr !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .btn-label { display: none; }
+}
