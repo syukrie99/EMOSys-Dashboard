@@ -236,6 +236,21 @@ body {
 .topbar-btn:hover { background: rgba(255,255,255,0.12); color: white; }
 .topbar-btn svg { width: 13px; height: 13px; }
 
+/* btn-label: text inside Dark/Refresh buttons — hidden on mobile */
+.btn-label { display: inline; }
+
+/* ══════════════════════════════════════════════
+   DEVICE SELECTOR BAR (mobile only, below topbar)
+   On desktop it sits inside topbar via JS
+══════════════════════════════════════════════ */
+#deviceSelectorWrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.6);
+}
+
 /* ══════════════════════════════════════════════
    PAGE WRAPPER
 ══════════════════════════════════════════════ */
@@ -405,7 +420,6 @@ body {
 
 .count-badge { font-size: 0.72rem; color: var(--muted); }
 
-/* Horizontal scroll wrapper — add this div around <table> in Dashboard.html */
 .table-scroll-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -491,24 +505,35 @@ tbody tr:hover td { background: var(--light); }
 }
 
 /* ══════════════════════════════════════════════
-   HAMBURGER + OVERLAY  (desktop: hidden)
+   HAMBURGER + OVERLAY  (desktop: both hidden)
 ══════════════════════════════════════════════ */
 .hamburger       { display: none; }
-.sidebar-overlay { display: none; }
+
+/* Overlay: always hidden by default, shown only via .active class */
+.sidebar-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 99;
+}
+.sidebar-overlay.active { display: block; }
 
 /* ══════════════════════════════════════════════
    MOBILE  ≤ 768px
 ══════════════════════════════════════════════ */
 @media (max-width: 768px) {
 
+    /* Sidebar slides in */
     .sidebar {
         transform: translateX(-100%);
         transition: transform 0.3s ease;
     }
     .sidebar.open { transform: translateX(0); }
 
+    /* Main fills full screen width */
     .main { margin-left: 0; }
 
+    /* Show hamburger button */
     .hamburger {
         display: flex; align-items: center; justify-content: center;
         width: 36px; height: 36px;
@@ -518,35 +543,72 @@ tbody tr:hover td { background: var(--light); }
     }
     .hamburger svg { width: 18px; height: 18px; }
 
-    .sidebar-overlay {
-        display: none;
-        position: fixed; inset: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 99;
+    /* ── TOPBAR: stripped down ── */
+    .topbar { padding: 0 10px; gap: 4px; }
+    .topbar-right { gap: 4px; }
+
+    /* Hide status pill */
+    .status-pill { display: none !important; }
+
+    /* Hide date */
+    #currentDate { display: none !important; }
+
+    /* Hide breadcrumb home + separator, keep DASHBOARD text only */
+    .breadcrumb-home { display: none; }
+    .breadcrumb-sep  { display: none; }
+
+    /* Buttons: icon only — hide text labels */
+    .btn-label { display: none; }
+    .topbar-btn { padding: 6px 8px; }
+
+    /* ── DEVICE SELECTOR: move below topbar as its own full-width bar ── */
+    #deviceSelectorWrap {
+        background: var(--navy);
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        padding: 8px 14px;
+        width: 100%;
+        box-sizing: border-box;
+        gap: 8px;
     }
 
-    .sidebar-overlay.active {
-        display: block;
+    #deviceSelectorWrap select,
+    #deviceSelect {
+        flex: 1 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        font-size: 0.84rem !important;
+        padding: 7px 10px !important;
+        background: rgba(255,255,255,0.08) !important;
+        color: #fff !important;
+        border: 1px solid rgba(255,255,255,0.2) !important;
+        border-radius: 4px !important;
+        font-family: Barlow, sans-serif !important;
     }
 
-    /* Hide status pill to save topbar space */
-    .status-pill { display: none; }
-
-    /* Hide date in topbar */
-    #currentDate { display: none; }
-
-    .topbar { padding: 0 12px; gap: 6px; }
-
+    /* ── PAGE ── */
     .page { padding: 16px 14px; }
 
     .page-title-bar h1 { font-size: 1.4rem; }
     .page-title-bar { margin-bottom: 16px; padding-bottom: 14px; }
 
+    /* ── SENSOR CARDS ── */
     .sensor-card { padding: 12px; }
+    .sensor-value { font-size: clamp(1.5rem, 6vw, 2.4rem); }
 
+    /* ── CHARTS ── */
     .chart-wrap { height: 160px; }
     .chart-card { padding: 16px; }
 
+    /* ── QUICK STATS BAR: 2x2 grid + last card full width ── */
+    #quickStatsBar > div {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+    }
+    #quickStatsBar > div > div:last-child {
+        grid-column: 1 / -1;
+    }
+
+    /* ── MISC ── */
     .section-head { margin-bottom: 12px; }
 }
 
@@ -557,7 +619,11 @@ tbody tr:hover td { background: var(--light); }
     .page { padding: 12px 10px; }
     .sensor-card { padding: 10px; }
     .sensor-value { font-size: clamp(1.3rem, 8vw, 1.8rem); }
-    .topbar-btn { padding: 5px 8px; font-size: 0.7rem; }
+    .topbar-btn { padding: 5px 7px; }
+
+    #quickStatsBar > div {
+        grid-template-columns: 1fr 1fr !important;
+    }
 }
 
 /* ══════════════════════════════════════════════
@@ -592,59 +658,14 @@ tbody tr:hover td { background: var(--light); }
 /* ══════════════════════════════════════════════
    DARK MODE OVERRIDES
 ══════════════════════════════════════════════ */
-body.dark-mode .topbar      { background: var(--navy2); }
-body.dark-mode .sensor-card { background: var(--white); }
-body.dark-mode .chart-card  { background: var(--white); border-color: var(--border); }
-body.dark-mode .table-card  { background: var(--white); border-color: var(--border); }
-body.dark-mode .alerts-card { background: var(--white); border-color: var(--border); }
-body.dark-mode .page-footer { background: var(--white); border-color: var(--border); }
-body.dark-mode thead tr     { background: var(--navy); }
-body.dark-mode th           { color: var(--muted); }
-body.dark-mode td           { border-color: var(--border); }
+body.dark-mode .topbar        { background: var(--navy2); }
+body.dark-mode #deviceSelectorWrap { background: var(--navy2); }
+body.dark-mode .sensor-card   { background: var(--white); }
+body.dark-mode .chart-card    { background: var(--white); border-color: var(--border); }
+body.dark-mode .table-card    { background: var(--white); border-color: var(--border); }
+body.dark-mode .alerts-card   { background: var(--white); border-color: var(--border); }
+body.dark-mode .page-footer   { background: var(--white); border-color: var(--border); }
+body.dark-mode thead tr       { background: var(--navy); }
+body.dark-mode th             { color: var(--muted); }
+body.dark-mode td             { border-color: var(--border); }
 body.dark-mode tbody tr:hover td { background: var(--navy); }
-
-/* TOPBAR MOBILE: hide less important item */
-@media (max-width: 768px) {
-    /* Hide the data */
-    #currentDate { display: npne !important; }
-
-    /* Hide "Dark" and "Refresh" text labels, keep only icons */
-    .topbar-btn { padding: 6px 8px; }
-
-    /* Shrink breadcrumb text */
-    .breadcrum-home { display: none; }
-    .breadcrum-sep  { display: none; }
-
-    /* Device selector smaller */
-    #deviceSelect {
-        max-width: 120px;
-        font-size: 0.72rem !important;
-        padding: 3px 5px !important;
-    }
-
-    /* Topbar right: tighter gap */
-    .topbar-right { gap: 4px; }
-}
-
-/* QUICK STATS BAR: 2 colums on mobile */
-@media (max-width: 768px) {
-    #quickStatsBar > div {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 8px !important;
-    }
-
-    /*Last card (VOC) spans full width so it centers */
-    #quickStatsBar > div > div:last-child {
-        grid-column: 1 / -1;
-    }
-}
-
-@media (max-width: 480px) {
-    #quickStatsBar > div {
-        grid-template-columns: 1fr 1fr !important;
-    }
-}
-
-@media (max-width: 768px) {
-    .btn-label { display: none; }
-}
