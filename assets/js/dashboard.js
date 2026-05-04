@@ -55,7 +55,14 @@ document.addEventListener('DOMContentLoaded', function () {
     '"><option>Loading devices…</option></select>';
 
   var dateSpan = document.getElementById('currentDate');
-  topbarRight.insertBefore(selectorWrap, dateSpan);
+  selectorWrap.id = 'deviceSelectorWrap';
+  if (window.innerWidth <= 768) {
+    var topbar = document.querySelector('.topbar');
+    topbar.parentNode.insertBefore(selectorWrap, topbar.nextSibling);
+  } else { 
+    topbarRight.insertBefore(selectorWrap, dateSpan);
+  }
+  
 
   /* ── FETCH DEVICE LIST then populate dropdown */
   fetch('/api/devices')
