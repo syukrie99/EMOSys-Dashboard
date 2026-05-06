@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EMOSys — Analytics</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <link rel="stylesheet" href="assets/css/main.css"/>
+  <link rel="stylesheet" href="assets/css/dashboard.css"/>
+
+  <style>
+    
+    /* ── ERROR BANNER ────────────────────── */
+    .api-error-bar {
+      display: none;
+      background: rgba(239,68,68,0.12); 
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 10px; 
+      padding: 12px 16px;
+      font-size: 0.83rem; 
+      color: #f87171; 
+      margin-bottom: 20px;
+      align-items: center; 
+      gap: 10px;
+    }
+    .api-error-bar.visible { display: flex !important; }
+
+    /* ── PERIOD TABS ─────────────────────── */
+    .period-tabs {
+      display: inline-flex; 
+      gap: 3px;
+      background: rgba(255,255,255,0.04); 
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px; 
+      padding: 3px; 
+      margin-bottom: 22px;
+    }
+    .period-tab {
+      padding: 5px 16px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      
+      cursor: pointer; 
+      transition: all 0.18s; 
+      border: none;
+      font-family: 'Barlow', sans-serif;
+    }
+    .period-tab.active { background: rgba(255,255,255,0.1); }
+    .period-tab:hover:not(.active) { color: rgba(255,255,255,0.65); }
+
+    /* ── FLEET STAT BOXES ────────────────── */
+    .stat-summary-row {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px; margin-bottom: 28px;
+    }
+    .stat-box {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 12px; padding: 16px; text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .stat-box::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+    .stat-box.s-blue::before   { background: #38bdf8; }
+    .stat-box.s-orange::before { background: #f97316; }
+    .stat-box.s-cyan::before   { background: #06b6d4; }
+    .stat-box.s-purple::before { background: #a855f7; }
+    .stat-box.s-green::before  { background: #10b981; }
+    .stat-box.s-amber::before  { background: #f59e0b; }
+    .stat-box.s-red::before    { background: #ef4444; }
+    .stat-box-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;  margin-bottom: 8px; }
+    .stat-box-val   { font-family: 'Barlow Condensed', sans-serif; font-size: 1.75rem; font-weight: 800; line-height: 1; }
+    .stat-box-sub   { font-size: 0.69rem; margin-top: 4px; }
+
+    /* ── RANKINGS GRID ───────────────────── */
+    .rankings-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px; margin-bottom: 28px;
+    }
+    .rank-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px; overflow: hidden;
+    }
+    .rank-card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px 10px; border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .rank-sensor-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.5); }
+    .rank-unit-label   { font-size: 0.68rem; color: rgba(255,255,255,0.25); }
+    .rank-card-body    { padding: 8px 0 2px; }
+
+    .rank-item {
+      display: grid; grid-template-columns: 28px 1fr auto;
+      align-items: center; gap: 10px; padding: 7px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.15s;
+    }
+    .rank-item:last-child { border-bottom: none; }
+    .rank-item:hover      { background: rgba(255,255,255,0.03); }
+    .rank-item.rank-top   { background: rgba(250,204,21,0.035); }
+
+    .rank-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.7rem; font-weight: 800; flex-shrink: 0;
+    }
+
+    body:not(.dark-mode) .rank-card { background: #fff; border-color: rgba(0,0,0,0.08); }
+    body:not(.dark-mode) .rank-card-header { border-bottom-color: rgba(0,0,0,0.07); }
+    body:not(.dark-mode) .rank-sensor-label { color: rgba(0,0,0,0.5); }
+    body:not(.dark-mode) .rank-unit-label { color: rgba(0,0,0,0.35); }
+    body:not(.dark-mode) .rank-item { border-bottom-color: rgba(0,0,0,0.05); }
+    body:not(.dark-mode) .rank-item:hover { background: rgba(0,0,0,0.02); }
+    body:not(.dark-mode) .rank-item.rank-top { background: rgba(250,204,21,0.06); }
+    body:not(.dark-mode) .rank-device-name { color: #1e293b; }
+    body:not(.dark-mode) .rank-device-loc { color: rgba(0,0,0,0.4); }
+    body:not(.dark-mode) .rank-bar-wrap { background: rgba(0,0,0,0.07); }
+    body:not(.dark-mode) .rank-value { color: #0f172a; }
+    body:not(.dark-mode) .rank-card-footer { border-top-color: rgba(0,0,0,0.06); }
+    body:not(.dark-mode) .rank-winner-name { color: #334155; }
+    body:not(.dark-mode) .rank-num.normal { background: rgba(0,0,0,0.05); color: rgba(0,0,0,0.4); border-color: rgba(0,0,0,0.1); }
+    body:not(.dark-mode) .rank-more { color: rgba(0,0,0,0.35); }
+
+    .rank-num.gold   { background: rgba(250,204,21,0.18); color: #fbbf24; border: 1px solid rgba(250,204,21,0.35); }
+    .rank-num.silver { background: rgba(148,163,184,0.15); color: #94a3b8; border: 1px solid rgba(148,163,184,0.3); }
+    .rank-num.bronze { background: rgba(180,83,9,0.18);    color: #fb923c; border: 1px solid rgba(180,83,9,0.3); }
+    .rank-num.normal { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.08); }
+
+    .rank-info          { min-width: 0; }
+    .rank-device-name   { font-size: 0.82rem; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rank-device-loc    { font-size: 0.7rem; color: rgba(255,255,255,0.3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rank-bar-wrap      { width: 100%; background: rgba(255,255,255,0.06); border-radius: 3px; height: 3px; margin-top: 5px; }
+    .rank-bar           { height: 3px; border-radius: 3px; transition: width 0.7s cubic-bezier(0.4,0,0.2,1); min-width: 4px; }
+    .rank-value-col     { text-align: right; flex-shrink: 0; }
+    .rank-value         { font-family: 'Barlow Condensed', sans-serif; font-size: 1.05rem; font-weight: 800; color: #f1f5f9; white-space: nowrap; }
+    .rank-status-dot    { width: 6px; height: 6px; border-radius: 50%; margin: 3px auto 0; }
+    .rank-status-dot.good   { background: #34d399; }
+    .rank-status-dot.warn   { background: #fbbf24; }
+    .rank-status-dot.danger { background: #f87171; }
+
+    /* ── CLEAN RANK CARD FOOTER ── */
+    .rank-card-footer {
+      display: flex; align-items: center;
+      padding: 9px 14px 11px; gap: 8px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .rank-winner-name {
+      font-size: 0.76rem; font-weight: 600; color: #cbd5e1;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;
+    }
+    /* Professional "Highest" pill — no emoji, uses inline SVG crown */
+    .rank-highest-pill {
+      display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
+      background: rgba(250,204,21,0.8); 
+      border: 1px solid rgba(250,204,21,0.25);
+      border-radius: 4px; padding: 2px 7px;
+      font-size: 0.62rem; font-weight: 700; color: #d97706;
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .rank-highest-pill svg { width: 10px; height: 10px; }
+    .rank-more { font-size: 0.67rem; color: rgba(255,255,255,0.25); flex-shrink: 0; }
+
+    /* ── TABLE TOP PILL ── */
+    .top-pill {
+      display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0;
+      background: rgba(250,204,21,0.08); 
+      border: 1px solid rgba(250,204,21,0.25);
+      border-radius: 4px; padding: 1px 5px; margin-left: 6px;
+      font-size: 0.58rem; font-weight: 700; color: #d97706;
+      letter-spacing: 0.05em; text-transform: uppercase; vertical-align: middle;
+    }
+    .top-pill svg { width: 8px; height: 8px; }
+
+    /* ── AI PANEL ────────────────────────── */
+    .ai-panel {
+      background: linear-gradient(135deg, rgba(17,38,75,0.9) 0%, rgba(10,20,45,0.97) 100%);
+      border: 1px solid rgba(56,189,248,0.2); border-radius: 16px;
+      overflow: hidden; margin-bottom: 28px; position: relative;
+    }
+    .ai-panel::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:2px;
+      background: linear-gradient(90deg,#38bdf8,#818cf8,#38bdf8);
+      background-size: 200% 100%; animation: shimmer 3s linear infinite;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    .ai-panel-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 16px 20px 13px; border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .ai-icon {
+      width: 36px; height: 36px; background: linear-gradient(135deg,#0ea5e9,#6366f1);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .ai-icon svg   { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; }
+    .ai-title      { font-family: 'Barlow Condensed', sans-serif; font-size: 0.95rem; font-weight: 700; color: #e2e8f0; letter-spacing: 0.04em; text-transform: uppercase; }
+    .ai-sub        { font-size: 0.73rem; color: rgba(255,255,255,0.38); margin-top: 1px; }
+    .ai-live-badge { margin-left: auto; display: flex; align-items: center; gap: 5px; background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.2); border-radius: 20px; padding: 3px 10px; font-size: 0.68rem; font-weight: 600; color: #34d399; }
+    .ai-live-dot   { width: 6px; height: 6px; border-radius: 50%; background: #34d399; animation: blink 1.5s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .ai-chat-area { padding: 14px 20px; min-height: 80px; max-height: 340px; overflow-y: auto; }
+    .ai-chat-area::-webkit-scrollbar { width: 4px; }
+    .ai-chat-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+    .ai-bubble { padding: 11px 14px; border-radius: 10px; font-size: 0.855rem; line-height: 1.65; margin-bottom: 10px; max-width: 92%; }
+    .ai-bubble.assistant { background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.18); color: #cbd5e1; margin-right: auto; }
+    .ai-bubble.user      { background: rgba(129,140,248,0.1);  border: 1px solid rgba(129,140,248,0.2);  color: #c7d2fe; margin-left: auto; }
+    .ai-thinking { display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.35); font-size: 0.8rem; padding: 6px 0; }
+    .ai-dot { width: 6px; height: 6px; border-radius: 50%; background: #38bdf8; animation: pdot 1.4s ease-in-out infinite; }
+    .ai-dot:nth-child(2){ animation-delay: 0.2s; }
+    .ai-dot:nth-child(3){ animation-delay: 0.4s; }
+    @keyframes pdot { 0%,80%,100%{opacity:0.2;transform:scale(0.75)} 40%{opacity:1;transform:scale(1)} }
+    .ai-quick-btns { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 20px 12px; }
+    .ai-quick-btn { background: rgba(255,255,255,0.055); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 5px 12px; color: rgba(255,255,255,0.55); font-size: 0.75rem; cursor: pointer; transition: all 0.18s; font-family: 'Barlow', sans-serif; }
+    .ai-quick-btn:hover { background: rgba(56,189,248,0.1); border-color: rgba(56,189,248,0.3); color: #7dd3fc; }
+    .ai-input-row { display: flex; gap: 8px; padding: 11px 20px 15px; border-top: 1px solid rgba(255,255,255,0.07); }
+    .ai-input { flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.11); border-radius: 8px; padding: 9px 13px; color: #e2e8f0; font-family: 'Barlow', sans-serif; font-size: 0.875rem; outline: none; transition: border-color 0.18s; }
+    .ai-input::placeholder { color: rgba(255,255,255,0.22); }
+    .ai-input:focus { border-color: rgba(56,189,248,0.45); }
+    .ai-send-btn { background: linear-gradient(135deg,#0ea5e9,#6366f1); border: none; border-radius: 8px; padding: 9px 18px; color: #fff; font-family: 'Barlow', sans-serif; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: opacity 0.18s, transform 0.1s; white-space: nowrap; }
+    .ai-send-btn:hover    { opacity: 0.86; }
+    .ai-send-btn:active   { transform: scale(0.97); }
+    .ai-send-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+
+    /* ── INSIGHTS ────────────────────────── */
+    .insight-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; margin-bottom: 28px; }
+    .insight-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 15px 17px; display: flex; gap: 13px; align-items: flex-start; }
+    .insight-icon { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .insight-icon svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 2; }
+    .insight-icon.info    { background: rgba(56,189,248,0.1);  color: #38bdf8; }
+    .insight-icon.warn    { background: rgba(245,158,11,0.1);  color: #f59e0b; }
+    .insight-icon.success { background: rgba(16,185,129,0.1);  color: #10b981; }
+    .insight-icon.danger  { background: rgba(239,68,68,0.1);   color: #ef4444; }
+    .insight-title { font-size: 0.84rem; font-weight: 600; color: #e2e8f0; margin-bottom: 4px; }
+    .insight-body  { font-size: 0.77rem; color: rgba(255,255,255,0.42); line-height: 1.55; }
+
+    /* ── COMPARISON TABLE ────────────────── */
+    .analytics-table-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; overflow: hidden; margin-bottom: 28px; }
+    .analytics-table-card .table-head { padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    .analytics-table-card table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+    .analytics-table-card thead th { padding: 10px 14px; text-align: left; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.32); background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .analytics-table-card tbody td { padding: 10px 14px; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.035); vertical-align: middle; }
+    .analytics-table-card tbody tr:last-child td { border-bottom: none; }
+    .analytics-table-card tbody tr:hover td { background: rgba(255,255,255,0.025); }
+    .analytics-table-card tbody tr.row-top td { background: rgba(250,204,21,0.03); }
+    .analytics-table-card tbody tr.row-top td:first-child { border-left: 2px solid rgba(250,204,21,0.4); }
+    .cell-device-name { font-weight: 600; color: #e2e8f0; font-size: 0.83rem; }
+    .cell-device-loc  { font-size: 0.7rem; color: rgba(255,255,255,0.28); }
+    .cell-val  { font-family: 'Barlow Condensed', sans-serif; font-size: 0.98rem; font-weight: 700; }
+    .cv-good   { color: #94a3b8; }
+    .cv-warn   { color: #fbbf24; }
+    .cv-danger { color: #f87171; }
+    .cell-status { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
+    .cell-status.good   { background: rgba(16,185,129,0.1); color: #34d399; border: 1px solid rgba(16,185,129,0.2); }
+    .cell-status.warn   { background: rgba(245,158,11,0.1); color: #fbbf24; border: 1px solid rgba(245,158,11,0.2); }
+    .cell-status.danger { background: rgba(239,68,68,0.1);  color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+    .cell-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .table-scroll { overflow-x: auto; }
+    .table-pages { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.78rem; color: rgba(255,255,255,0.35); }
+    .tpage-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); border-radius: 6px; padding: 4px 12px; color: rgba(255,255,255,0.5); font-size: 0.76rem; cursor: pointer; font-family: 'Barlow', sans-serif; transition: all 0.15s; }
+    .tpage-btn:hover    { background: rgba(255,255,255,0.1); color: #e2e8f0; }
+    .tpage-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* ── LIGHT MODE: all remaining sections ── */
+    body:not(.dark-mode) .insight-card { background: #fff; border-color: rgba(0,0,0,0.08); }
+    body:not(.dark-mode) .insight-title { color: #1e293b; }
+    body:not(.dark-mode) .insight-body  { color: rgba(0,0,0,0.5); }
+
+    body:not(.dark-mode) .analytics-table-card { background: #fff; border-color: rgba(0,0,0,0.08); }
+    body:not(.dark-mode) .analytics-table-card .table-head { border-bottom-color: rgba(0,0,0,0.07); }
+    body:not(.dark-mode) .analytics-table-card thead th { background: rgba(0,0,0,0.02); color: rgba(0,0,0,0.45); border-bottom-color: rgba(0,0,0,0.07); }
+    body:not(.dark-mode) .analytics-table-card tbody td { color: #475569; border-bottom-color: rgba(0,0,0,0.05); }
+    body:not(.dark-mode) .analytics-table-card tbody tr:hover td { background: rgba(0,0,0,0.02); }
+    body:not(.dark-mode) .cell-device-name { color: #1e293b; }
+    body:not(.dark-mode) .cell-device-loc  { color: rgba(0,0,0,0.4); }
+    body:not(.dark-mode) .cv-good { color: #475569; }
+    body:not(.dark-mode) .table-pages { color: rgba(0,0,0,0.4); border-top-color: rgba(0,0,0,0.07); }
+    body:not(.dark-mode) .tpage-btn { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.09); color: rgba(0,0,0,0.5); }
+    body:not(.dark-mode) .tpage-btn:hover { background: rgba(0,0,0,0.08); color: #1e293b; }
+    body:not(.dark-mode) .count-badge { color: rgba(0,0,0,0.45); }
+
+    body:not(.dark-mode) .analytics-chart-card { background: #fff; border-color: rgba(0,0,0,0.08); }
+    body:not(.dark-mode) .analytics-chart-card h4 { color: #1e293b; }
+    body:not(.dark-mode) .analytics-chart-card p  { color: rgba(0,0,0,0.4); }
+
+    body:not(.dark-mode) .hm-label-cell  { color: rgba(0,0,0,0.5); }
+    body:not(.dark-mode) .hm-header-cell { color: rgba(0,0,0,0.4); }
+
+    body:not(.dark-mode) .export-row   { background: rgba(0,0,0,0.02); border-color: rgba(0,0,0,0.07); }
+    body:not(.dark-mode) .export-label { color: rgba(0,0,0,0.45); }
+    body:not(.dark-mode) .export-btn   { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.09); color: #374151; }
+    body:not(.dark-mode) .export-btn:hover { background: rgba(0,0,0,0.08); }
+
+    body:not(.dark-mode) .period-tabs { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.08); }
+    body:not(.dark-mode) .period-tab  { color: rgba(0,0,0,0.45); }
+    body:not(.dark-mode) .period-tab.active { background: rgba(0,0,0,0.07); color: #1e293b; }
+
+    /* ── CHARTS GRID ─────────────────────── */
+    .analytics-chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; margin-bottom: 28px; }
+    .analytics-chart-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 18px 20px; }
+    .analytics-chart-card h4 { font-family: 'Barlow Condensed', sans-serif; font-size: 0.92rem; font-weight: 700; color: #e2e8f0; letter-spacing: 0.04em; text-transform: uppercase; margin: 0 0 3px; }
+    .analytics-chart-card p  { font-size: 0.76rem; color: rgba(255,255,255,0.3); margin: 0 0 14px; }
+    .chart-wrap-sm { position: relative; height: 220px; }
+    .chart-wrap-lg { position: relative; height: 300px; }
+
+    /* ── HEATMAP ─────────────────────────── */
+    .heatmap-outer { overflow-x: auto; margin-bottom: 28px; }
+    .hm-cell { border-radius: 6px; padding: 9px 6px; text-align: center; font-weight: 700; font-size: 0.72rem; cursor: default; transition: transform 0.12s; }
+    .hm-cell:hover { transform: scale(1.07); z-index: 1; position: relative; }
+    .hm-label-cell { display: flex; align-items: center; padding: 6px 4px; font-size: 0.72rem; color: rgba(255,255,255,0.4); overflow: hidden; }
+    .hm-label-cell span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hm-header-cell { text-align: center; padding: 4px 2px; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.32); }
+
+    /* ── EXPORT ROW ──────────────────────── */
+    .export-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 13px 18px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; margin-bottom: 28px; }
+    .export-label { font-size: 0.8rem; color: rgba(255,255,255,0.38); flex: 1; }
+    .export-btn { background: rgba(255,255,255,0.055); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 7px 14px; color: #cbd5e1; font-size: 0.79rem; font-family: 'Barlow', sans-serif; cursor: pointer; transition: all 0.18s; display: inline-flex; align-items: center; gap: 6px; }
+    .export-btn svg  { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+    .export-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.18); }
+
+    /* ── SUBTLE REFRESH INDICATOR (bottom-right, not blocking) ── */
+    #refreshPill {
+      position: fixed; bottom: 22px; right: 26px;
+      background: rgba(56,189,248,0.12); border: 1px solid rgba(56,189,248,0.25);
+      border-radius: 20px; padding: 5px 12px;
+      font-size: 0.72rem; color: #7dd3fc; font-family: 'Barlow', sans-serif;
+      display: none; align-items: center; gap: 6px; z-index: 999; pointer-events: none;
+    }
+    #refreshPill.show { display: flex; }
+    .rp-dot { width: 6px; height: 6px; border-radius: 50%; background: #38bdf8; animation: blink 1s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+
+  <!-- Subtle, non-blocking refresh indicator -->
+  <div id="refreshPill"><div class="rp-dot"></div>Updating…</div>
+
+  <!-- ══════════════════════════════════════════════ SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-wrap">
+        <div class="logo-chip"></div>
+        <div class="logo-text"><h2>EMOSys</h2><p>Monitoring System</p></div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">Overview</div>
+      <a class="nav-item" href="Dashboard.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a class="nav-item active" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Analytics
+      </a>
+      <a class="nav-item" href="History.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        History &amp; Logs
+      </a>
+      <div class="nav-section">Devices</div>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        EMOSys Devices
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        Network Status
+      </a>
+      <div class="nav-section">Management</div>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        Reports
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        Alerts <span class="nav-badge" id="alertCount">0</span>
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+        Users
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="avatar" id="userAvatar">A</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Admin</div>
+          <div class="user-role" id="userRole">Administrator</div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()" title="Logout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════════════════════════ MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="breadcrumb">
+        <span class="breadcrumb-home">EMOSys</span>
+        <span class="breadcrumb-sep">›</span>
+        <span class="breadcrumb-current">Analytics</span>
+      </div>
+      <div class="topbar-right">
+        <div class="status-pill">
+          <div class="pulse-dot"></div>
+          <span id="onlineCount">—</span> / <span id="totalCount">16</span> Online
+        </div>
+        <button class="topbar-btn" onclick="refreshAnalytics(true)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Refresh
+        </button>
+        <span style="font-size:0.75rem;color:rgba(255,255,255,0.4)" id="currentDate"></span>
+      </div>
+    </div>
+
+    <div class="page">
+      <div class="page-title-bar">
+        <h1><span>Sensor Analytics</span>Device Performance Overview</h1>
+        <div class="last-updated" id="lastUpdated">Last updated: —</div>
+      </div>
+
+      <div class="api-error-bar" id="errorBar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="errorMsg">Could not reach API.</span>
+      </div>
+
+      <div class="period-tabs">
+        <button class="period-tab active" onclick="setPeriod('live',this)">Live</button>
+        <button class="period-tab" onclick="setPeriod('1h',this)">1 Hour</button>
+        <button class="period-tab" onclick="setPeriod('24h',this)">24 Hours</button>
+        <button class="period-tab" onclick="setPeriod('7d',this)">7 Days</button>
+      </div>
+
+      <!-- FLEET SUMMARY -->
+      <div class="section-head"><h3>Fleet Summary</h3></div>
+      <div class="stat-summary-row">
+        <div class="stat-box s-blue">
+          <div class="stat-box-label">Total Devices</div>
+          <div class="stat-box-val" id="statTotal">—</div>
+          <div class="stat-box-sub" id="statOnlineSub">fetching…</div>
+        </div>
+        <div class="stat-box s-orange">
+          <div class="stat-box-label">Avg Temperature</div>
+          <div class="stat-box-val" id="statAvgTemp">—</div>
+          <div class="stat-box-sub">°C · fleet avg</div>
+        </div>
+        <div class="stat-box s-cyan">
+          <div class="stat-box-label">Avg Humidity</div>
+          <div class="stat-box-val" id="statAvgHum">—</div>
+          <div class="stat-box-sub">%RH · fleet avg</div>
+        </div>
+        <div class="stat-box s-purple">
+          <div class="stat-box-label">Avg PM2.5 / AQI</div>
+          <div class="stat-box-val" id="statAvgAqi">—</div>
+          <div class="stat-box-sub">fleet average</div>
+        </div>
+        <div class="stat-box s-green">
+          <div class="stat-box-label">Avg CO₂</div>
+          <div class="stat-box-val" id="statAvgCo2">—</div>
+          <div class="stat-box-sub">ppm · fleet avg</div>
+        </div>
+        <div class="stat-box s-amber">
+          <div class="stat-box-label">Avg VOC</div>
+          <div class="stat-box-val" id="statAvgVoc">—</div>
+          <div class="stat-box-sub">ppb · fleet avg</div>
+        </div>
+        <div class="stat-box s-red">
+          <div class="stat-box-label">Active Alerts</div>
+          <div class="stat-box-val" id="statAlerts">—</div>
+          <div class="stat-box-sub">critical / warn</div>
+        </div>
+      </div>
+
+      <!-- HIGHEST READINGS -->
+      <div class="section-head"><h3>Highest Readings by Sensor</h3></div>
+      <div class="rankings-grid" id="rankingsGrid">
+        <div style="grid-column:1/-1;padding:24px;text-align:center;color:rgba(255,255,255,0.25);font-size:0.85rem">Loading rankings…</div>
+      </div>
+
+      <!-- AI ANALYST -->
+      <div class="section-head"><h3>AI Environmental Analyst</h3></div>
+      <div class="ai-panel">
+        <div class="ai-panel-header">
+          <div class="ai-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="#fff" stroke="none"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+          </div>
+          <div>
+            <div class="ai-title">AI Environmental Analyst</div>
+            <div class="ai-sub">Powered by Claude</div>
+          </div>
+          <div class="ai-live-badge"><div class="ai-live-dot"></div>Live data</div>
+        </div>
+        <div class="ai-chat-area" id="aiChatArea">
+          <div class="ai-bubble assistant">
+            Hello! I'm your AI Environmental Analyst. Once device data loads I'll have live readings from all your EMOSys devices — including Sam's WorkStation, Mulu Hall, CFO/CTO/CEO offices, Testing Labs, Training Rooms and more. Ask me to compare devices, find anomalies, or give a full health report!
+          </div>
+        </div>
+        <div class="ai-quick-btns">
+          <button class="ai-quick-btn" onclick="quickAsk('Which device currently has the highest temperature and should I be concerned?')">🌡️ Highest temp?</button>
+          <button class="ai-quick-btn" onclick="quickAsk('Rank all 16 devices by CO₂ level and identify any ventilation issues.')">🏭 CO₂ ranking</button>
+          <button class="ai-quick-btn" onclick="quickAsk('Compare air quality (PM2.5/AQI) across all devices and highlight problem areas.')">💨 Air quality check</button>
+          <button class="ai-quick-btn" onclick="quickAsk('Which rooms or offices have the worst overall environmental conditions right now?')">⚠️ Worst rooms</button>
+          <button class="ai-quick-btn" onclick="quickAsk('Give me a complete environmental health report for all 16 devices with recommendations.')">📋 Full health report</button>
+          <button class="ai-quick-btn" onclick="quickAsk('Are there any sensors showing unusual or unexpected readings compared to the rest of the fleet?')">🔍 Anomaly detection</button>
+        </div>
+        <div class="ai-input-row">
+          <input class="ai-input" type="text" id="aiInput" placeholder="Ask about your 16 devices… e.g. 'Is CEO's Office CO₂ safe?'" onkeydown="if(event.key==='Enter')sendAiMessage()"/>
+          <button class="ai-send-btn" id="aiSendBtn" onclick="sendAiMessage()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;display:inline;vertical-align:middle;margin-right:5px"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Ask AI
+          </button>
+        </div>
+      </div>
+
+      <!-- AUTO INSIGHTS -->
+      <div class="section-head"><h3>Automated Insights</h3></div>
+      <div class="insight-row" id="insightRow">
+        <div class="insight-card">
+          <div class="insight-icon info"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+          <div><div class="insight-title">Fetching insights…</div><div class="insight-body">Waiting for live data from all 16 devices.</div></div>
+        </div>
+      </div>
+
+      <!-- FULL COMPARISON TABLE -->
+      <div class="section-head"><h3>Full Device Comparison</h3></div>
+      <div class="analytics-table-card">
+        <div class="table-head">
+          <h4>All Sensors · All Devices</h4>
+          <span class="count-badge" id="tableUpdatedBadge">—</span>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Device</th><th>Location</th>
+                <th>Temp (°C)</th><th>Humidity (%)</th>
+                <th>PM2.5 / AQI</th><th>CO₂ (ppm)</th><th>VOC (ppb)</th>
+                <th>Overall</th>
+              </tr>
+            </thead>
+            <tbody id="comparisonBody">
+              <tr><td colspan="8" style="text-align:center;color:rgba(255,255,255,0.25);padding:24px">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-pages">
+          <button class="tpage-btn" id="prevPageBtn" onclick="changePage(-1)" disabled>← Prev</button>
+          <span id="pageInfo">Page 1</span>
+          <button class="tpage-btn" id="nextPageBtn" onclick="changePage(1)">Next →</button>
+          <span style="margin-left:auto" id="rowInfo"></span>
+        </div>
+      </div>
+
+      <!-- COMPARISON CHARTS -->
+      <div class="section-head"><h3>Device Comparison Charts</h3></div>
+      <div class="analytics-chart-grid">
+        <div class="analytics-chart-card"><h4>Temperature — All Devices</h4><p>Live °C readings per device</p><div class="chart-wrap-lg"><canvas id="chartTemp"></canvas></div></div>
+        <div class="analytics-chart-card"><h4>CO₂ — All Devices</h4><p>Parts per million per device</p><div class="chart-wrap-lg"><canvas id="chartCo2"></canvas></div></div>
+        <div class="analytics-chart-card"><h4>PM2.5 / AQI — All Devices</h4><p>Air quality index per device</p><div class="chart-wrap-sm"><canvas id="chartAqi"></canvas></div></div>
+        <div class="analytics-chart-card"><h4>VOC — All Devices</h4><p>Volatile organic compounds ppb</p><div class="chart-wrap-sm"><canvas id="chartVoc"></canvas></div></div>
+      </div>
+
+      <!-- HEATMAP -->
+      <div class="section-head"><h3>Sensor Intensity Heatmap</h3></div>
+      <div class="analytics-chart-card heatmap-outer" style="margin-bottom:28px">
+        <h4>All Devices × All Sensors</h4>
+        <p>Normalised 0–100% intensity · green = safe · red = critical</p>
+        <div id="heatmapContainer" style="margin-top:16px"></div>
+      </div>
+
+      <!-- EXPORT -->
+      <div class="export-row">
+        <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" style="width:17px;height:17px;flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span class="export-label">Export analytics snapshot · <strong id="exportDevCount">16</strong> devices</span>
+        <button class="export-btn" onclick="exportCSV()"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Export CSV</button>
+        <button class="export-btn" onclick="exportJSON()"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Export JSON</button>
+        <button class="export-btn" onclick="window.print()"><svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print</button>
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>&copy; 2026 EMOSys · Analytics Module</span>
+      <span id="footerDate"></span>
+    </div>
+  </main>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+  <script src="assets/js/auth.js"></script>
+  <script>
+
+  /* ── CONFIG ─────────────────────────── */
+  const API_BASE   = 'http://10.0.30.7:3000/api';
+  const AI_API     = '/api/ai/chat';
+  const AI_MODEL   = 'gemini-2.5-flash';
+  const PAGE_SIZE  = 8;
+  const REFRESH_MS = 30000;
+
+  /* ── THRESHOLDS ─────────────────────── */
+  const THR = {
+    temp: { warn: 28,   danger: 35   },
+    hum:  { warn: 65,   danger: 80   },
+    pm25: { warn: 35,   danger: 75   },
+    co2:  { warn: 1000, danger: 1500 },
+    voc:  { warn: 500,  danger: 1000 }
+  };
+
+  /* ── STATE ──────────────────────────── */
+  let allDevices     = [];
+  let devicesData    = [];
+  let currentPeriod  = 'live';
+  let currentPage    = 0;
+  let aiConversation = [];
+  let charts         = {};
+
+  /* ── STATUS ─────────────────────────── */
+  function getStatus(sensor, value) {
+    if (value == null || isNaN(value)) return 'unknown';
+    const t = THR[sensor]; if (!t) return 'good';
+    if (value >= t.danger) return 'danger';
+    if (value >= t.warn)   return 'warn';
+    return 'good';
+  }
+  function overallStatus(d) {
+    const c = [getStatus('temp',d.temp), getStatus('pm25',d.pm25), getStatus('co2',d.co2), getStatus('voc',d.voc)];
+    return c.includes('danger') ? 'danger' : c.includes('warn') ? 'warn' : 'good';
+  }
+  const SL = { good: 'Normal', warn: 'Elevated', danger: 'Critical', unknown: 'N/A' };
+
+  /* ── API ─────────────────────────────── */
+  async function apiGet(url, ms = 6000) {
+    const c = new AbortController(), t = setTimeout(() => c.abort(), ms);
+    try { const r = await fetch(url, { signal: c.signal }); clearTimeout(t); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }
+    catch (e) { clearTimeout(t); throw e; }
+  }
+
+  /* ── DEVICE LIST ────────────────────── */
+  async function fetchDeviceList() {
+    try {
+      const d = await apiGet(`${API_BASE}/devices`);
+      const l = Array.isArray(d) ? d : (d.devices || []);
+      if (l.length) return l;
+      throw new Error('empty');
+    } catch(e) { console.warn('Fallback device list:', e.message); return FALLBACK; }
+  }
+
+  /* ── SENSOR DATA ────────────────────── */
+async function fetchSensors(id) {
+  /* Map period tabs to hours for history endpoint */
+  const periodHours = { 'live': 0, '1h': 1, '24h': 24, '7d': 168 };
+  const hours = periodHours[currentPeriod] || 0;
+
+  if (currentPeriod === 'live') {
+    try { return await apiGet(`${API_BASE}/ha/latest?device=${id}`, 5000); } catch {}
+    try { return await apiGet(`${API_BASE}/latest`, 4000); } catch {}
+    return null;
+  }
+
+  /* For history periods, fetch from InfluxDB and return averaged values */
+  try {
+    const rows = await apiGet(`${API_BASE}/history?device=${id}&hours=${hours}`, 8000);
+    if (!Array.isArray(rows) || rows.length === 0) return null;
+
+    /* Average all readings in the period */
+    const avg = key => {
+      const vals = rows.map(r => parseFloat(r[key])).filter(v => !isNaN(v));
+      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    };
+    return {
+      temperature : avg('temperature'),
+      humidity    : avg('humidity'),
+      pm25        : avg('pm25'),
+      co2         : avg('co2'),
+      voc         : avg('voc')
+    };
+  } catch {}
+  return null;
+  }
+  async function fetchOnline(id) {
+    try { const d = await apiGet(`${API_BASE}/ha/status?device=${id}`, 4000); return d?.online ?? d?.status === 'online' ?? true; } catch { return true; }
+  }
+
+  /* ── NORMALISE ──────────────────────── */
+  function norm(raw) {
+    if (!raw) return null;
+    const f = (...k) => { for (const key of k) { const v = parseFloat(raw[key]); if (!isNaN(v)) return v; } return null; };
+    return {
+      temp: f('temperature','temp','Temperature'),
+      hum:  f('humidity','hum','Humidity'),
+      pm25: f('pm25','aqi','pm2_5','PM25'),
+      co2:  f('co2','CO2','carbon_dioxide'),
+      voc:  f('voc','VOC','tvoc')
+    };
+  }
+
+  /* ── FALLBACK DEVICES ───────────────── */
+  const FALLBACK = [
+    { id:'sams_workstation',    name:"Sam's WorkStation",          location:'Workstations' },
+    { id:'mulu_hall',           name:'Mulu Hall',                  location:'Common Areas' },
+    { id:'main_entrance',       name:'Main Entrance',              location:'Entrance'     },
+    { id:'cfo_office',          name:"CFO's Office",               location:'Management'   },
+    { id:'cto_office',          name:"CTO's Office",               location:'Management'   },
+    { id:'santubong',           name:'Santubong',                  location:'Common Areas' },
+    { id:'admin_workstation1',  name:"Admin's WorkStation 1",      location:'Workstations' },
+    { id:'eng_workstation1',    name:"Engineer's WorkStation 1",   location:'Engineering'  },
+    { id:'eng_workstation2',    name:"Engineer's WorkStation 2",   location:'Engineering'  },
+    { id:'eng_workstation_mw1', name:"Engineer's WorkStation MW1", location:'Engineering'  },
+    { id:'eng_workstation_mw2', name:"Engineer's WorkStation MW2", location:'Engineering'  },
+    { id:'testing_lab_1',       name:'Testing Lab 1',              location:'Lab'          },
+    { id:'testing_lab_2',       name:'Testing Lab 2',              location:'Lab'          },
+    { id:'training_room_1',     name:'Training Room 1',            location:'Training'     },
+    { id:'training_room_2',     name:'Training Room 2',            location:'Training'     },
+    { id:'ceo_office',          name:"CEO's Office",               location:'Management'   }
+  ];
+
+  /* ── LOAD ALL ───────────────────────── */
+  async function loadAll() {
+    allDevices = await fetchDeviceList();
+    const n = allDevices.length;
+    ['statTotal','aiDeviceCount','exportDevCount','totalCount'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.textContent = n;
+    });
+
+    const results = await Promise.allSettled(allDevices.map(async dev => {
+      const [sr, or] = await Promise.allSettled([fetchSensors(dev.id), fetchOnline(dev.id)]);
+      const s = norm(sr.value);
+      const clean = v => (v != null && !isNaN(v)) ? v : null;
+      return {
+        id: dev.id,
+        name: dev.name || dev.display_name || dev.id,
+        location: dev.location || dev.room || '—',
+        online: or.value ?? true,
+        temp: clean(s?.temp), hum: clean(s?.hum),
+        pm25: clean(s?.pm25), co2: clean(s?.co2), voc: clean(s?.voc)
+      };
+    }));
+
+    devicesData = results.filter(r => r.status === 'fulfilled').map(r => r.value);
+    return devicesData;
+  }
+
+  /* ── FORMAT ─────────────────────────── */
+  const fmt    = (v, d=1) => (v==null||isNaN(v)) ? '—' : Number(v).toFixed(d);
+  const fmtInt = v        => (v==null||isNaN(v)) ? '—' : Math.round(v).toString();
+
+  /* ── SHORT NAME (for charts & ranking cards) ─ */
+  function sn(name) {
+    return name
+      .replace(/WorkStation\b/gi, 'WS')
+      .replace(/\bOffice\b/gi,    'Off.')
+      .replace(/Training Room\b/gi,'Train.Rm')
+      .replace(/Testing Lab\b/gi,  'Test.Lab')
+      .trim();
+  }
+
+  /* ── CLEAN CROWN SVG (no emoji, professional) ── */
+  const CROWN = `<svg viewBox="0 0 16 16" width="11" height="11" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle"><path d="M2 13h12M3 13V7l4 3 1-6 1 6 4-3v6" stroke="#fbbf24" stroke-width="1.4" fill="none" stroke-linejoin="round" stroke-linecap="round"/><circle cx="3" cy="7" r="1.2" fill="#fbbf24"/><circle cx="8" cy="4" r="1.2" fill="#fbbf24"/><circle cx="13" cy="7" r="1.2" fill="#fbbf24"/></svg>`;
+  /* ── STATS ──────────────────────────── */
+  function renderStats(devices) {
+    const has = k => devices.filter(d => d[k]!=null && !isNaN(d[k]));
+    const avg = k => { const a=has(k); return a.length ? a.reduce((s,d)=>s+d[k],0)/a.length : null; };
+    document.getElementById('statAvgTemp').textContent = fmt(avg('temp'))+'°';
+    document.getElementById('statAvgHum').textContent  = fmt(avg('hum'))+'%';
+    document.getElementById('statAvgAqi').textContent  = fmtInt(avg('pm25'));
+    document.getElementById('statAvgCo2').textContent  = fmtInt(avg('co2'));
+    document.getElementById('statAvgVoc').textContent  = fmtInt(avg('voc'));
+    const online = devices.filter(d=>d.online!==false).length;
+    document.getElementById('onlineCount').textContent   = online;
+    document.getElementById('statOnlineSub').textContent = `${online} online · ${devices.length-online} offline`;
+    const alerts = devices.filter(d=>{ const s=overallStatus(d); return s==='warn'||s==='danger'; }).length;
+    const el = document.getElementById('statAlerts');
+    el.textContent = alerts; el.style.color = alerts>0 ? '#f87171' : '#34d399';
+    document.getElementById('alertCount').textContent = alerts;
+  }
+
+  /* ── SENSOR DEFS ─────────────────────── */
+  const SDEFS = [
+    { key:'temp', label:'Temperature', unit:'°C',  color:'#f97316', max:THR.temp.danger },
+    { key:'hum',  label:'Humidity',    unit:'%RH', color:'#06b6d4', max:THR.hum.danger  },
+    { key:'pm25', label:'PM2.5 / AQI', unit:'',    color:'#a855f7', max:150              },
+    { key:'co2',  label:'CO₂',         unit:' ppm',color:'#10b981', max:THR.co2.danger  },
+    { key:'voc',  label:'VOC',         unit:' ppb',color:'#f59e0b', max:THR.voc.danger  }
+  ];
+  const MEDALS = ['gold','silver','bronze'];
+
+  /* ── RANKINGS ───────────────────────── */
+  function renderRankings(devices) {
+    const grid = document.getElementById('rankingsGrid');
+    grid.innerHTML = '';
+
+    SDEFS.forEach(s => {
+      const wd = devices.filter(d => d[s.key]!=null && !isNaN(d[s.key]));
+      if (!wd.length) {
+        grid.innerHTML += `<div class="rank-card"><div class="rank-card-header"><span class="rank-sensor-label">${s.label}</span></div><div style="padding:16px;font-size:0.78rem;color:rgba(255,255,255,0.25)">No data</div></div>`;
+        return;
+      }
+      const sorted = [...wd].sort((a,b) => b[s.key]-a[s.key]);
+      const top    = sorted[0][s.key];
+      const show   = Math.min(sorted.length, 5);
+
+      let items = '';
+      for (let i=0; i<show; i++) {
+        const d   = sorted[i];
+        const pct = top>0 ? Math.min(100,(d[s.key]/top)*100) : 0;
+        const st  = getStatus(s.key, d[s.key]);
+        items += `
+          <div class="rank-item ${i===0?'rank-top':''}">
+            <div class="rank-num ${MEDALS[i]||'normal'}">${i+1}</div>
+            <div class="rank-info">
+              <div class="rank-device-name">${(d.name)}</div>
+              <div class="rank-device-loc">${d.location}</div>
+              <div class="rank-bar-wrap"><div class="rank-bar" style="width:${pct.toFixed(1)}%;background:${s.color}"></div></div>
+            </div>
+            <div class="rank-value-col">
+              <div class="rank-value">${fmt(d[s.key])}${s.unit}</div>
+              <div class="rank-status-dot ${st}"></div>
+            </div>
+          </div>`;
+      }
+
+      const more = sorted.length - show;
+      grid.innerHTML += `
+        <div class="rank-card">
+          <div class="rank-card-header">
+            <span class="rank-sensor-label">${s.label}</span>
+            <span class="rank-unit-label">${s.unit||'index'}</span>
+          </div>
+          <div class="rank-card-body">${items}</div>
+          <div class="rank-card-footer">
+            <span class="rank-winner-name">${sorted[0].name}</span>
+            <span class="rank-highest-pill">${CROWN} Highest</span>
+            ${more>0 ? `<span class="rank-more">+${more} more</span>` : ''}
+          </div>
+        </div>`;
+    });
+  }
+
+  /* ── TABLE ──────────────────────────── */
+  function renderTable(devices) {
+    document.getElementById('tableUpdatedBadge').textContent = 'Updated '+new Date().toLocaleTimeString();
+
+    const topId = {};
+    SDEFS.forEach(s => {
+      const b = devices.filter(d=>d[s.key]!=null&&!isNaN(d[s.key]));
+      if (b.length) topId[s.key] = b.reduce((m,d)=>d[s.key]>m[s.key]?d:m).id;
+    });
+
+    const sorted  = [...devices].sort((a,b)=>a.name.localeCompare(b.name));
+    const start   = currentPage * PAGE_SIZE;
+    const page    = sorted.slice(start, start+PAGE_SIZE);
+    const total   = sorted.length;
+    const maxPage = Math.ceil(total/PAGE_SIZE);
+
+    document.getElementById('pageInfo').textContent     = `Page ${currentPage+1} of ${maxPage}`;
+    document.getElementById('rowInfo').textContent      = `${start+1}–${Math.min(start+PAGE_SIZE,total)} of ${total}`;
+    document.getElementById('prevPageBtn').disabled     = currentPage===0;
+    document.getElementById('nextPageBtn').disabled     = start+PAGE_SIZE>=total;
+
+    document.getElementById('comparisonBody').innerHTML = page.map(d => {
+      const isTop = Object.values(topId).filter(id=>id===d.id).length >= 2;
+      const os    = overallStatus(d);
+      const vc    = sensor => {
+        const v=d[sensor], st=getStatus(sensor,v), top=topId[sensor]===d.id;
+        if (v==null||isNaN(v)) return `<td><span class="cell-val">—</span></td>`;
+        const pill = top ? `<span class="top-pill">${CROWN} Top</span>` : '';
+        return `<td><span class="cell-val cv-${st}">${fmt(v)}</span>${pill}</td>`;
+      };
+      const dot = d.online===false
+        ? `<span style="width:7px;height:7px;border-radius:50%;background:#f87171;display:inline-block;flex-shrink:0;margin-right:6px"></span>`
+        : `<span style="width:7px;height:7px;border-radius:50%;background:#34d399;display:inline-block;flex-shrink:0;margin-right:6px"></span>`;
+      return `<tr class="${isTop?'row-top':''}">
+        <td><div style="display:flex;align-items:center">${dot}<div class="cell-device-name">${d.name}</div></div></td>
+        <td><div class="cell-device-loc">${d.location}</div></td>
+        ${vc('temp')}${vc('hum')}${vc('pm25')}${vc('co2')}${vc('voc')}
+        <td><span class="cell-status ${os}"><span class="cell-dot"></span>${SL[os]}</span></td>
+      </tr>`;
+    }).join('');
+  }
+  function changePage(dir) {
+    currentPage = Math.max(0, Math.min(Math.ceil(devicesData.length/PAGE_SIZE)-1, currentPage+dir));
+    renderTable(devicesData);
+  }
+
+  /* ── CHARTS ─────────────────────────── */
+  const isDark = document.body.classList.contains('dark-mode');
+  const TC = isDark ? 'rgba(203,213,225,0.65)' : 'rgba(0,0,0,0.5)';
+  const GC = isDark ? 'rgba(255,255,255,0.055)' : 'rgba(0,0,0,0.07)';
+
+  function bOpts(h=true) {
+    return { responsive:true, maintainAspectRatio:false, indexAxis:h?'y':'x',
+      plugins:{legend:{display:false}},
+      scales:{ x:{ticks:{color:TC,font:{family:'Barlow',size:10}},grid:{color:GC}},
+               y:{ticks:{color:TC,font:{family:'Barlow',size:10}},grid:{color:GC}} }};
+  }
+  function bOptsV() {
+    return { responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{ x:{ticks:{color:TC,font:{family:'Barlow',size:9},maxRotation:45},grid:{color:GC}},
+               y:{ticks:{color:TC,font:{family:'Barlow',size:10}},grid:{color:GC}} }};
+  }
+
+  function renderCharts(devices) {
+    Object.values(charts).forEach(c=>{try{c.destroy();}catch{}});
+    charts={};
+    const labs = devices.map(d=>(d.name));
+    const col  = (k,def,w,d) => getStatus(k,d[k])==='danger'?`rgba(239,68,68,${w})`:getStatus(k,d[k])==='warn'?`rgba(245,158,11,${w})`:`rgba(${def},${w})`;
+
+    charts.temp = new Chart(document.getElementById('chartTemp'),{type:'bar',data:{labels:labs,datasets:[{data:devices.map(d=>d.temp??0),backgroundColor:devices.map(d=>col('temp','56,189,248',0.7,d)),borderColor:devices.map(d=>col('temp','56,189,248',1,d)),borderWidth:1,borderRadius:4}]},options:bOpts(true)});
+    charts.co2  = new Chart(document.getElementById('chartCo2'), {type:'bar',data:{labels:labs,datasets:[{data:devices.map(d=>d.co2??0), backgroundColor:devices.map(d=>col('co2','16,185,129',0.7,d)),borderColor:devices.map(d=>col('co2','16,185,129',1,d)),borderWidth:1,borderRadius:4}]},options:bOpts(true)});
+    charts.aqi  = new Chart(document.getElementById('chartAqi'), {type:'bar',data:{labels:labs,datasets:[{data:devices.map(d=>d.pm25??0),backgroundColor:devices.map(d=>col('pm25','168,85,247',0.7,d)),borderColor:devices.map(d=>col('pm25','168,85,247',1,d)),borderWidth:1,borderRadius:4}]},options:bOptsV()});
+    charts.voc  = new Chart(document.getElementById('chartVoc'), {type:'bar',data:{labels:labs,datasets:[{data:devices.map(d=>d.voc??0), backgroundColor:devices.map(d=>col('voc','245,158,11',0.65,d)),borderColor:devices.map(d=>col('voc','245,158,11',1,d)),borderWidth:1,borderRadius:4}]},options:bOptsV()});
+  }
+
+  /* ── HEATMAP ─────────────────────────── */
+  function heatColor(n) {
+    n=Math.max(0,Math.min(1,n));
+    if (n<0.5){const t=n*2;return `rgb(${Math.round(16+229*t)},${Math.round(185-27*t)},${Math.round(129-118*t)})`;}
+    const t=(n-0.5)*2;return `rgb(${Math.round(245-6*t)},${Math.round(158-90*t)},${Math.round(11+57*t)})`;
+  }
+  function renderHeatmap(devices) {
+    const c=document.getElementById('heatmapContainer');
+    c.style.cssText=`display:grid;grid-template-columns:140px repeat(${SDEFS.length},1fr);gap:4px`;
+    let h=`<div class="hm-label-cell" style="font-weight:700;font-size:0.7rem;color:rgba(255,255,255,0.5)">Device</div>`;
+    SDEFS.forEach(s=>{h+=`<div class="hm-header-cell">${s.label}</div>`;});
+    devices.forEach(d=>{
+      h+=`<div class="hm-label-cell"><span title="${d.name}">${(d.name)}</span></div>`;
+      SDEFS.forEach(s=>{
+        const v=d[s.key], nr=(v!=null&&!isNaN(v))?Math.min(1,v/s.max):null;
+        const bg=nr!=null?heatColor(nr):'rgba(255,255,255,0.04)';
+        const tx=nr!=null?(nr>0.55?'#fff':'#111'):'rgba(255,255,255,0.2)';
+        h+=`<div class="hm-cell" style="background:${bg};color:${tx}" title="${s.label}: ${v!=null?fmt(v)+s.unit:'N/A'}">${nr!=null?Math.round(nr*100)+'%':'—'}</div>`;
+      });
+    });
+    c.innerHTML=h;
+  }
+
+  /* ── INSIGHTS ───────────────────────── */
+  function renderInsights(devices) {
+    const has=k=>devices.filter(d=>d[k]!=null&&!isNaN(d[k]));
+    const ins=[];
+    const SVGS={
+      therm:`<path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>`,
+      wind:`<path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>`,
+      air:`<path d="M2 12h10m0 0a4 4 0 1 0 4-4M12 12a4 4 0 1 0 4 4"/>`,
+      offline:`<line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/>`,
+      online:`<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>`,
+      drop:`<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>`
+    };
+
+    const temps=has('temp');
+    if (temps.length) { const hot=temps.reduce((m,d)=>d.temp>m.temp?d:m); const st=getStatus('temp',hot.temp); ins.push({type:st==='good'?'success':st,icon:'therm',title:`Highest temperature: ${hot.name} — ${fmt(hot.temp)}°C`,body:st==='good'?`${hot.location} is within normal range.`:st==='warn'?`${hot.location} is running warm. Check cooling or HVAC.`:`CRITICAL: ${hot.location} exceeds ${THR.temp.danger}°C!`}); }
+    const co2s=has('co2');
+    if (co2s.length) { const high=co2s.reduce((m,d)=>d.co2>m.co2?d:m); const wl=co2s.filter(d=>getStatus('co2',d.co2)!=='good'); const st=getStatus('co2',high.co2); ins.push({type:st==='good'?'info':st,icon:'wind',title:`Highest CO₂: ${high.name} — ${fmtInt(high.co2)} ppm`,body:wl.length===0?'All CO₂ levels acceptable. Ventilation is adequate.':`${wl.length} device(s) above threshold: ${wl.map(d=>d.name.split(' ')[0]).join(', ')}. Improve ventilation.`}); }
+    const pm25s=has('pm25');
+    if (pm25s.length) { const worst=pm25s.reduce((m,d)=>d.pm25>m.pm25?d:m); const st=getStatus('pm25',worst.pm25); ins.push({type:st==='good'?'success':st,icon:'air',title:`Worst air quality: ${worst.name} — PM2.5 ${fmt(worst.pm25)}`,body:st==='good'?'Air particulate levels acceptable.':st==='warn'?`Elevated PM2.5 at ${worst.location}. Check HVAC filters.`:`Dangerous PM2.5 at ${worst.location}! Check filtration.`}); }
+    const offline=devices.filter(d=>d.online===false);
+    ins.push(offline.length>0?{type:'danger',icon:'offline',title:`${offline.length} device(s) offline`,body:`Not responding: ${offline.map(d=>d.name).join(', ')}.`}:{type:'success',icon:'online',title:`All ${devices.length} devices online`,body:'All devices reporting. Network is healthy.'});
+    const hums=has('hum');
+    if (hums.length>=2) { const mx=Math.max(...hums.map(d=>d.hum)),mn=Math.min(...hums.map(d=>d.hum)),sp=mx-mn; ins.push({type:sp>25?'warn':'info',icon:'drop',title:`Humidity spread: ${fmt(sp)}%RH across fleet`,body:sp>25?`Wide variation (${fmt(mn)}–${fmt(mx)}%RH). May indicate HVAC imbalance.`:`Consistent humidity (${fmt(mn)}–${fmt(mx)}%RH). HVAC balanced.`}); }
+
+    document.getElementById('insightRow').innerHTML=ins.map(i=>`
+      <div class="insight-card">
+        <div class="insight-icon ${i.type}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${SVGS[i.icon]||SVGS.therm}</svg></div>
+        <div><div class="insight-title">${i.title}</div><div class="insight-body">${i.body}</div></div>
+      </div>`).join('');
+  }
+
+  /* ── AI ─────────────────────────────── */
+  function buildCtx(devices) {
+    return `You are an AI environmental analyst for EMOSys, a real-time environmental monitoring system in an office building.
+
+LIVE SENSOR DATA — ${new Date().toLocaleString()} — ${devices.length} devices:
+${devices.map(d=>{
+  const v=[d.temp!=null?`Temp=${fmt(d.temp)}°C`:null,d.hum!=null?`Hum=${fmt(d.hum)}%`:null,d.pm25!=null?`PM2.5=${fmt(d.pm25)}`:null,d.co2!=null?`CO₂=${fmtInt(d.co2)}ppm`:null,d.voc!=null?`VOC=${fmtInt(d.voc)}ppb`:null].filter(Boolean).join(', ');
+  return `- ${d.name} (${d.location}): ${v||'no data'} | ${SL[overallStatus(d)]}${d.online===false?' | OFFLINE':''}`;
+}).join('\n')}
+
+THRESHOLDS: Temp warn>28°C crit>35°C | Hum warn>65% crit>80% | PM2.5 warn>35 crit>75 | CO₂ warn>1000 crit>1500ppm | VOC warn>500 crit>1000ppb
+
+Give concise, actionable advice. Reference specific device names. Use bullet points where helpful.`;
+  }
+
+  async function sendAiMessage() {
+    const inp=document.getElementById('aiInput'), msg=inp.value.trim();
+    if (!msg) return;
+    inp.value=''; appendBubble('user',msg); aiConversation.push({role:'user',content:msg}); setAiLoading(true);
+    try {
+      const res=await fetch(AI_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:AI_MODEL,max_tokens:1000,system:buildCtx(devicesData.length?devicesData:FALLBACK),messages:aiConversation.slice(-6)})});
+      if (!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||`HTTP ${res.status}`);}
+      const data=await res.json(), reply=data.content?.find(b=>b.type==='text')?.text||'No response.';
+      aiConversation.push({role:'assistant',content:reply}); setAiLoading(false); appendBubble('assistant',reply);
+    } catch(e){ setAiLoading(false); appendBubble('assistant',`⚠️ AI error: ${e.message}`); }
+  }
+  function quickAsk(m){document.getElementById('aiInput').value=m;sendAiMessage();}
+  function appendBubble(role,text){
+    const a=document.getElementById('aiChatArea'),d=document.createElement('div');
+    d.className=`ai-bubble ${role}`;
+    d.innerHTML=text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+    a.appendChild(d);a.scrollTop=a.scrollHeight;
+  }
+  let thinkEl=null;
+  function setAiLoading(on){
+    document.getElementById('aiSendBtn').disabled=on;
+    const a=document.getElementById('aiChatArea');
+    if(on){thinkEl=document.createElement('div');thinkEl.className='ai-thinking';thinkEl.innerHTML='<div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span style="margin-left:6px;font-size:0.78rem">Analysing all devices…</span>';a.appendChild(thinkEl);a.scrollTop=a.scrollHeight;}
+    else{if(thinkEl){thinkEl.remove();thinkEl=null;}}
+  }
+
+  /* ── ERROR ──────────────────────────── */
+  function showError(m){document.getElementById('errorMsg').textContent=m;document.getElementById('errorBar').classList.add('visible');}
+  function hideError(){document.getElementById('errorBar').classList.remove('visible');}
+
+  /* ── PERIOD ─────────────────────────── */
+  function setPeriod(p,btn){currentPeriod=p;document.querySelectorAll('.period-tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');refreshAnalytics(true);}
+
+  /* ── REFRESH ─────────────────────────── */
+  async function refreshAnalytics(manual=false) {
+    const pill=document.getElementById('refreshPill');
+    if(manual) pill.classList.add('show');
+    hideError();
+    try {
+      await loadAll();
+      renderStats(devicesData); renderRankings(devicesData);
+      renderTable(devicesData); renderCharts(devicesData);
+      renderHeatmap(devicesData); renderInsights(devicesData);
+      document.getElementById('lastUpdated').textContent='Last updated: '+new Date().toLocaleTimeString();
+    } catch(e){ showError(`Refresh failed: ${e.message}`); }
+    finally{ pill.classList.remove('show'); }
+  }
+  /* ── DARK MODE ─────────────────────────── */
+  function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    const btn = document.getElementById('darkBtn');
+    btn.innerHTML = isDark
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg> Light`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> Dark`;
+      localStorage.setItem('emosys_darkmode', isDark ? '1' : '0');
+      if (devicesData.length) renderCharts(devicesData);
+  }
+
+  /* ── SIDEBAR ─────────────────────────── */
+  function toggleSidebar(){document.querySelector('.sidebar').classList.toggle('open');document.getElementById('sidebarOverlay').classList.toggle('active');}
+
+  /* ── EXPORTS ─────────────────────────── */
+  function exportCSV(){const h='Device,Location,Online,Temp (°C),Humidity (%),PM2.5,CO2 (ppm),VOC (ppb),Overall\n',r=devicesData.map(d=>`"${d.name}","${d.location}","${d.online===false?'Offline':'Online'}",${d.temp??''},${d.hum??''},${d.pm25??''},${d.co2??''},${d.voc??''},"${SL[overallStatus(d)]}"`).join('\n');dl(h+r,`emosys_analytics_${new Date().toISOString().slice(0,10)}.csv`,'text/csv');}
+  function exportJSON(){dl(JSON.stringify({exported:new Date().toISOString(),period:currentPeriod,deviceCount:devicesData.length,devices:devicesData.map(d=>({...d,status:SL[overallStatus(d)]}))},null,2),`emosys_analytics_${new Date().toISOString().slice(0,10)}.json`,'application/json');}
+  function dl(c,n,t){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([c],{type:t}));a.download=n;a.click();URL.revokeObjectURL(a.href);}
+
+  /* ── AUTH ────────────────────────────── */
+  if(typeof doLogout==='undefined')window.doLogout=()=>{try{localStorage.removeItem('emosys_token');}catch{}window.location.href='Login.html';};
+
+  /* ── INIT ────────────────────────────── */
+  const dateStr = new Date().toLocaleDateString('en-MY',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  document.getElementById('currentDate').textContent = dateStr;
+  document.getElementById('footerDate').textContent  = dateStr;
+
+  if (localStorage.getItem('emosys_darkmode') === '1') {
+    document.body.classList.add('dark-mode');
+    const btn = document.getElementById('darkBtn');
+    if (btn) btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg> Light`;
+  }
+
+  /* Start immediately, no blocking overlay */
+  refreshAnalytics(false);
+  setInterval(() => refreshAnalytics(false), REFRESH_MS);
+  </script>
+</body>
+</html>

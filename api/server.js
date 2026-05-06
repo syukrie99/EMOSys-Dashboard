@@ -362,6 +362,53 @@ app.post('/api/login', (req, res) => {
     }
 });
 
+// ── POST /api/ai/chat ─────────────────────────────────────────
+app.post('/api/ai/chat', async (req, res) => {
+    try {
+        const { messages, system } = req.body;
+        const geminiMessages = messages.map(m => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content }]
+        }));
+
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    system_instruction: { parts: [{ text: system }] },
+                    contents: geminiMessages,
+                    generationConfig: { maxOutputTokens: 1000 }
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        /* Debug log to see what Gemini actually returns */
+        console.log('Gemini response:', JSON.stringify(data, null, 2));
+
+        /* Handle all possible Gemini response states */
+        let text = 'No response.';
+        if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+            text = data.candidates[0].content.parts[0].text;
+        } else if (data.candidates?.[0]?.finishReason === 'SAFETY') {
+            text = 'Response blocked by safety filter. Please rephrase your question.';
+        } else if (data.promptFeedback?.blockReason) {
+            text = `Request blocked: ${data.promptFeedback.blockReason}. Please rephrase.`;
+        } else if (data.error) {
+            text = `Gemini error: ${data.error.message}`;
+        }
+
+res.json({ content: [{ type: 'text', text }] });
+
+    } catch (err) {
+        console.error('Gemini proxy error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ── Start server ─────────────────────────────────────────────
 const PORT = 3000;
 app.listen(PORT, () => {
