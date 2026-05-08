@@ -362,17 +362,18 @@ app.post('/api/login', (req, res) => {
     }
 });
 
-// ── POST /api/ai/chat ─────────────────────────────────────────
+// // ── POST /api/ai/chat ─────────────────────────────────────────
 app.post('/api/ai/chat', async (req, res) => {
-    try {
-        const { messages, system } = req.body;
-        const geminiMessages = messages.map(m => ({
-            role: m.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: m.content }]
-        }));
+    const { messages, system } = req.body;
 
+    const geminiMessages = messages.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+    }));
+
+    const callGemini = async (model) => {
         const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -383,25 +384,59 @@ app.post('/api/ai/chat', async (req, res) => {
                 })
             }
         );
+        return response.json();
+    };
 
-        const data = await response.json();
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-        /* Debug log to see what Gemini actually returns */
-        console.log('Gemini response:', JSON.stringify(data, null, 2));
+    try {
+        let data;
+        let text = null;
 
-        /* Handle all possible Gemini response states */
-        let text = 'No response.';
-        if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-            text = data.candidates[0].content.parts[0].text;
-        } else if (data.candidates?.[0]?.finishReason === 'SAFETY') {
-            text = 'Response blocked by safety filter. Please rephrase your question.';
-        } else if (data.promptFeedback?.blockReason) {
-            text = `Request blocked: ${data.promptFeedback.blockReason}. Please rephrase.`;
-        } else if (data.error) {
-            text = `Gemini error: ${data.error.message}`;
+        /* Try gemini-3.1-flash-lite-preview up to 3 times */
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            console.log(`Gemini attempt ${attempt}...`);
+            data = await callGemini('gemini-3.1-flash-lite-preview');
+
+            if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                text = data.candidates[0].content.parts[0].text;
+                break;
+            }
+
+            const isOverloaded = data.error?.message?.includes('high demand') ||
+                                 data.error?.message?.includes('overloaded') ||
+                                 data.error?.status === 'RESOURCE_EXHAUSTED';
+
+            if (isOverloaded && attempt < 3) {
+                console.log(`Overloaded, waiting ${attempt * 2}s...`);
+                await sleep(attempt * 2000);
+                continue;
+            }
+
+            break;
         }
 
-res.json({ content: [{ type: 'text', text }] });
+        /* Fallback to gemini-3-flash-preview if still no response */
+        if (!text) {
+            console.log('Falling back to gemini-3-flash-preview...');
+            data = await callGemini('gemini-3-flash-preview');
+            if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                text = data.candidates[0].content.parts[0].text;
+            }
+        }
+
+        /* Handle error states */
+        if (!text) {
+            if (data.candidates?.[0]?.finishReason === 'SAFETY') {
+                text = 'Response blocked by safety filter. Please rephrase your question.';
+            } else if (data.error) {
+                text = `AI is currently busy. Please try again in a moment. (${data.error.message})`;
+            } else {
+                text = 'AI did not return a response. Please try again.';
+            }
+        }
+
+        res.json({ content: [{ type: 'text', text }] });
 
     } catch (err) {
         console.error('Gemini proxy error:', err.message);

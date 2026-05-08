@@ -147,19 +147,19 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelector('.sensor-card.co2   .sensor-spark').classList.remove('loading');
     document.querySelector('.sensor-card.voc   .sensor-spark').classList.remove('loading');
 
-    setBadge('tempBadge', t > 28 ? 'crit' : t > 26 ? 'warn' : 'ok');
-    setBadge('humBadge',  h > 70 ? 'crit' : h > 65 ? 'warn' : 'ok');
+    setBadge('tempBadge', t > 35 ? 'crit' : t > 29 ? 'warn' : 'ok');
+    setBadge('humBadge',  h > 80 ? 'crit' : h > 70 ? 'warn' : 'ok');
 
     var aqiBadge   = document.getElementById('aqiBadge');
     var aqiLabelEl = document.getElementById('aqiLabel');
     var cat = aqiCategory(aqi);
-    aqiBadge.className   = 'status-flag ' + (pm25 > 55.4 ? 'flag-crit' : pm25 > 35.4 ? 'flag-warn' : 'flag-ok');
-    aqiBadge.textContent = pm25 > 55.4 ? 'Unhealthy' : pm25 > 35.4 ? 'Elevated' : 'Good';
+    aqiBadge.className   = 'status-flag ' + (pm25 > 30 ? 'flag-crit' : pm25 > 15 ? 'flag-warn' : 'flag-ok');
+    aqiBadge.textContent = pm25 > 30 ? 'Unhealthy' : pm25 > 15 ? 'Elevated' : 'Good';
     aqiLabelEl.textContent = 'AQI: ' + aqi;
     aqiLabelEl.style.color = cat.color;
 
     setBadge('co2Badge', co2 > 1500 ? 'crit' : co2 > 1000 ? 'warn' : 'ok');
-    setBadge('vocBadge', voc > 300  ? 'crit' : voc > 200  ? 'warn' : 'ok');
+    setBadge('vocBadge', voc > 600  ? 'crit' : voc > 300  ? 'warn' : 'ok');
 
     document.getElementById('lastUpdated').textContent =
       'Last updated: ' + new Date().toLocaleTimeString();
@@ -199,35 +199,35 @@ document.addEventListener('DOMContentLoaded', function () {
     var devLabel   = activeInfo ? activeInfo.label : 'Unknown Device';
     var alerts = [];
 
-    if (co2 > 1000) alerts.push({
-      type:  co2 > 1500 ? 'crit' : 'warn',
-      msg:   'CO\u2082 level ' + (co2 > 1500 ? 'critical' : 'elevated') + ' \u2014 ' + devLabel,
-      meta:  'Reading: ' + co2 + ' ppm \xb7 Threshold: 1,000 ppm',
-      label: co2 > 1500 ? 'Critical' : 'Warning',
+    if (co2 > 800) alerts.push({
+      type:  co2 > 1200 ? 'crit' : 'warn',
+      msg:   'CO\u2082 level ' + (co2 > 800 ? 'critical' : 'elevated') + ' \u2014 ' + devLabel,
+      meta:  'Reading: ' + co2 + ' ppm \xb7 Threshold: 800 ppm',
+      label: co2 > 1200 ? 'Critical' : 'Warning',
       time:  'Just now'
     });
 
-    if (voc > 200) alerts.push({
-      type:  voc > 300 ? 'crit' : 'warn',
+    if (voc > 300) alerts.push({
+      type:  voc > 600 ? 'crit' : 'warn',
       msg:   'VOC level ' + (voc > 300 ? 'critical' : 'elevated') + ' \u2014 ' + devLabel,
-      meta:  'Reading: ' + voc + ' ppb \xb7 Threshold: 200 ppb',
-      label: voc > 300 ? 'Critical' : 'Warning',
+      meta:  'Reading: ' + voc + ' ppb \xb7 Threshold: 300 ppb',
+      label: voc > 600 ? 'Critical' : 'Warning',
       time:  'Just now'
     });
 
-    if (aqi > 50) alerts.push({
-      type:  aqi > 100 ? 'crit' : 'warn',
-      msg:   'Air Quality ' + (aqi > 100 ? 'unhealthy' : 'moderate') + ' \u2014 ' + devLabel,
-      meta:  'AQI: ' + aqi + ' \xb7 Threshold: 50 (Good)',
-      label: aqi > 100 ? 'Unhealthy' : 'Moderate',
+    if (pm25 > 15) alerts.push({
+      type:  pm25 > 30 ? 'crit' : 'warn',
+      msg:   'PM2.5 level ' + (pm25 > 15 ? 'unhealthy' : 'moderate') + ' \u2014 ' + devLabel,
+      meta:  'Reading: ' + pm25.toFixed(1) + ' \xb5g/m\xb3 \xb7 Threshold: 15 \sb5g/m\xb3',
+      label: pm25 > 30 ? 'Unhealthy' : 'Moderate',
       time:  'Just now'
     });
 
-    if (t > 26) alerts.push({
-      type:  t > 28 ? 'crit' : 'warn',
-      msg:   'Temperature ' + (t > 28 ? 'critical' : 'elevated') + ' \u2014 ' + devLabel,
-      meta:  'Reading: ' + t + '\u00b0C \xb7 Threshold: 26\u00b0C',
-      label: t > 28 ? 'Critical' : 'Warning',
+    if (t > 29) alerts.push({
+      type:  t > 35 ? 'crit' : 'warn',
+      msg:   'Temperature ' + (t > 29 ? 'critical' : 'elevated') + ' \u2014 ' + devLabel,
+      meta:  'Reading: ' + t + '\u00b0C \xb7 Threshold: 29\u00b0C',
+      label: t > 35 ? 'Critical' : 'Warning',
       time:  'Just now'
     });
 
@@ -472,11 +472,11 @@ document.addEventListener('DOMContentLoaded', function () {
         '<tr style="cursor:pointer" onclick="switchToDevice(this.dataset.id)" data-id="' + row.id + '" title="Click to view">' +
           '<td><div class="device-name">' + row.label + '</div></td>' +
           '<td><span class="online"><i class="dot-on"></i>Online</span></td>' +
-          '<td style="' + vc(t,26,28)     + '">' + t + '</td>' +
-          '<td style="' + vc(h,65,70)     + '">' + h + '</td>' +
-          '<td style="' + vc(p,35.4,55.4) + '">' + p + '</td>' +
-          '<td style="' + vc(c,1000,1500) + '">' + c + '</td>' +
-          '<td style="' + vc(v,200,300)   + '">' + v + '</td>' +
+          '<td style="' + vc(t,29,35)     + '">' + t + '</td>' +
+          '<td style="' + vc(h,70,80)     + '">' + h + '</td>' +
+          '<td style="' + vc(p,15,30) + '">' + p + '</td>' +
+          '<td style="' + vc(c,800,1200) + '">' + c + '</td>' +
+          '<td style="' + vc(v,300,600)   + '">' + v + '</td>' +
         '</tr>'
       );
     }).join('');

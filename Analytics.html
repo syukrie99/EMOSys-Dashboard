@@ -149,7 +149,6 @@
       font-size: 0.76rem; font-weight: 600; color: #cbd5e1;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;
     }
-    /* Professional "Highest" pill — no emoji, uses inline SVG crown */
     .rank-highest-pill {
       display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
       background: rgba(250,204,21,0.8); 
@@ -336,7 +335,7 @@
   <!-- Subtle, non-blocking refresh indicator -->
   <div id="refreshPill"><div class="rp-dot"></div>Updating…</div>
 
-  <!-- ══════════════════════════════════════════════ SIDEBAR -->
+  <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="logo-wrap">
@@ -492,7 +491,7 @@
           </div>
           <div>
             <div class="ai-title">AI Environmental Analyst</div>
-            <div class="ai-sub">Powered by Claude</div>
+            <div class="ai-sub">Powered by Gemini 3.1 Flash Lite</div>
           </div>
           <div class="ai-live-badge"><div class="ai-live-dot"></div>Live data</div>
         </div>
@@ -598,17 +597,17 @@
   /* ── CONFIG ─────────────────────────── */
   const API_BASE   = 'http://10.0.30.7:3000/api';
   const AI_API     = '/api/ai/chat';
-  const AI_MODEL   = 'gemini-2.5-flash';
+  const AI_MODEL   = 'gemini-3.1-flash-lite-preview';
   const PAGE_SIZE  = 8;
   const REFRESH_MS = 30000;
 
   /* ── THRESHOLDS ─────────────────────── */
   const THR = {
-    temp: { warn: 28,   danger: 35   },
-    hum:  { warn: 65,   danger: 80   },
-    pm25: { warn: 35,   danger: 75   },
-    co2:  { warn: 1000, danger: 1500 },
-    voc:  { warn: 500,  danger: 1000 }
+    temp: { warn: 29,   danger: 35   },
+    hum:  { warn: 70,   danger: 80   },
+    pm25: { warn: 15,   danger: 75   },
+    co2:  { warn: 800, danger: 1200 },
+    voc:  { warn: 300,  danger: 600 }
   };
 
   /* ── STATE ──────────────────────────── */
@@ -920,8 +919,16 @@ async function fetchSensors(id) {
   /* ── HEATMAP ─────────────────────────── */
   function heatColor(n) {
     n=Math.max(0,Math.min(1,n));
-    if (n<0.5){const t=n*2;return `rgb(${Math.round(16+229*t)},${Math.round(185-27*t)},${Math.round(129-118*t)})`;}
-    const t=(n-0.5)*2;return `rgb(${Math.round(245-6*t)},${Math.round(158-90*t)},${Math.round(11+57*t)})`;
+    if (n<0.5){
+      const t=n*2;return `rgb(${Math.round(16+229*t)},
+      ${Math.round(185-27*t)},
+      ${Math.round(129-118*t)})`;
+    }
+
+    const t=(n-0.5)*2;
+    return `rgb(${Math.round(245-6*t)},
+    ${Math.round(158-90*t)},
+    ${Math.round(11+57*t)})`;
   }
   function renderHeatmap(devices) {
     const c=document.getElementById('heatmapContainer');
@@ -931,7 +938,11 @@ async function fetchSensors(id) {
     devices.forEach(d=>{
       h+=`<div class="hm-label-cell"><span title="${d.name}">${(d.name)}</span></div>`;
       SDEFS.forEach(s=>{
-        const v=d[s.key], nr=(v!=null&&!isNaN(v))?Math.min(1,v/s.max):null;
+        const v=d[s.key], nr=(v!=null&&!isNaN(v))
+          ? (s.key==='temp'
+              ? Math.min(1, Math.max(0, (v-18)/(s.max-18)))
+              : Math.min(1, v/s.max))
+            : null;
         const bg=nr!=null?heatColor(nr):'rgba(255,255,255,0.04)';
         const tx=nr!=null?(nr>0.55?'#fff':'#111'):'rgba(255,255,255,0.2)';
         h+=`<div class="hm-cell" style="background:${bg};color:${tx}" title="${s.label}: ${v!=null?fmt(v)+s.unit:'N/A'}">${nr!=null?Math.round(nr*100)+'%':'—'}</div>`;
@@ -954,15 +965,29 @@ async function fetchSensors(id) {
     };
 
     const temps=has('temp');
-    if (temps.length) { const hot=temps.reduce((m,d)=>d.temp>m.temp?d:m); const st=getStatus('temp',hot.temp); ins.push({type:st==='good'?'success':st,icon:'therm',title:`Highest temperature: ${hot.name} — ${fmt(hot.temp)}°C`,body:st==='good'?`${hot.location} is within normal range.`:st==='warn'?`${hot.location} is running warm. Check cooling or HVAC.`:`CRITICAL: ${hot.location} exceeds ${THR.temp.danger}°C!`}); }
+    if (temps.length) { 
+      const hot=temps.reduce((m,d)=>d.temp>m.temp?d:m); 
+      const st=getStatus('temp',hot.temp); 
+      ins.push({type:st==='good'?'success':st,icon:'therm',title:`Highest temperature: ${hot.name} — ${fmt(hot.temp)}°C`,body:st==='good'?`${hot.location} is within normal range.`:st==='warn'?`${hot.location} is running warm. Check cooling or HVAC.`:`CRITICAL: ${hot.location} exceeds ${THR.temp.danger}°C!`}); 
+    }
     const co2s=has('co2');
-    if (co2s.length) { const high=co2s.reduce((m,d)=>d.co2>m.co2?d:m); const wl=co2s.filter(d=>getStatus('co2',d.co2)!=='good'); const st=getStatus('co2',high.co2); ins.push({type:st==='good'?'info':st,icon:'wind',title:`Highest CO₂: ${high.name} — ${fmtInt(high.co2)} ppm`,body:wl.length===0?'All CO₂ levels acceptable. Ventilation is adequate.':`${wl.length} device(s) above threshold: ${wl.map(d=>d.name.split(' ')[0]).join(', ')}. Improve ventilation.`}); }
+    if (co2s.length) { 
+      const high=co2s.reduce((m,d)=>d.co2>m.co2?d:m); 
+      const wl=co2s.filter(d=>getStatus('co2',d.co2)!=='good'); 
+      const st=getStatus('co2',high.co2); ins.push({type:st==='good'?'info':st,icon:'wind',title:`Highest CO₂: ${high.name} — ${fmtInt(high.co2)} ppm`,body:wl.length===0?'All CO₂ levels acceptable. Ventilation is adequate.':`${wl.length} device(s) above threshold: ${wl.map(d=>d.name.split(' ')[0]).join(', ')}. Improve ventilation.`}); 
+    }
     const pm25s=has('pm25');
-    if (pm25s.length) { const worst=pm25s.reduce((m,d)=>d.pm25>m.pm25?d:m); const st=getStatus('pm25',worst.pm25); ins.push({type:st==='good'?'success':st,icon:'air',title:`Worst air quality: ${worst.name} — PM2.5 ${fmt(worst.pm25)}`,body:st==='good'?'Air particulate levels acceptable.':st==='warn'?`Elevated PM2.5 at ${worst.location}. Check HVAC filters.`:`Dangerous PM2.5 at ${worst.location}! Check filtration.`}); }
+    if (pm25s.length) { 
+      const worst=pm25s.reduce((m,d)=>d.pm25>m.pm25?d:m); 
+      const st=getStatus('pm25',worst.pm25); 
+      ins.push({type:st==='good'?'success':st,icon:'air',title:`Worst air quality: ${worst.name} — PM2.5 ${fmt(worst.pm25)}`,body:st==='good'?'Air particulate levels acceptable.':st==='warn'?`Elevated PM2.5 at ${worst.location}. Check HVAC filters.`:`Dangerous PM2.5 at ${worst.location}! Check filtration.`}); 
+    }
     const offline=devices.filter(d=>d.online===false);
     ins.push(offline.length>0?{type:'danger',icon:'offline',title:`${offline.length} device(s) offline`,body:`Not responding: ${offline.map(d=>d.name).join(', ')}.`}:{type:'success',icon:'online',title:`All ${devices.length} devices online`,body:'All devices reporting. Network is healthy.'});
     const hums=has('hum');
-    if (hums.length>=2) { const mx=Math.max(...hums.map(d=>d.hum)),mn=Math.min(...hums.map(d=>d.hum)),sp=mx-mn; ins.push({type:sp>25?'warn':'info',icon:'drop',title:`Humidity spread: ${fmt(sp)}%RH across fleet`,body:sp>25?`Wide variation (${fmt(mn)}–${fmt(mx)}%RH). May indicate HVAC imbalance.`:`Consistent humidity (${fmt(mn)}–${fmt(mx)}%RH). HVAC balanced.`}); }
+    if (hums.length>=2) { 
+      const mx=Math.max(...hums.map(d=>d.hum)),mn=Math.min(...hums.map(d=>d.hum)),sp=mx-mn; ins.push({type:sp>25?'warn':'info',icon:'drop',title:`Humidity spread: ${fmt(sp)}%RH across fleet`,body:sp>25?`Wide variation (${fmt(mn)}–${fmt(mx)}%RH). May indicate HVAC imbalance.`:`Consistent humidity (${fmt(mn)}–${fmt(mx)}%RH). HVAC balanced.`}); 
+    }
 
     document.getElementById('insightRow').innerHTML=ins.map(i=>`
       <div class="insight-card">
@@ -991,7 +1016,7 @@ Give concise, actionable advice. Reference specific device names. Use bullet poi
     if (!msg) return;
     inp.value=''; appendBubble('user',msg); aiConversation.push({role:'user',content:msg}); setAiLoading(true);
     try {
-      const res=await fetch(AI_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:AI_MODEL,max_tokens:1000,system:buildCtx(devicesData.length?devicesData:FALLBACK),messages:aiConversation.slice(-6)})});
+      const res=await fetch(AI_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:AI_MODEL,max_tokens:1000,system:buildCtx(devicesData.length?devicesData:FALLBACK),messages:aiConversation.slice(-12)})});
       if (!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||`HTTP ${res.status}`);}
       const data=await res.json(), reply=data.content?.find(b=>b.type==='text')?.text||'No response.';
       aiConversation.push({role:'assistant',content:reply}); setAiLoading(false); appendBubble('assistant',reply);
