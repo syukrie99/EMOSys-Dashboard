@@ -458,7 +458,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     document.getElementById('overviewTableBody').innerHTML = slice.map(function(row) {
-      if (!row.data) {
+      if (!row.online || !row.data) {
         return '<tr><td><div class="device-name">' + row.label + '</div></td>' +
           '<td><span class="offline"><i class="dot-off"></i>Offline</span></td>' +
           '<td colspan="5" style="color:var(--muted)">No data</td></tr>';
@@ -497,23 +497,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
   window.renderOverviewPage = renderOverviewPage;
 
-  function loadOverviewTable() {
+function loadOverviewTable() {
     fetch('/api/devices')
       .then(function(res) { return res.json(); })
       .then(function(list) {
+        /* Fetch both sensor data AND online status for each device */
         var promises = list.map(function(d) {
-          return fetch('/api/ha/latest?device=' + d.id)
+          var dataPromise = fetch('/api/ha/latest?device=' + d.id)
             .then(function(res) { return res.json(); })
             .catch(function() { return null; });
+
+          var statusPromise = fetch('/api/ha/status?device=' + d.id)
+            .then(function(res) { return res.json(); })
+            .catch(function() { return { online: false }; });
+
+          return Promise.all([dataPromise, statusPromise]);
         });
+
         Promise.all(promises).then(function(results) {
           document.getElementById('overviewBadge').textContent = list.length + ' devices';
           overviewAllRows = list.map(function(d, i) {
-            var r = results[i];
+            var data   = results[i][0];
+            var status = results[i][1];
             return {
-              id   : d.id,
-              label: d.label,
-              data : (r && !r.error) ? r : null
+              id    : d.id,
+              label : d.label,
+              online: status.online === true,
+              data  : (data && !data.error) ? data : null
             };
           });
           renderOverviewPage(1);
