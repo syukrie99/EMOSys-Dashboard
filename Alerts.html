@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EMOSys — Alerts</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet"/>
+
+  <link rel="stylesheet" href="assets/css/main.css"/>
+  <link rel="stylesheet" href="assets/css/dashboard.css"/>
+
+  <style>
+  /* ALERTS PAGE — SUPPLEMENTAL STYLES */
+
+  /* SEVERITY BADGES */
+  .sev-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 0.69rem; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .sev-badge .sev-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .sev-badge.critical { background: rgba(239,68,68,0.14);  color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+  .sev-badge.warning  { background: rgba(245,158,11,0.14); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+  .sev-badge.info     { background: rgba(56,189,248,0.12); color: #38bdf8; border: 1px solid rgba(56,189,248,0.25); }
+  .sev-badge.resolved { background: rgba(16,185,129,0.1);  color: #34d399; border: 1px solid rgba(16,185,129,0.2); }
+
+  /* STAT STRIP */
+  .alert-stat-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px; margin-bottom: 26px;
+  }
+  .alert-stat {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 15px 16px;
+    display: flex; align-items: center; gap: 13px;
+  }
+  .alert-stat-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .alert-stat-icon svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .alert-stat-icon.red    { background: rgba(239,68,68,0.12);  color: #f87171; }
+  .alert-stat-icon.amber  { background: rgba(245,158,11,0.12); color: #fbbf24; }
+  .alert-stat-icon.green  { background: rgba(16,185,129,0.12); color: #34d399; }
+  .alert-stat-icon.blue   { background: rgba(56,189,248,0.12); color: #38bdf8; }
+  .alert-stat-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.32); margin-bottom: 3px; }
+  .alert-stat-val   { font-family: 'Barlow Condensed', sans-serif; font-size: 1.6rem; font-weight: 800; color: #f1f5f9; line-height: 1; }
+
+  /*  ACTIVE ALERTS LIST  */
+  .alerts-list-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px; overflow: hidden; margin-bottom: 26px;
+  }
+  .alerts-list-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    flex-wrap: wrap; gap: 10px;
+  }
+  .alerts-list-header h4 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.95rem; font-weight: 700;
+    color: #e2e8f0; letter-spacing: 0.04em; text-transform: uppercase; margin: 0;
+  }
+  .filter-tabs {
+    display: inline-flex; gap: 3px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 7px; padding: 3px;
+  }
+  .filter-tab {
+    padding: 4px 12px; border-radius: 5px; border: none;
+    font-size: 0.74rem; font-weight: 600; font-family: 'Barlow', sans-serif;
+    color: rgba(255,255,255,0.38); background: transparent; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-tab.active { background: rgba(255,255,255,0.09); color: #e2e8f0; }
+  .filter-tab:hover:not(.active) { color: rgba(255,255,255,0.6); }
+
+  /* INDIVIDUAL ALERT ROW */
+  .alert-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center; gap: 14px;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+    position: relative;
+  }
+  .alert-item:last-child { border-bottom: none; }
+  .alert-item:hover { background: rgba(255,255,255,0.025); }
+  .alert-item.is-new { animation: alertSlideIn 0.35s ease-out; }
+  @keyframes alertSlideIn {
+    from { opacity: 0; transform: translateX(-12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  .alert-item.critical-row { border-left: 3px solid rgba(239,68,68,0.5); }
+  .alert-item.warning-row  { border-left: 3px solid rgba(245,158,11,0.5); }
+  .alert-item.info-row     { border-left: 3px solid rgba(56,189,248,0.4); }
+
+  .alert-icon-wrap {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .alert-icon-wrap svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .alert-icon-wrap.critical { background: rgba(239,68,68,0.12);  color: #f87171; }
+  .alert-icon-wrap.warning  { background: rgba(245,158,11,0.12); color: #fbbf24; }
+  .alert-icon-wrap.info     { background: rgba(56,189,248,0.1);  color: #38bdf8; }
+  .alert-icon-wrap.resolved { background: rgba(16,185,129,0.1);  color: #34d399; }
+
+  .alert-body { min-width: 0; }
+  .alert-title {
+    font-size: 0.875rem; font-weight: 600; color: #e2e8f0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 3px;
+  }
+  .alert-meta {
+    font-size: 0.74rem; color: rgba(255,255,255,0.35);
+    display: flex; flex-wrap: wrap; gap: 8px;
+  }
+  .alert-meta span { display: flex; align-items: center; gap: 4px; }
+  .alert-meta .dot-sep { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,0.2); }
+
+  .alert-value-col {
+    text-align: right; flex-shrink: 0;
+  }
+  .alert-reading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.05rem; font-weight: 800; color: #f1f5f9;
+  }
+  .alert-threshold { font-size: 0.69rem; color: rgba(255,255,255,0.3); margin-top: 2px; }
+
+  .alert-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .ack-btn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 7px; padding: 5px 11px;
+    font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.5);
+    cursor: pointer; font-family: 'Barlow', sans-serif; transition: all 0.15s;
+  }
+  .ack-btn:hover { background: rgba(255,255,255,0.1); color: #e2e8f0; }
+  .ack-btn.acked { color: #34d399; border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.08); cursor: default; }
+
+  /* empty state */
+  .alerts-empty {
+    padding: 40px; text-align: center;
+    color: rgba(255,255,255,0.22); font-size: 0.88rem; line-height: 1.8;
+  }
+  .alerts-empty svg { 
+    width: 36px; height: 36px; 
+    stroke: rgba(255,255,255,0.14); 
+    fill: none; stroke-width: 1.5; 
+    display: block; 
+    margin: 0 auto 12px; 
+}
+
+  /* HISTORY TABLE */
+  .history-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px; overflow: hidden; margin-bottom: 26px;
+  }
+  .history-card table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .history-card thead th {
+    padding: 10px 14px; text-align: left;
+    font-size: 0.67rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .history-card tbody td {
+    padding: 10px 14px; color: #94a3b8;
+    border-bottom: 1px solid rgba(255,255,255,0.035);
+    vertical-align: middle;
+  }
+  .history-card tbody tr:last-child td { border-bottom: none; }
+  .history-card tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .history-time { font-size: 0.75rem; color: rgba(255,255,255,0.4); font-family: 'Barlow Condensed', sans-serif; }
+  .history-device { font-weight: 600; color: #e2e8f0; font-size: 0.82rem; }
+  .history-val { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.92rem; }
+  .history-val.crit { color: #f87171; }
+  .history-val.warn { color: #fbbf24; }
+  .email-sent-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2);
+    border-radius: 20px; padding: 2px 8px;
+    font-size: 0.67rem; font-weight: 600; color: #34d399;
+  }
+  .email-no-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px; padding: 2px 8px;
+    font-size: 0.67rem; color: rgba(255,255,255,0.3);
+  }
+
+  /* EMAIL CONFIG CARD */
+  .email-config-card {
+    background: linear-gradient(135deg, rgba(14,165,233,0.07) 0%, rgba(99,102,241,0.07) 100%);
+    border: 1px solid rgba(56,189,248,0.18);
+    border-radius: 14px; overflow: hidden; margin-bottom: 26px;
+    position: relative;
+  }
+  .email-config-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, #38bdf8, #818cf8);
+  }
+  .email-config-header {
+    display: flex; align-items: center; gap: 13px;
+    padding: 16px 20px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .email-config-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: linear-gradient(135deg, #0ea5e9, #6366f1);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .email-config-icon svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; }
+  .email-config-title { font-family: 'Barlow Condensed', sans-serif; font-size: 0.95rem; font-weight: 700; color: #e2e8f0; letter-spacing: 0.04em; text-transform: uppercase; }
+  .email-config-sub   { font-size: 0.73rem; color: rgba(255,255,255,0.38); margin-top: 1px; }
+
+  .toggle-switch-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .toggle-label { font-size: 0.84rem; font-weight: 600; color: #e2e8f0; }
+  .toggle-sub   { font-size: 0.73rem; color: rgba(255,255,255,0.35); margin-top: 2px; }
+  .toggle-switch {
+    position: relative; width: 44px; height: 24px; flex-shrink: 0;
+  }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; inset: 0; background: rgba(255,255,255,0.1);
+    border-radius: 34px; cursor: pointer; transition: 0.25s;
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .toggle-slider::before {
+    content: ''; position: absolute; height: 16px; width: 16px;
+    left: 3px; bottom: 3px; border-radius: 50%;
+    background: rgba(255,255,255,0.5); transition: 0.25s;
+  }
+  .toggle-switch input:checked + .toggle-slider { background: #0ea5e9; border-color: #0ea5e9; }
+  .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); background: #fff; }
+
+  .config-body { padding: 16px 20px; }
+  .config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px; margin-bottom: 16px;
+  }
+  .config-field label {
+    display: block; font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    color: rgba(255,255,255,0.38); margin-bottom: 7px;
+  }
+  .config-input {
+    width: 100%; box-sizing: border-box;
+    background: rgba(255,255,255,0.055);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px; padding: 9px 12px;
+    color: #e2e8f0; font-family: 'Barlow', sans-serif;
+    font-size: 0.875rem; outline: none; transition: border-color 0.18s;
+  }
+  .config-input:focus { border-color: rgba(56,189,248,0.45); }
+  .config-input::placeholder { color: rgba(255,255,255,0.2); }
+
+  .config-actions {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+    padding: 14px 20px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+  }
+  .btn-save {
+    background: linear-gradient(135deg, #0ea5e9, #6366f1);
+    border: none; border-radius: 8px; padding: 9px 20px;
+    color: #fff; font-family: 'Barlow', sans-serif;
+    font-size: 0.875rem; font-weight: 600; cursor: pointer;
+    transition: opacity 0.18s, transform 0.1s;
+  }
+  .btn-save:hover { opacity: 0.88; }
+  .btn-save:active { transform: scale(0.97); }
+  .btn-test {
+    background: rgba(16,185,129,0.1);
+    border: 1px solid rgba(16,185,129,0.25);
+    border-radius: 8px; padding: 9px 20px;
+    color: #34d399; font-family: 'Barlow', sans-serif;
+    font-size: 0.875rem; font-weight: 600; cursor: pointer;
+    transition: all 0.18s; display: flex; align-items: center; gap: 7px;
+  }
+  .btn-test:hover { background: rgba(16,185,129,0.16); border-color: rgba(16,185,129,0.4); }
+  .btn-test:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-test svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .config-status {
+    font-size: 0.8rem; margin-left: auto;
+    padding: 6px 12px; border-radius: 7px;
+  }
+  .config-status.ok   { background: rgba(16,185,129,0.1); color: #34d399; }
+  .config-status.err  { background: rgba(239,68,68,0.1);  color: #f87171; }
+  .config-status.info { background: rgba(56,189,248,0.1); color: #38bdf8; }
+
+  /* ── THRESHOLD CONFIG CARD ───────────────── */
+  .threshold-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px; overflow: hidden; margin-bottom: 26px;
+  }
+  .threshold-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .threshold-card-header h4 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.95rem; font-weight: 700; color: #e2e8f0;
+    letter-spacing: 0.04em; text-transform: uppercase; margin: 0;
+  }
+  .threshold-body { padding: 16px 18px; }
+  .threshold-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 14px;
+  }
+  .threshold-row {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px; padding: 13px 15px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    align-items: center; gap: 12px;
+  }
+  .threshold-sensor-name {
+    font-size: 0.8rem; font-weight: 700; color: #e2e8f0;
+  }
+  .threshold-sensor-unit {
+    font-size: 0.68rem; color: rgba(255,255,255,0.3); margin-top: 2px;
+  }
+  .thr-field label {
+    display: block; font-size: 0.64rem; font-weight: 700;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    color: rgba(255,255,255,0.3); margin-bottom: 5px;
+  }
+  .thr-input {
+    width: 100%; box-sizing: border-box;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 6px; padding: 6px 9px;
+    color: #e2e8f0; font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.95rem; font-weight: 700; outline: none;
+    transition: border-color 0.18s;
+  }
+  .thr-input.warn-input:focus  { border-color: rgba(245,158,11,0.5); }
+  .thr-input.crit-input:focus  { border-color: rgba(239,68,68,0.5); }
+  .threshold-save-row {
+    display: flex; gap: 10px; align-items: center;
+    margin-top: 16px; padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+
+  /* ── COOLDOWN INFO ───────────────────────── */
+  .cooldown-info {
+    display: flex; align-items: flex-start; gap: 11px;
+    background: rgba(56,189,248,0.06);
+    border: 1px solid rgba(56,189,248,0.15);
+    border-radius: 10px; padding: 12px 15px;
+    margin-top: 14px; font-size: 0.8rem; color: rgba(255,255,255,0.5); line-height: 1.55;
+  }
+  .cooldown-info svg { width: 16px; height: 16px; stroke: #38bdf8; fill: none; stroke-width: 2; flex-shrink: 0; margin-top: 1px; }
+  .cooldown-info strong { color: #7dd3fc; }
+
+  /* ── LIGHT MODE ──────────────────────────── */
+  body.light .alert-stat       { background: #fff; border-color: rgba(0,0,0,0.07); }
+  body.light .alert-stat-label { color: rgba(0,0,0,0.4); }
+  body.light .alert-stat-val   { color: #0f172a; }
+  body.light .alerts-list-card { background: #fff; border-color: rgba(0,0,0,0.07); }
+  body.light .alerts-list-header { border-bottom-color: rgba(0,0,0,0.07); }
+  body.light .alerts-list-header h4 { color: #1e293b; }
+  body.light .filter-tabs  { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.08); }
+  body.light .filter-tab   { color: rgba(0,0,0,0.4); }
+  body.light .filter-tab.active { background: rgba(0,0,0,0.07); color: #1e293b; }
+  body.light .alert-item   { border-bottom-color: rgba(0,0,0,0.05); }
+  body.light .alert-item:hover { background: rgba(0,0,0,0.015); }
+  body.light .alert-title  { color: #1e293b; }
+  body.light .alert-meta   { color: rgba(0,0,0,0.38); }
+  body.light .alert-reading { color: #0f172a; }
+  body.light .alert-threshold { color: rgba(0,0,0,0.32); }
+  body.light .ack-btn      { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.09); color: rgba(0,0,0,0.45); }
+  body.light .ack-btn:hover { background: rgba(0,0,0,0.07); color: #1e293b; }
+  body.light .history-card { background: #fff; border-color: rgba(0,0,0,0.07); }
+  body.light .history-card thead th { background: rgba(0,0,0,0.02); color: rgba(0,0,0,0.38); border-bottom-color: rgba(0,0,0,0.07); }
+  body.light .history-card tbody td { color: #475569; border-bottom-color: rgba(0,0,0,0.04); }
+  body.light .history-device { color: #1e293b; }
+  body.light .history-time   { color: rgba(0,0,0,0.4); }
+  body.light .email-config-card { background: linear-gradient(135deg,rgba(14,165,233,0.05) 0%,rgba(99,102,241,0.05) 100%); border-color: rgba(14,165,233,0.18); }
+  body.light .toggle-slider   { background: rgba(0,0,0,0.08); border-color: rgba(0,0,0,0.1); }
+  body.light .toggle-slider::before { background: rgba(0,0,0,0.35); }
+  body.light .config-input    { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.1); color: #1e293b; }
+  body.light .threshold-card  { background: #fff; border-color: rgba(0,0,0,0.07); }
+  body.light .threshold-card-header { border-bottom-color: rgba(0,0,0,0.07); }
+  body.light .threshold-card-header h4 { color: #1e293b; }
+  body.light .threshold-row   { background: rgba(0,0,0,0.02); border-color: rgba(0,0,0,0.06); }
+  body.light .threshold-sensor-name { color: #1e293b; }
+  body.light .threshold-sensor-unit { color: rgba(0,0,0,0.32); }
+  body.light .thr-input        { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.09); color: #0f172a; }
+  body.light .threshold-save-row { border-top-color: rgba(0,0,0,0.06); }
+  body.light .cooldown-info    { background: rgba(14,165,233,0.05); border-color: rgba(14,165,233,0.15); color: rgba(0,0,0,0.5); }
+  body.light .thr-field label  { color: rgba(0,0,0,0.38); }
+  body.light .email-config-title { color: #1e293b; }
+  body.light .toggle-label { color: #1e293b; }
+  body.light .toggle-sub   { color: rgba(0,0,0,0.4); }
+  body.light .config-field label { color: rgba(0,0,0,0.4); }
+
+  /* pulse ring on critical stat */
+  @keyframes pulseRing {
+    0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.35); }
+    70%  { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+    100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+  }
+  .stat-pulse { animation: pulseRing 2s ease-out infinite; }
+  </style>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-wrap">
+      <img src="assets/images/smd-logo.jpg" alt="SMD Semiconductor"
+          style="width: 130px; display:block; margin: 0 auto; border-radius: 6px; opacity:0.92"/>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">Overview</div>
+
+      <a class="nav-item" href="Dashboard.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        Dashboard
+      </a>
+
+      <a class="nav-item" href="Analytics.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10"/>
+          <line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+        Analytics
+      </a>
+
+      <a class="nav-item" href="History.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        History &amp; Logs
+      </a>
+
+      <div class="nav-section">Devices</div>
+
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="7" width="20" height="14" rx="2"/>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+        </svg>
+        EMOSys Devices
+      </a>
+
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+        </svg>
+        Network Status
+      </a>
+
+      <div class="nav-section">Management</div>
+
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 20V10M12 20V4M6 20v-6"/>
+        </svg>
+        Reports
+      </a>
+
+      <a class="nav-item active" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        </svg>
+        Alerts
+        <span class="nav-badge" id="alertCount">0</span>
+      </a>
+
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M20 21a8 8 0 1 0-16 0"/>
+        </svg>
+        Users
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="avatar" id="userAvatar">A</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Admin</div>
+          <div class="user-role" id="userRole">Administrator</div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()" title="Logout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <div class="breadcrumb">
+        <span class="breadcrumb-home">EMOSys</span>
+        <span class="breadcrumb-sep">›</span>
+        <span class="breadcrumb-current">Alerts</span>
+      </div>
+      <div class="topbar-right">
+        <div class="status-pill" id="emailStatusPill">
+          <div class="pulse-dot"></div>
+          Email Alerts Active
+        </div>
+        <button class="topbar-btn" onclick="toggleDarkMode()" id="darkBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          Dark
+        </button>
+        <button class="topbar-btn" onclick="refreshAlerts(true)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          Refresh
+        </button>
+        <span style="font-size:0.75rem;color:rgba(255,255,255,0.4)" id="currentDate"></span>
+      </div>
+    </div>
+
+    <!-- PAGE -->
+    <div class="page">
+
+      <div class="page-title-bar">
+        <h1><span>Alert Management</span>Active Alerts &amp; Email Notifications</h1>
+        <div class="last-updated" id="lastUpdated">Last updated: —</div>
+      </div>
+
+      <!-- ── STAT STRIP -->
+      <div class="alert-stat-strip">
+        <div class="alert-stat">
+          <div class="alert-stat-icon red stat-pulse" id="critIcon">
+            <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div>
+            <div class="alert-stat-label">Critical</div>
+            <div class="alert-stat-val" id="countCritical">0</div>
+          </div>
+        </div>
+        <div class="alert-stat">
+          <div class="alert-stat-icon amber">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <div>
+            <div class="alert-stat-label">Warnings</div>
+            <div class="alert-stat-val" id="countWarning">0</div>
+          </div>
+        </div>
+        <div class="alert-stat">
+          <div class="alert-stat-icon green">
+            <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div>
+            <div class="alert-stat-label">Resolved Today</div>
+            <div class="alert-stat-val" id="countResolved">0</div>
+          </div>
+        </div>
+        <div class="alert-stat">
+          <div class="alert-stat-icon blue">
+            <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div>
+            <div class="alert-stat-label">Emails Sent</div>
+            <div class="alert-stat-val" id="countEmails">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ACTIVE ALERTS -->
+      <div class="section-head"><h3>Active Alerts</h3></div>
+      <div class="alerts-list-card">
+        <div class="alerts-list-header">
+          <h4>Live Threshold Breaches</h4>
+          <div class="filter-tabs" id="filterTabs">
+            <button class="filter-tab active" onclick="setFilter('all',this)">All</button>
+            <button class="filter-tab" onclick="setFilter('critical',this)">Critical</button>
+            <button class="filter-tab" onclick="setFilter('warning',this)">Warning</button>
+            <button class="filter-tab" onclick="setFilter('resolved',this)">Resolved</button>
+          </div>
+        </div>
+        <div id="activeAlertsList">
+          <div class="alerts-empty">
+            <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+            Loading alerts…
+          </div>
+        </div>
+      </div>
+
+      <!--EMAIL NOTIFICATION CONFIG -->
+      <div class="section-head"><h3>Email Notification Settings</h3></div>
+      <div class="email-config-card">
+        <div class="email-config-header">
+          <div class="email-config-icon">
+            <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div>
+            <div class="email-config-title">Nodemailer · Gmail SMTP</div>
+            <div class="email-config-sub">Sends alerts via Gmail App Password · 5-minute cooldown per sensor per device</div>
+          </div>
+        </div>
+
+        <div class="toggle-switch-row">
+          <div>
+            <div class="toggle-label">Enable Email Alerts</div>
+            <div class="toggle-sub">Send email when sensor breaches a threshold</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="emailToggle" checked onchange="updateEmailToggle()"/>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-switch-row">
+          <div>
+            <div class="toggle-label">Critical Alerts Only</div>
+            <div class="toggle-sub">Skip warning-level emails, only send critical alerts</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="critOnlyToggle"/>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="config-body">
+          <div class="config-grid">
+            <div class="config-field">
+              <label>Gmail Sender Address</label>
+              <input class="config-input" type="email" id="cfgFrom"
+                placeholder="emosys@gmail.com" value=""/>
+            </div>
+            <div class="config-field">
+              <label>Recipient Email(s)</label>
+              <input class="config-input" type="text" id="cfgTo"
+                placeholder="admin@company.com, ops@company.com" value=""/>
+            </div>
+            <div class="config-field">
+              <label>Gmail App Password</label>
+              <input class="config-input" type="password" id="cfgPass"
+                placeholder="xxxx xxxx xxxx xxxx" value=""/>
+            </div>
+            <div class="config-field">
+              <label>Cooldown (minutes per sensor)</label>
+              <input class="config-input" type="number" id="cfgCooldown"
+                placeholder="5" value="5" min="1" max="60"/>
+            </div>
+          </div>
+
+          <div class="cooldown-info">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div>
+              <strong>How cooldowns work:</strong> Once an alert email is sent for a specific sensor on a specific device (e.g. CO₂ on Sam's WorkStation), no further emails will be sent for that exact sensor+device combination until the cooldown period expires — even if it keeps breaching. This prevents email flooding. Set to <strong id="cooldownDisplay">5</strong> minutes.
+            </div>
+          </div>
+        </div>
+
+        <div class="config-actions">
+          <button class="btn-save" onclick="saveEmailConfig()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;display:inline;vertical-align:middle;margin-right:5px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save Config
+          </button>
+          <button class="btn-test" id="testEmailBtn" onclick="sendTestEmail()">
+            <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Send Test Email
+          </button>
+          <span class="config-status" id="configStatus" style="display:none"></span>
+        </div>
+      </div>
+
+      <!-- THRESHOLD CONFIGURATION -->
+      <div class="section-head"><h3>Alert Thresholds</h3></div>
+      <div class="threshold-card">
+        <div class="threshold-card-header">
+          <h4>Sensor Thresholds</h4>
+          <span class="count-badge">5 sensors configured</span>
+        </div>
+        <div class="threshold-body">
+          <div class="threshold-grid" id="thresholdGrid">
+            <!-- populated by JS -->
+          </div>
+          <div class="threshold-save-row">
+            <button class="btn-save" onclick="saveThresholds()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;display:inline;vertical-align:middle;margin-right:5px"><polyline points="20 6 9 17 4 12"/></svg>
+              Save Thresholds
+            </button>
+            <button class="btn-test" onclick="resetThresholds()" style="background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.4)">
+              Reset to Defaults
+            </button>
+            <span class="config-status" id="thrStatus" style="display:none"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALERT HISTORY -->
+      <div class="section-head"><h3>Alert History</h3></div>
+      <div class="history-card">
+        <div class="alerts-list-header" style="padding:14px 18px">
+          <h4 style="font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:700;color:#e2e8f0;letter-spacing:0.04em;text-transform:uppercase;margin:0">
+            Recent Alert Log
+          </h4>
+          <span class="count-badge" id="historyCount">0 entries</span>
+        </div>
+        <div class="table-scroll" style="overflow-x:auto">
+          <table id="historyTable">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Device</th>
+                <th>Location</th>
+                <th>Sensor</th>
+                <th>Reading</th>
+                <th>Threshold</th>
+                <th>Severity</th>
+                <th>Email</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody">
+              <tr><td colspan="8" style="text-align:center;color:rgba(255,255,255,0.25);padding:24px">Loading history…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /.page -->
+
+    <div class="page-footer">
+      <span>&copy; 2026 EMOSys · Alert Management</span>
+      <span id="footerDate"></span>
+    </div>
+  </main>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+  <script src="assets/js/auth.js"></script>
+
+  <script>
+  /* ALERTS.JS — EMOSys Alert Management */
+
+  const API_BASE   = 'http://10.0.30.7:3000/api';
+  const REFRESH_MS = 30000;
+
+  /* DEFAULT THRESHOLDS (mirrors Analytics.html + emailAlerts.js) */
+  let thresholds = {
+    temp: { warn: 28,   danger: 35,   unit: '°C',  label: 'Temperature' },
+    hum:  { warn: 65,   danger: 80,   unit: '%RH', label: 'Humidity' },
+    pm25: { warn: 35,   danger: 75,   unit: '',    label: 'PM2.5 / AQI' },
+    co2:  { warn: 1000, danger: 1500, unit: ' ppm',label: 'CO₂' },
+    voc:  { warn: 500,  danger: 1000, unit: ' ppb',label: 'VOC' }
+  };
+
+  /* ── STATE ── */
+  let activeAlerts  = [];
+  let alertHistory  = [];
+  let currentFilter = 'all';
+  let acknowledged  = new Set();
+  let refreshTimer  = null;
+
+  /* ── HELPERS ─────────────────────────────────── */
+  function fmt(v, d=1) { return (v == null || isNaN(v)) ? '—' : Number(v).toFixed(d); }
+
+  function getSeverity(sensor, value) {
+    const t = thresholds[sensor];
+    if (!t || value == null) return null;
+    if (value >= t.danger) return 'critical';
+    if (value >= t.warn)   return 'warning';
+    return null;
+  }
+
+  function relTime(ts) {
+    const diff = (Date.now() - new Date(ts)) / 1000;
+    if (diff < 60)    return `${Math.round(diff)}s ago`;
+    if (diff < 3600)  return `${Math.round(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.round(diff/3600)}h ago`;
+    return new Date(ts).toLocaleDateString();
+  }
+
+  /* ── API CALLS ───────────────────────────────── */
+  async function apiGet(path) {
+    const res = await fetch(`${API_BASE}${path}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  async function apiPost(path, body) {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(()=>({}));
+      throw new Error(err.error || err.message || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  /* ── FETCH ACTIVE ALERTS ─────────────────────── */
+  async function fetchActiveAlerts() {
+    try {
+      const data = await apiGet('/alerts/active');
+      return Array.isArray(data) ? data : (data.alerts || []);
+    } catch {
+      /* Fallback: generate alerts from /api/latest */
+      try {
+        const latest = await apiGet('/latest');
+        return generateAlertsFromLatest(latest);
+      } catch {
+        return generateDemoAlerts();
+      }
+    }
+  }
+
+  /* If /api/alerts/active doesn't exist yet, derive from live readings */
+  function generateAlertsFromLatest(data) {
+    const alerts = [];
+    const sensors = ['temp','hum','pm25','co2','voc'];
+    const sensorMap = {
+      temp:  data.temperature ?? data.temp,
+      hum:   data.humidity    ?? data.hum,
+      pm25:  data.pm25        ?? data.aqi,
+      co2:   data.co2,
+      voc:   data.voc         ?? data.tvoc
+    };
+    sensors.forEach(s => {
+      const v = parseFloat(sensorMap[s]);
+      const sev = getSeverity(s, v);
+      if (sev) {
+        alerts.push({
+          id:        `${s}_${Date.now()}`,
+          sensor:    s,
+          device:    data.device_name || 'Sensor Box',
+          location:  data.location    || 'Unknown',
+          value:     v,
+          threshold: sev === 'critical' ? thresholds[s].danger : thresholds[s].warn,
+          severity:  sev,
+          timestamp: new Date().toISOString(),
+          emailSent: false
+        });
+      }
+    });
+    return alerts;
+  }
+
+  /* Demo alerts for when API is not yet available */
+  function generateDemoAlerts() {
+    const now = Date.now();
+    return [
+      { id:'demo1', sensor:'temp', device:"Sam's WorkStation",  location:'Workstations', value:29.4, threshold:28,   severity:'warning',  timestamp: new Date(now-180000).toISOString(), emailSent:true },
+      { id:'demo2', sensor:'co2',  device:'Testing-Lab-1',      location:'Lab',          value:1620, threshold:1500, severity:'critical', timestamp: new Date(now-90000).toISOString(),  emailSent:true },
+      { id:'demo3', sensor:'voc',  device:"Engineer's WS MW1",  location:'Engineering',  value:540,  threshold:500,  severity:'warning',  timestamp: new Date(now-420000).toISOString(), emailSent:false },
+      { id:'demo4', sensor:'hum',  device:'Mulu Hall',          location:'Common Areas', value:68.2, threshold:65,   severity:'warning',  timestamp: new Date(now-600000).toISOString(), emailSent:true  }
+    ];
+  }
+
+  /* ── FETCH ALERT HISTORY ─────────────────────── */
+  async function fetchAlertHistory() {
+    try {
+      const data = await apiGet('/alerts/history');
+      return Array.isArray(data) ? data : (data.history || []);
+    } catch {
+      return generateDemoHistory();
+    }
+  }
+
+  function generateDemoHistory() {
+    const entries = [];
+    const devices   = ["Sam's WS","Testing-Lab-1","Mulu Hall","CEO's Office","CTO's Office","Training-Rm-1","Eng. WS MW2"];
+    const sensors   = ['co2','temp','voc','hum','pm25'];
+    const locations = ['Workstations','Lab','Common Areas','Management','Engineering','Training'];
+    for (let i = 0; i < 20; i++) {
+      const sensor = sensors[i % sensors.length];
+      const thr    = thresholds[sensor];
+      const isCrit = i % 4 === 0;
+      const val    = isCrit ? thr.danger + Math.random()*50 : thr.warn + Math.random()*20;
+      entries.push({
+        id:        `hist_${i}`,
+        sensor,
+        device:    devices[i % devices.length],
+        location:  locations[i % locations.length],
+        value:     val,
+        threshold: isCrit ? thr.danger : thr.warn,
+        severity:  isCrit ? 'critical' : 'warning',
+        timestamp: new Date(Date.now() - i * 900000).toISOString(),
+        emailSent: i % 3 !== 2
+      });
+    }
+    return entries;
+  }
+
+  /* RENDER ACTIVE ALERTS */
+  const SENSOR_ICONS = {
+    temp:  `<path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>`,
+    hum:   `<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>`,
+    pm25:  `<path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>`,
+    co2:   `<circle cx="12" cy="12" r="10"/><line x1="8" y1="15" x2="8.01" y2="15"/><line x1="16" y1="15" x2="16.01" y2="15"/><path d="M9 9h1l2 2 2-2h1"/>`,
+    voc:   `<path d="M2 12h10m0 0a4 4 0 1 0 4-4M12 12a4 4 0 1 0 4 4"/>`
+  };
+
+  function renderActiveAlerts(alerts) {
+    const list = document.getElementById('activeAlertsList');
+
+    const filtered = currentFilter === 'all'
+      ? alerts
+      : currentFilter === 'resolved'
+        ? alerts.filter(a => acknowledged.has(a.id))
+        : alerts.filter(a => a.severity === currentFilter && !acknowledged.has(a.id));
+
+    const visible = currentFilter === 'resolved'
+      ? filtered
+      : filtered.filter(a => !acknowledged.has(a.id));
+
+    if (!visible.length) {
+      list.innerHTML = `<div class="alerts-empty">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        ${currentFilter === 'all' ? 'No active alerts — all sensors within normal limits.' : `No ${currentFilter} alerts.`}
+      </div>`;
+      return;
+    }
+
+    list.innerHTML = visible.map(a => {
+      const isAcked = acknowledged.has(a.id);
+      const sev = a.severity;
+      const thr = thresholds[a.sensor];
+      const over = thr ? ((a.value - (sev === 'critical' ? thr.danger : thr.warn)) / (sev === 'critical' ? thr.danger : thr.warn) * 100).toFixed(1) : '—';
+      return `
+        <div class="alert-item ${sev}-row ${isAcked ? '' : 'is-new'}" id="aitem_${a.id}">
+          <div class="alert-icon-wrap ${isAcked ? 'resolved' : sev}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${SENSOR_ICONS[a.sensor] || SENSOR_ICONS.temp}</svg>
+          </div>
+          <div class="alert-body">
+            <div class="alert-title">${a.sensor.toUpperCase()} threshold breached — ${a.device}</div>
+            <div class="alert-meta">
+              <span>📍 ${a.location}</span>
+              <span class="dot-sep"></span>
+              <span>⏱ ${relTime(a.timestamp)}</span>
+              <span class="dot-sep"></span>
+              ${a.emailSent
+                ? '<span style="color:#34d399">✉ Email sent</span>'
+                : '<span>✉ Email pending</span>'}
+            </div>
+          </div>
+          <div class="alert-value-col">
+            <div class="alert-reading">${fmt(a.value)}${thresholds[a.sensor]?.unit || ''}</div>
+            <div class="alert-threshold">Threshold: ${a.threshold}${thresholds[a.sensor]?.unit || ''}</div>
+            <div class="alert-threshold" style="color:${sev==='critical'?'#f87171':'#fbbf24'}">+${over}% over</div>
+          </div>
+          <div class="alert-actions">
+            <span class="sev-badge ${isAcked ? 'resolved' : sev}">
+              <span class="sev-dot"></span>${isAcked ? 'Acked' : sev}
+            </span>
+            <button class="ack-btn ${isAcked ? 'acked' : ''}"
+              onclick="acknowledgeAlert('${a.id}')"
+              ${isAcked ? 'disabled' : ''}>
+              ${isAcked ? '✓ Acked' : 'Ack'}
+            </button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  /* RENDER HISTORY  */
+  function renderHistory(history) {
+    const body = document.getElementById('historyBody');
+    document.getElementById('historyCount').textContent = `${history.length} entries`;
+
+    if (!history.length) {
+      body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:rgba(255,255,255,0.25);padding:24px">No alert history yet.</td></tr>';
+      return;
+    }
+
+    body.innerHTML = history.map(h => {
+      const thr = thresholds[h.sensor];
+      return `<tr>
+        <td><div class="history-time">${new Date(h.timestamp).toLocaleString()}</div></td>
+        <td><div class="history-device">${h.device}</div></td>
+        <td style="color:rgba(255,255,255,0.4);font-size:0.78rem">${h.location}</td>
+        <td style="font-weight:600;color:#e2e8f0;font-size:0.82rem">${thr?.label || h.sensor}</td>
+        <td><span class="history-val ${h.severity === 'critical' ? 'crit' : 'warn'}">${fmt(h.value)}${thr?.unit || ''}</span></td>
+        <td style="color:rgba(255,255,255,0.38);font-size:0.78rem">${h.threshold}${thr?.unit || ''}</td>
+        <td><span class="sev-badge ${h.severity}"><span class="sev-dot"></span>${h.severity}</span></td>
+        <td>${h.emailSent
+          ? '<span class="email-sent-badge">✉ Sent</span>'
+          : '<span class="email-no-badge">— Not sent</span>'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  /* RENDER THRESHOLD INPUTS  */
+  function renderThresholds() {
+    const grid = document.getElementById('thresholdGrid');
+    grid.innerHTML = Object.entries(thresholds).map(([key, t]) => `
+      <div class="threshold-row">
+        <div>
+          <div class="threshold-sensor-name">${t.label}</div>
+          <div class="threshold-sensor-unit">${t.unit || 'index'}</div>
+        </div>
+        <div class="thr-field">
+          <label style="color:rgba(245,158,11,0.7)">⚠ Warn</label>
+          <input class="thr-input warn-input" type="number" id="thr_warn_${key}" value="${t.warn}" step="0.5"/>
+        </div>
+        <div class="thr-field">
+          <label style="color:rgba(239,68,68,0.7)">🔴 Critical</label>
+          <input class="thr-input crit-input" type="number" id="thr_crit_${key}" value="${t.danger}" step="0.5"/>
+        </div>
+      </div>`).join('');
+  }
+
+  /* ACKNOWLEDGE */
+  function acknowledgeAlert(id) {
+    acknowledged.add(id);
+    renderActiveAlerts(activeAlerts);
+    updateStats();
+  }
+
+  /* FILTER  */
+  function setFilter(f, btn) {
+    currentFilter = f;
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    renderActiveAlerts(activeAlerts);
+  }
+
+  /* UPDATE STATS */
+  function updateStats() {
+    const crits   = activeAlerts.filter(a => a.severity === 'critical' && !acknowledged.has(a.id)).length;
+    const warns   = activeAlerts.filter(a => a.severity === 'warning'  && !acknowledged.has(a.id)).length;
+    const resolve = acknowledged.size;
+    const emails  = [...activeAlerts, ...alertHistory].filter(a => a.emailSent).length;
+
+    document.getElementById('countCritical').textContent = crits;
+    document.getElementById('countWarning').textContent  = warns;
+    document.getElementById('countResolved').textContent = resolve;
+    document.getElementById('countEmails').textContent   = emails;
+    document.getElementById('alertCount').textContent    = crits + warns;
+
+    /* Pulse only when there are criticals */
+    const critIcon = document.getElementById('critIcon');
+    if (crits > 0) critIcon.classList.add('stat-pulse');
+    else           critIcon.classList.remove('stat-pulse');
+  }
+
+  /* EMAIL CONFIG  */
+  function updateEmailToggle() {
+    const on = document.getElementById('emailToggle').checked;
+    const pill = document.getElementById('emailStatusPill');
+    pill.innerHTML = on
+      ? '<div class="pulse-dot"></div>Email Alerts Active'
+      : '<div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.2);flex-shrink:0"></div>Email Alerts Off';
+    pill.style.opacity = on ? '1' : '0.5';
+  }
+
+  async function saveEmailConfig() {
+    const config = {
+      enabled:      document.getElementById('emailToggle').checked,
+      criticalOnly: document.getElementById('critOnlyToggle').checked,
+      from:         document.getElementById('cfgFrom').value.trim(),
+      to:           document.getElementById('cfgTo').value.split(',').map(s=>s.trim()).filter(Boolean),
+      password:     document.getElementById('cfgPass').value,
+      cooldownMins: parseInt(document.getElementById('cfgCooldown').value) || 5
+    };
+
+    if (!config.from) { showConfigStatus('error', 'Enter a sender Gmail address.'); return; }
+    if (!config.to.length) { showConfigStatus('error', 'Enter at least one recipient email.'); return; }
+
+    try {
+      showConfigStatus('info', 'Saving…');
+      await apiPost('/alerts/config', config);
+      showConfigStatus('ok', '✓ Config saved to server');
+    } catch (e) {
+      /* If server route doesn't exist yet, save to localStorage as fallback */
+      try {
+        const safe = { ...config, password: '••••••' };
+        localStorage.setItem('emosys_email_config', JSON.stringify(safe));
+        showConfigStatus('ok', '✓ Saved locally (server route pending)');
+      } catch {
+        showConfigStatus('error', `Save failed: ${e.message}`);
+      }
+    }
+
+    /* Update cooldown display */
+    document.getElementById('cooldownDisplay').textContent = config.cooldownMins;
+  }
+
+  async function sendTestEmail() {
+    const btn = document.getElementById('testEmailBtn');
+    const to  = document.getElementById('cfgTo').value.trim();
+    if (!to) { showConfigStatus('error', 'Enter recipient email first.'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> Sending…`;
+
+    try {
+      await apiPost('/alerts/test', {
+        to: to.split(',').map(s=>s.trim()).filter(Boolean)
+      });
+      showConfigStatus('ok', '✓ Test email sent! Check your inbox.');
+    } catch (e) {
+      showConfigStatus('error', `Failed: ${e.message} — check Gmail App Password in .env`);
+    } finally {
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send Test Email`;
+      }, 3000);
+    }
+  }
+
+  function showConfigStatus(type, msg) {
+    const el = document.getElementById('configStatus');
+    el.style.display = 'inline-block';
+    el.className = `config-status ${type}`;
+    el.textContent = msg;
+    if (type === 'ok') setTimeout(() => { el.style.display = 'none'; }, 5000);
+  }
+
+  /* SAVE THRESHOLDS  */
+  function saveThresholds() {
+    const thrStatus = document.getElementById('thrStatus');
+    Object.keys(thresholds).forEach(key => {
+      const warn = parseFloat(document.getElementById(`thr_warn_${key}`)?.value);
+      const crit = parseFloat(document.getElementById(`thr_crit_${key}`)?.value);
+      if (!isNaN(warn)) thresholds[key].warn   = warn;
+      if (!isNaN(crit)) thresholds[key].danger = crit;
+    });
+
+    /* Persist to server (best effort) */
+    apiPost('/alerts/thresholds', thresholds).catch(() => {
+      localStorage.setItem('emosys_thresholds', JSON.stringify(thresholds));
+    });
+
+    thrStatus.style.display = 'inline-block';
+    thrStatus.className = 'config-status ok';
+    thrStatus.textContent = '✓ Thresholds saved';
+    setTimeout(() => { thrStatus.style.display = 'none'; }, 4000);
+  }
+
+  function resetThresholds() {
+    thresholds = {
+      temp: { warn:28,   danger:35,   unit:'°C',  label:'Temperature' },
+      hum:  { warn:65,   danger:80,   unit:'%RH', label:'Humidity' },
+      pm25: { warn:35,   danger:75,   unit:'',    label:'PM2.5 / AQI' },
+      co2:  { warn:1000, danger:1500, unit:' ppm',label:'CO₂' },
+      voc:  { warn:500,  danger:1000, unit:' ppb',label:'VOC' }
+    };
+    renderThresholds();
+    const thrStatus = document.getElementById('thrStatus');
+    thrStatus.style.display = 'inline-block';
+    thrStatus.className = 'config-status info';
+    thrStatus.textContent = 'Reset to defaults — click Save to apply';
+    setTimeout(() => { thrStatus.style.display = 'none'; }, 4000);
+  }
+
+  /* LOAD SAVED CONFIG */
+  function loadSavedConfig() {
+    try {
+      const saved = localStorage.getItem('emosys_email_config');
+      if (saved) {
+        const c = JSON.parse(saved);
+        if (c.from) document.getElementById('cfgFrom').value = c.from;
+        if (c.to)   document.getElementById('cfgTo').value   = Array.isArray(c.to) ? c.to.join(', ') : c.to;
+        if (c.cooldownMins) {
+          document.getElementById('cfgCooldown').value = c.cooldownMins;
+          document.getElementById('cooldownDisplay').textContent = c.cooldownMins;
+        }
+        if (c.enabled === false) {
+          document.getElementById('emailToggle').checked = false;
+          updateEmailToggle();
+        }
+        if (c.criticalOnly) document.getElementById('critOnlyToggle').checked = true;
+      }
+      const savedThr = localStorage.getItem('emosys_thresholds');
+      if (savedThr) {
+        const t = JSON.parse(savedThr);
+        Object.keys(thresholds).forEach(k => {
+          if (t[k]) { thresholds[k].warn = t[k].warn; thresholds[k].danger = t[k].danger; }
+        });
+      }
+    } catch {}
+  }
+
+  /* MAIN REFRESH */
+  async function refreshAlerts(showMsg = false) {
+    if (showMsg) document.getElementById('lastUpdated').textContent = 'Last updated: refreshing…';
+
+    const [alerts, history] = await Promise.allSettled([
+      fetchActiveAlerts(),
+      fetchAlertHistory()
+    ]);
+
+    activeAlerts  = alerts.status  === 'fulfilled' ? alerts.value  : generateDemoAlerts();
+    alertHistory  = history.status === 'fulfilled' ? history.value : generateDemoHistory();
+
+    renderActiveAlerts(activeAlerts);
+    renderHistory(alertHistory);
+    updateStats();
+
+    document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+  }
+
+  /* DARK MODE */
+  function toggleDarkMode() {
+    document.body.classList.toggle('light');
+    const btn = document.getElementById('darkBtn');
+    const isLight = document.body.classList.contains('light');
+    btn.innerHTML = isLight
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>Light`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>Dark`;
+  }
+
+  function toggleSidebar() {
+    document.querySelector('.sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('active');
+  }
+
+  if (typeof doLogout === 'undefined') {
+    window.doLogout = function() {
+      try { localStorage.removeItem('emosys_token'); } catch {}
+      window.location.href = 'Login.html';
+    };
+  }
+
+ /* DATES */
+  function setDates() {
+    const s = new Date().toLocaleDateString('en-MY', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+    document.getElementById('currentDate').textContent = s;
+    document.getElementById('footerDate').textContent  = s;
+  }
+
+  /* INIT */
+  setDates();
+  loadSavedConfig();
+  renderThresholds();
+  refreshAlerts(true);
+  refreshTimer = setInterval(() => refreshAlerts(false), REFRESH_MS);
+  </script>
+</body>
+</html>

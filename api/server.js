@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { InfluxDBClient } = require('@influxdata/influxdb3-client');
+const emailAlerts = require('./emailAlerts');
 
 const app = express();
 app.use(cors());
@@ -256,6 +257,21 @@ app.get('/api/ha/latest', async (req, res) => {
         const pm25Value = parseFloat(pm25Data.state);
         const aqi = calcAQI(pm25Value);
 
+        const sensorValues = {
+            temp : parseFloat(tempData.state),
+            hum  : parseFloat(humData.state),
+            co2  : parseFloat(co2Data.state),
+            voc  : parseFloat(vocData.state),
+            pm25 : pm25Value
+        };
+
+        emailAlerts.checkAndSendAlerts(
+            sensorValues,
+            deviceId,
+            device.label,
+            device.location
+        ).catch(err => console.error('[Alert] Check failed: ', err));
+
         res.json({
             temperature : parseFloat(tempData.state).toFixed(2),
             humidity    : parseFloat(humData.state).toFixed(2),
@@ -441,6 +457,47 @@ app.post('/api/ai/chat', async (req, res) => {
     } catch (err) {
         console.error('Gemini proxy error:', err.message);
         res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/alerts/active', (req, res) => {
+    res.json(emailAlerts.getActiveAlerts());
+});
+
+app.get('/api/alerts/history', (req, res) => {
+    res.json(emailAlerts.getAlertHistory());
+});
+
+app.get('/api/alerts/config', (req, res) => {
+    res.json(emailAlerts.getAlertConfig());
+});
+
+app.post('/api/alerts/config', (req, res) => {
+    try {
+        emailAlerts.updateConfig(req.body);
+        res.json({ ok: true, message: 'Config updated' });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
+app.post('/api/alerts/thresholds', (req, res) => {
+    try {
+        emailAlerts.updateThresholds(req.body);
+        res.json({ ok: true, message: 'Thresholds updated' });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
+app.post('/api/alerts/test', async (req, res) => {
+    try{
+        const to = req.body.to;
+        if (!to || !to.length) return res.status(400).json({ error: 'No recipient provided' });
+        await emailAlerts.sendTestEmail(to);
+        res.json({ ok:true, message: `Test email sent to ${to.join(', ')}` });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
 });
 
