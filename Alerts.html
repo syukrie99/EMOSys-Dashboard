@@ -783,11 +783,11 @@
 
   /* DEFAULT THRESHOLDS (mirrors Analytics.html + emailAlerts.js) */
   let thresholds = {
-    temp: { warn: 28,   danger: 35,   unit: '°C',  label: 'Temperature' },
-    hum:  { warn: 65,   danger: 80,   unit: '%RH', label: 'Humidity' },
-    pm25: { warn: 35,   danger: 75,   unit: '',    label: 'PM2.5 / AQI' },
-    co2:  { warn: 1000, danger: 1500, unit: ' ppm',label: 'CO₂' },
-    voc:  { warn: 500,  danger: 1000, unit: ' ppb',label: 'VOC' }
+    temp: { warn: 29,   danger: 35,   unit: '°C',  label: 'Temperature' },
+    hum:  { warn: 70,   danger: 80,   unit: '%RH', label: 'Humidity' },
+    pm25: { warn: 15,   danger: 30,   unit: '',    label: 'PM2.5 / AQI' },
+    co2:  { warn: 800, danger: 1200, unit: ' ppm',label: 'CO₂' },
+    voc:  { warn: 300,  danger: 600, unit: ' ppb',label: 'VOC' }
   };
 
   /* ── STATE ── */
@@ -1177,11 +1177,11 @@
 
   function resetThresholds() {
     thresholds = {
-      temp: { warn:28,   danger:35,   unit:'°C',  label:'Temperature' },
-      hum:  { warn:65,   danger:80,   unit:'%RH', label:'Humidity' },
-      pm25: { warn:35,   danger:75,   unit:'',    label:'PM2.5 / AQI' },
-      co2:  { warn:1000, danger:1500, unit:' ppm',label:'CO₂' },
-      voc:  { warn:500,  danger:1000, unit:' ppb',label:'VOC' }
+      temp: { warn:29,   danger:35,   unit:'°C',  label:'Temperature' },
+      hum:  { warn:70,   danger:80,   unit:'%RH', label:'Humidity' },
+      pm25: { warn:15,   danger:30,   unit:'',    label:'PM2.5 / AQI' },
+      co2:  { warn:800, danger:1200, unit:' ppm',label:'CO₂' },
+      voc:  { warn:300,  danger:600, unit:' ppb',label:'VOC' }
     };
     renderThresholds();
     const thrStatus = document.getElementById('thrStatus');

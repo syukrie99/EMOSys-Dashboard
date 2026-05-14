@@ -207,7 +207,7 @@ function buildEmailText(alerts, deviceName, location) {
   return lines.join('\n');
 }
 
-/* CORE: CHECK AND SENd */
+/* CORE: CHECK AND SEND */
 /**
  * checkAndSendAlerts — call this every time new sensor data arrives.
  *
