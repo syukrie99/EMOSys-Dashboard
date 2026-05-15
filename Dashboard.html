@@ -58,7 +58,7 @@
     .dev-page-info { font-size:0.75rem; color:var(--muted); padding:0 4px; }
   </style>
 </head>
-<body>
+<body class="light">
 
   <!-- SIDEBAR -->
   <aside class="sidebar">
@@ -125,7 +125,7 @@
         Reports
       </a>
 
-      <a class="nav-item" href="#">
+      <a class="nav-item" href="Alerts.html">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
         </svg>
@@ -189,14 +189,6 @@
           <div class="pulse-dot"></div>
           All Systems Online
         </div>
-
-        <!-- Dark mode toggle — icon and label swapped by dashboard.js -->
-        <button class="topbar-btn" onclick="toggleDarkMode()" id="darkBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-          </svg>
-          <span class="btn-label">Dark</span>
-        </button>
 
         <button class="topbar-btn" onclick="updateCards()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

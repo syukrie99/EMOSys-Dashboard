@@ -372,46 +372,46 @@
   .cooldown-info strong { color: #7dd3fc; }
 
   /* ── LIGHT MODE ──────────────────────────── */
-  body.light .alert-stat       { background: #fff; border-color: rgba(0,0,0,0.07); }
-  body.light .alert-stat-label { color: rgba(0,0,0,0.4); }
-  body.light .alert-stat-val   { color: #0f172a; }
-  body.light .alerts-list-card { background: #fff; border-color: rgba(0,0,0,0.07); }
-  body.light .alerts-list-header { border-bottom-color: rgba(0,0,0,0.07); }
-  body.light .alerts-list-header h4 { color: #1e293b; }
-  body.light .filter-tabs  { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.08); }
-  body.light .filter-tab   { color: rgba(0,0,0,0.4); }
-  body.light .filter-tab.active { background: rgba(0,0,0,0.07); color: #1e293b; }
-  body.light .alert-item   { border-bottom-color: rgba(0,0,0,0.05); }
-  body.light .alert-item:hover { background: rgba(0,0,0,0.015); }
-  body.light .alert-title  { color: #1e293b; }
-  body.light .alert-meta   { color: rgba(0,0,0,0.38); }
-  body.light .alert-reading { color: #0f172a; }
-  body.light .alert-threshold { color: rgba(0,0,0,0.32); }
-  body.light .ack-btn      { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.09); color: rgba(0,0,0,0.45); }
-  body.light .ack-btn:hover { background: rgba(0,0,0,0.07); color: #1e293b; }
-  body.light .history-card { background: #fff; border-color: rgba(0,0,0,0.07); }
-  body.light .history-card thead th { background: rgba(0,0,0,0.02); color: rgba(0,0,0,0.38); border-bottom-color: rgba(0,0,0,0.07); }
-  body.light .history-card tbody td { color: #475569; border-bottom-color: rgba(0,0,0,0.04); }
-  body.light .history-device { color: #1e293b; }
-  body.light .history-time   { color: rgba(0,0,0,0.4); }
-  body.light .email-config-card { background: linear-gradient(135deg,rgba(14,165,233,0.05) 0%,rgba(99,102,241,0.05) 100%); border-color: rgba(14,165,233,0.18); }
-  body.light .toggle-slider   { background: rgba(0,0,0,0.08); border-color: rgba(0,0,0,0.1); }
-  body.light .toggle-slider::before { background: rgba(0,0,0,0.35); }
-  body.light .config-input    { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.1); color: #1e293b; }
-  body.light .threshold-card  { background: #fff; border-color: rgba(0,0,0,0.07); }
-  body.light .threshold-card-header { border-bottom-color: rgba(0,0,0,0.07); }
-  body.light .threshold-card-header h4 { color: #1e293b; }
-  body.light .threshold-row   { background: rgba(0,0,0,0.02); border-color: rgba(0,0,0,0.06); }
-  body.light .threshold-sensor-name { color: #1e293b; }
-  body.light .threshold-sensor-unit { color: rgba(0,0,0,0.32); }
-  body.light .thr-input        { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.09); color: #0f172a; }
-  body.light .threshold-save-row { border-top-color: rgba(0,0,0,0.06); }
-  body.light .cooldown-info    { background: rgba(14,165,233,0.05); border-color: rgba(14,165,233,0.15); color: rgba(0,0,0,0.5); }
-  body.light .thr-field label  { color: rgba(0,0,0,0.38); }
-  body.light .email-config-title { color: #1e293b; }
-  body.light .toggle-label { color: #1e293b; }
-  body.light .toggle-sub   { color: rgba(0,0,0,0.4); }
-  body.light .config-field label { color: rgba(0,0,0,0.4); }
+  body:not(.dark-mode) .alert-stat { background: #fff; border-color: rgba(0,0,0,0.07); }
+  body:not(.dark-mode) .alert-stat-label { color: rgba(0,0,0,0.4); }
+  body:not(.dark-mode) .alert-stat-val { color: #0f172a; }
+  body:not(.dark-mode) .alert-list-card { background: #fff; border-color: rgba(0,0,0,0.07); }
+  body:not(.dark-mode) .alert-list-header { border-bottom-color: rgba(0,0,0,0.7); }
+  body:not(.dark-mode) .alert-list-header h4 { color: #1e293b; }
+  body:not(.dark-mode) .filter-tabs { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.08); }
+  body:not(.dark-mode) .filter-tab { color: rgba(0,0,0,0.4); }
+  body:not(.dark-mode) .filter-tab.active { background: rgba(0,0,0,0.07); color: #1e293b; }
+  body:not(.dark-mode) .alert-item { border-bottom-color: rgba(0,0,0,0.05); }
+  body:not(.dark-mode) .alert-item:hover { background: rgba(0,0,0,0.015); }
+  body:not(.dark-mode) .alert-title { color: #1e293b; }
+  body:not(.dark-mode) .alert-meta { color: rgba(0,0,0,0.38); }
+  body:not(.dark-mode) .alert-reading { color: #0f172a; }
+  body:not(.dark-mode) .alert-threshold { color: rgba(0,0,0,0.32); }
+  body:not(.dark-mode) .ack-btn { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.09); color: rgba(0,0,0,0.45); }
+  body:not(.dark-mode) .ack-btn:hover { background: rgba(0,0,0,0.07); color: #1e293b; }
+  body:not(.dark-mode) .history-card { background: #fff; border-color: rgba(0,0,0,0.07); }
+  body:not(.dark-mode) .history-card thead th { background: rgba(0,0,0,0.02); color: rgba(0,0,0,0.38); border-bottom-color: rgba(0,0,0,0.07); }
+  body:not(.dark-mode) .history-card tbody td { color: #475569; border-bottom-color: rgba(0,0,0,0.04); }
+  body:not(.dark-mode) .history-device { color: #1e293b; }
+  body:not(.dark-mode) .history-time { color: rgba(0,0,0,0.4); }
+  body:not(.dark-mode) .email-config-card { background: linear-gradient(135deg,rgba(14,165,233,0.05) 0%,rgba(99,102,241,0.05) 100%); border-color: rgba(14,165,233,0.18); }
+  body:not(.dark-mode) .toggle-slider { background: rgba(0,0,0,0.08); border-color: rgba(0,0,0,0.1); }
+  body:not(.dark-mode) .toggle-slider::before { background: rgba(0,0,0,0.35); }
+  body:not(.dark-mode) .config-input { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.1); color: #1e293b; }
+  body:not(.dark-mode) .threshold-card { background: #fff; border-color: rgba(0,0,0,0.07); }
+  body:not(.dark-mode) .threshold-card-header { border-bottom-color: rgba(0,0,0,0.07); }
+  body:not(.dark-mode) .threshold-card-header h4 { color: #1e293b; }
+  body:not(.dark-mode) .threshold-row { background: rgba(0,0,0,0.02); border-color: rgba(0,0,0,0.06); }
+  body:not(.dark-mode) .threshold-sensor-name { color: #1e293b; }
+  body:not(.dark-mode) .threshold-sensor-unit { color: rgba(0,0,0,0.32); }
+  body:not(.dark-mode) .thr-input { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.09); color: #0f172a; }
+  body:not(.dark-mode) .threshold-save-row { border-top-color: rgba(0,0,0,0.06); }
+  body:not(.dark-mode) .cooldown-info { background: rgba(14,165,233,0.05); border-color: rgba(14,165,233,0.15); color: rgba(0,0,0,0.5); }
+  body:not(.dark-mode) .thr-field label { color: rgba(0,0,0,0.38); }
+  body:not(.dark-mode) .email-config-title { color: #1e293b; }
+  body:not(.dark-mode) .toggle-label { color: #1e293b; }
+  body:not(.dark-mode) .toggle-sub{ color: rgba(0,0,0,0.4); }
+  body:not(.dark-mode) .config-field label { color: rgba(0,0,0,0.4); } 
 
   /* pulse ring on critical stat */
   @keyframes pulseRing {
@@ -422,7 +422,7 @@
   .stat-pulse { animation: pulseRing 2s ease-out infinite; }
   </style>
 </head>
-<body>
+<body class="light">
 
   <!-- SIDEBAR -->
   <aside class="sidebar">
@@ -544,12 +544,6 @@
           <div class="pulse-dot"></div>
           Email Alerts Active
         </div>
-        <button class="topbar-btn" onclick="toggleDarkMode()" id="darkBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-          </svg>
-          Dark
-        </button>
         <button class="topbar-btn" onclick="refreshAlerts(true)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="23 4 23 10 17 10"/>
@@ -1238,15 +1232,6 @@
     document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
   }
 
-  /* DARK MODE */
-  function toggleDarkMode() {
-    document.body.classList.toggle('light');
-    const btn = document.getElementById('darkBtn');
-    const isLight = document.body.classList.contains('light');
-    btn.innerHTML = isLight
-      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>Light`
-      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>Dark`;
-  }
 
   function toggleSidebar() {
     document.querySelector('.sidebar').classList.toggle('open');

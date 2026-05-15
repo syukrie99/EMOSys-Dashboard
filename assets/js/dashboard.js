@@ -4,12 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var user = requireAuth();
   if (!user) return;
 
-  /* ── DARK MODE: restore preference from last visit */
-  if (localStorage.getItem('emosys_darkmode') === '1') {
-    document.body.classList.add('dark-mode');
-    document.getElementById('darkBtn').innerHTML =
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg> Light';
-  }
+
 
   /* ── POPULATE USER INFO */
   document.getElementById('userName').textContent   = user.name  || 'Admin';
@@ -548,15 +543,7 @@ function toggleSidebar() {
   overlay.classList.toggle('active');
 }
 
-function toggleDarkMode() {
-  document.body.classList.toggle('dark-mode');
-  var btn    = document.getElementById('darkBtn');
-  var isDark = document.body.classList.contains('dark-mode');
-  btn.innerHTML = isDark
-    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg> Light'
-    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> Dark';
-  localStorage.setItem('emosys_darkmode', isDark ? '1' : '0');
-}
+
 
 function updateCards() {
   if (typeof window.fetchData === 'function') window.fetchData();
