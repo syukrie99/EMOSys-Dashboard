@@ -469,7 +469,7 @@ app.get('/api/alerts/history', (req, res) => {
 });
 
 app.get('/api/alerts/config', (req, res) => {
-    res.json(emailAlerts.getAlertConfig());
+    res.json(emailAlerts.getConfig());
 });
 
 app.post('/api/alerts/config', (req, res) => {
