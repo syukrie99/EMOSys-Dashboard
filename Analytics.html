@@ -328,6 +328,135 @@
     }
     #refreshPill.show { display: flex; }
     .rp-dot { width: 6px; height: 6px; border-radius: 50%; background: #38bdf8; animation: blink 1s ease-in-out infinite; }
+
+/* ── VIEW TOGGLE ─────────────────────────── */
+.view-toggle-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 18px;
+}
+.view-label {
+  font-size: 0.78rem; font-weight: 600;
+  color: rgba(0,0,0,0.45);
+  text-transform: uppercase; letter-spacing: 0.07em;
+}
+.view-tabs {
+  display: inline-flex; gap: 3px;
+  background: rgba(0,0,0,0.04);
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 8px; padding: 3px;
+}
+.view-tab {
+  padding: 6px 20px; border-radius: 6px;
+  font-size: 0.8rem; font-weight: 600;
+  color: rgba(0,0,0,0.45); cursor: pointer;
+  transition: all 0.18s; border: none;
+  background: transparent; font-family: 'Barlow', sans-serif;
+}
+.view-tab.active {
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  color: #fff;
+}
+.view-tab:hover:not(.active) { color: rgba(0,0,0,0.7); }
+
+/* ── GROUP CARDS ─────────────────────────── */
+.group-cards-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px; margin-bottom: 28px;
+}
+.group-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px; overflow: hidden; position: relative;
+}
+.group-card::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+}
+.group-card.s-good::before   { background: #10b981; }
+.group-card.s-warn::before   { background: #f59e0b; }
+.group-card.s-danger::before { background: #ef4444; }
+.group-card-header {
+  display: flex; align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.group-card-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.05rem; font-weight: 800;
+  color: #1e293b; letter-spacing: 0.03em; text-transform: uppercase;
+}
+.group-card-count { font-size: 0.7rem; color: #64748b; margin-top: 3px; }
+.group-status-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 20px;
+  font-size: 0.69rem; font-weight: 700; flex-shrink: 0;
+}
+.group-status-badge.good   { background: rgba(16,185,129,0.1);  color: #059669; border: 1px solid rgba(16,185,129,0.25); }
+.group-status-badge.warn   { background: rgba(245,158,11,0.1);  color: #d97706; border: 1px solid rgba(245,158,11,0.25); }
+.group-status-badge.danger { background: rgba(239,68,68,0.1);   color: #dc2626; border: 1px solid rgba(239,68,68,0.25); }
+.group-sensor-grid { display: grid; grid-template-columns: 1fr 1fr; }
+.group-sensor-cell {
+  padding: 10px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  border-right: 1px solid #f1f5f9;
+}
+.group-sensor-cell:nth-child(even) { border-right: none; }
+.group-sensor-cell:nth-last-child(-n+2) { border-bottom: none; }
+.group-sensor-lbl {
+  font-size: 0.63rem; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: #94a3b8; margin-bottom: 4px;
+}
+.group-sensor-num {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.2rem; font-weight: 800; line-height: 1;
+}
+.group-sensor-num.good    { color: #334155; }
+.group-sensor-num.warn    { color: #d97706; }
+.group-sensor-num.danger  { color: #dc2626; }
+.group-sensor-num.unknown { color: #94a3b8; }
+.group-sensor-thr { font-size: 0.6rem; color: #cbd5e1; margin-top: 3px; }
+.group-card-footer {
+  padding: 9px 16px;
+  border-top: 1px solid #f1f5f9;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.group-devices-text { font-size: 0.7rem; color: #94a3b8; }
+.group-alert-badge {
+  font-size: 0.7rem; font-weight: 700;
+  padding: 2px 8px; border-radius: 20px;
+}
+.group-alert-badge.has-alerts { background: rgba(239,68,68,0.08);  color: #dc2626; border: 1px solid rgba(239,68,68,0.2); }
+.group-alert-badge.no-alerts  { background: rgba(16,185,129,0.08); color: #059669; border: 1px solid rgba(16,185,129,0.2); }
+
+/* ── GROUP TABLE ─────────────────────────── */
+.group-table-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px; overflow: hidden; margin-bottom: 28px;
+}
+.group-table-card table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+.group-table-card thead th {
+  padding: 10px 14px; text-align: left;
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: #64748b; background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+.group-table-card tbody td {
+  padding: 12px 14px; color: #475569;
+  border-bottom: 1px solid #f1f5f9; vertical-align: middle;
+}
+.group-table-card tbody tr:last-child td { border-bottom: none; }
+.group-table-card tbody tr:hover td { background: #f8fafc; }
+.group-name-cell {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1rem; font-weight: 800; color: #1e293b;
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
+.group-devices-cell { font-size: 0.7rem; color: #94a3b8; margin-top: 2px; }
+.thr-indicator { display: block; font-size: 0.62rem; color: #cbd5e1; margin-top: 2px; }
   </style>
 </head>
 <body class="light">
@@ -394,7 +523,7 @@
     </div>
   </aside>
 
-  <!-- ══════════════════════════════════════════════ MAIN -->
+  <!-- MAIN -->
   <main class="main">
     <div class="topbar">
       <button class="hamburger" onclick="toggleSidebar()">
@@ -428,6 +557,15 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <span id="errorMsg">Could not reach API.</span>
       </div>
+
+      <!-- VIEW TOGGLE -->
+       <div class="view-toggle-row">
+        <span class="view-label">View:</span>
+        <div class="view-tabs">
+          <button class="view-tab active" onclick="setView('device', this)">By Device</button>
+          <button class="view-tab" onclick="setView('group', this)">By Group</button>
+        </div>
+       </div>
 
       <div class="period-tabs">
         <button class="period-tab active" onclick="setPeriod('live',this)">Live</button>
@@ -477,7 +615,7 @@
       </div>
 
       <!-- HIGHEST READINGS -->
-      <div class="section-head"><h3>Highest Readings by Sensor</h3></div>
+      <div class="section-head" id="deviceRankingsHead"><h3>Highest Readings by Sensor</h3></div>
       <div class="rankings-grid" id="rankingsGrid">
         <div style="grid-column:1/-1;padding:24px;text-align:center;color:rgba(255,255,255,0.25);font-size:0.85rem">Loading rankings…</div>
       </div>
@@ -527,8 +665,8 @@
       </div>
 
       <!-- FULL COMPARISON TABLE -->
-      <div class="section-head"><h3>Full Device Comparison</h3></div>
-      <div class="analytics-table-card">
+      <div class="section-head" id="deviceTableHead"><h3>Full Device Comparison</h3></div>
+      <div class="analytics-table-card" id="deviceTableCard">
         <div class="table-head">
           <h4>All Sensors · All Devices</h4>
           <span class="count-badge" id="tableUpdatedBadge">—</span>
@@ -557,8 +695,8 @@
       </div>
 
       <!-- COMPARISON CHARTS -->
-      <div class="section-head"><h3>Device Comparison Charts</h3></div>
-      <div class="analytics-chart-grid">
+      <div class="section-head" id="deviceChartsHead"><h3>Device Comparison Charts</h3></div>
+      <div class="analytics-chart-grid" id="deviceChartsGrid">
         <div class="analytics-chart-card"><h4>Temperature — All Devices</h4><p>Live °C readings per device</p><div class="chart-wrap-lg"><canvas id="chartTemp"></canvas></div></div>
         <div class="analytics-chart-card"><h4>CO₂ — All Devices</h4><p>Parts per million per device</p><div class="chart-wrap-lg"><canvas id="chartCo2"></canvas></div></div>
         <div class="analytics-chart-card"><h4>PM2.5 / AQI — All Devices</h4><p>Air quality index per device</p><div class="chart-wrap-sm"><canvas id="chartAqi"></canvas></div></div>
@@ -566,12 +704,81 @@
       </div>
 
       <!-- HEATMAP -->
-      <div class="section-head"><h3>Sensor Intensity Heatmap</h3></div>
-      <div class="analytics-chart-card heatmap-outer" style="margin-bottom:28px">
+      <div class="section-head" id="deviceHeatmapHead"><h3>Sensor Intensity Heatmap</h3></div>
+      <div class="analytics-chart-card heatmap-outer" id="deviceHeatmapCard" style="margin-bottom:28px">
         <h4>All Devices × All Sensors</h4>
         <p>Normalised 0–100% intensity · green = safe · red = critical</p>
         <div id="heatmapContainer" style="margin-top:16px"></div>
       </div>
+
+      <!-- GROUP VIEW SECTION — hidden by default, shown when view = group -->
+      <div id="groupViewSection" style="display:none">
+
+        <div class="section-head"><h3>Group Overview</h3></div>
+        <div class="group-cards-row" id="groupCardsRow">
+          <div style="grid-column:1/-1;padding:24px;text-align:center;color:rgba(255,255,255,0.25);font-size:0.85rem">Loading group data…</div>
+        </div>
+
+        <div class="section-head"><h3>Group Comparison</h3></div>
+        <div class="group-table-card">
+          <div style="padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between">
+            <h4 style="font-family:'Barlow Condensed',sans-serif;font-size:0.95rem;font-weight:700;color:#e2e8f0;letter-spacing:0.04em;text-transform:uppercase;margin:0">Average Readings per Group</h4>
+            <span class="count-badge" id="groupTableBadge">—</span>
+          </div>
+          <div style="overflow-x:auto">
+            <table id="groupTable">
+              <thead>
+                <tr>
+                  <th>Group</th>
+                  <th>Devices</th>
+                  <th>Avg Temp (°C)</th>
+                  <th>Avg Humidity (%)</th>
+                  <th>Avg PM2.5</th>
+                  <th>Avg CO2 (ppm)</th>
+                  <th>Avg VOC (ppb)</th>
+                  <th>Overall</th>
+                </tr>
+              </thead>
+              <tbody id="groupTableBody">
+                <tr><td colspan="8" style="text-align:center;color:rgba(255,255,255,0.25);padding:24px">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="section-head"><h3>Group Comparison Charts</h3></div>
+        <div class="analytics-chart-grid">
+          <div class="analytics-chart-card">
+            <h4>Temperature — By Group</h4>
+            <p>Average °C per room group</p>
+            <div class="chart-wrap-lg"><canvas id="chartGroupTemp"></canvas></div>
+          </div>
+          <div class="analytics-chart-card">
+            <h4>CO2 — By Group</h4>
+            <p>Average ppm per room group</p>
+            <div class="chart-wrap-lg"><canvas id="chartGroupCo2"></canvas></div>
+          </div>
+          <div class="analytics-chart-card">
+            <h4>PM2.5 — By Group</h4>
+            <p>Average air quality per group</p>
+            <div class="chart-wrap-sm"><canvas id="chartGroupAqi"></canvas></div>
+          </div>
+          <div class="analytics-chart-card">
+            <h4>VOC — By Group</h4>
+            <p>Average ppb per room group</p>
+            <div class="chart-wrap-sm"><canvas id="chartGroupVoc"></canvas></div>
+          </div>
+        </div>
+
+        <div class="section-head"><h3>Group Intensity Heatmap</h3></div>
+        <div class="analytics-chart-card heatmap-outer" style="margin-bottom:28px">
+          <h4>All Groups x All Sensors</h4>
+          <p>Normalised 0–100% intensity based on per-group thresholds — green = safe, red = critical</p>
+          <div id="groupHeatmapContainer" style="margin-top:16px"></div>
+        </div>
+
+      </div>
+      <!-- END GROUP VIEW SECTION -->
 
       <!-- EXPORT -->
       <div class="export-row">
@@ -613,10 +820,13 @@
   /* ── STATE ──────────────────────────── */
   let allDevices     = [];
   let devicesData    = [];
+  let groupsData     = [];
   let currentPeriod  = 'live';
   let currentPage    = 0;
+  let currentView    = 'device';
   let aiConversation = [];
   let charts         = {};
+  let groupCharts    = {};
 
   /* ── STATUS ─────────────────────────── */
   function getStatus(sensor, value) {
@@ -720,6 +930,10 @@ async function fetchSensors(id) {
 
   /* ── LOAD ALL ───────────────────────── */
   async function loadAll() {
+    try {
+      const gr = await fetch('/api/groups').then(r => r.json());
+      if (Array.isArray(gr)) groupsData = gr;
+    } catch (e) { console.warn('Could not fetch groupus: ', e.message); }
     allDevices = await fetchDeviceList();
     const n = allDevices.length;
     ['statTotal','aiDeviceCount','exportDevCount','totalCount'].forEach(id => {
@@ -1036,7 +1250,235 @@ Give concise, actionable advice. Reference specific device names. Use bullet poi
     if(on){thinkEl=document.createElement('div');thinkEl.className='ai-thinking';thinkEl.innerHTML='<div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span style="margin-left:6px;font-size:0.78rem">Analysing all devices…</span>';a.appendChild(thinkEl);a.scrollTop=a.scrollHeight;}
     else{if(thinkEl){thinkEl.remove();thinkEl=null;}}
   }
+  
+  /* ── GROUP HELPERS ──────────────────────────────────────────── */
 
+function groupAvg(group, devices, key) {
+  const members = devices.filter(d => group.devices.includes(d.id));
+  const withVal = members.filter(d => d[key] != null && !isNaN(d[key]));
+  if (!withVal.length) return null;
+  return withVal.reduce((s, d) => s + d[key], 0) / withVal.length;
+}
+
+function groupStatusForSensor(group, sensor, avgVal) {
+  if (avgVal == null || isNaN(avgVal)) return 'unknown';
+  const thr = group.thresholds ? group.thresholds[sensor] : null;
+  if (!thr) return 'good';
+  if (avgVal >= thr.danger) return 'danger';
+  if (avgVal >= thr.warn)   return 'warn';
+  return 'good';
+}
+
+function groupOverallStatus(group, devices) {
+  const sensors  = ['temp', 'pm25', 'co2', 'voc'];
+  const statuses = sensors.map(s => groupStatusForSensor(group, s, groupAvg(group, devices, s)));
+  if (statuses.includes('danger')) return 'danger';
+  if (statuses.includes('warn'))   return 'warn';
+  return 'good';
+}
+
+/* ── RENDER GROUP CARDS ─────────────────────────────────────── */
+
+function renderGroupCards(groups, devices) {
+  const container = document.getElementById('groupCardsRow');
+  const statusLabels = { good: 'Normal', warn: 'Elevated', danger: 'Critical', unknown: 'N/A' };
+
+  container.innerHTML = groups.map(group => {
+    const avgTemp = groupAvg(group, devices, 'temp');
+    const avgHum  = groupAvg(group, devices, 'hum');
+    const avgPm25 = groupAvg(group, devices, 'pm25');
+    const avgCo2  = groupAvg(group, devices, 'co2');
+    const avgVoc  = groupAvg(group, devices, 'voc');
+    const stTemp  = groupStatusForSensor(group, 'temp', avgTemp);
+    const stHum   = groupStatusForSensor(group, 'hum',  avgHum);
+    const stPm25  = groupStatusForSensor(group, 'pm25', avgPm25);
+    const stCo2   = groupStatusForSensor(group, 'co2',  avgCo2);
+    const stVoc   = groupStatusForSensor(group, 'voc',  avgVoc);
+    const overall = groupOverallStatus(group, devices);
+    const thr     = group.thresholds || {};
+    const members = devices.filter(d => group.devices.includes(d.id));
+    const alertCount = members.filter(d => { const s = overallStatus(d); return s === 'warn' || s === 'danger'; }).length;
+    const onlineCount = members.filter(d => d.online !== false).length;
+
+    return `
+      <div class="group-card s-${overall}">
+        <div class="group-card-header">
+          <div>
+            <div class="group-card-name">${group.label}</div>
+            <div class="group-card-count">${group.deviceCount} device${group.deviceCount !== 1 ? 's' : ''}</div>
+          </div>
+          <span class="group-status-badge ${overall}">${statusLabels[overall] || 'Unknown'}</span>
+        </div>
+        <div class="group-sensor-grid">
+          <div class="group-sensor-cell">
+            <div class="group-sensor-lbl">Avg Temperature</div>
+            <div class="group-sensor-num ${stTemp}">${fmt(avgTemp)}°C</div>
+            ${thr.temp ? `<div class="group-sensor-thr">warn &gt;${thr.temp.warn}° · crit &gt;${thr.temp.danger}°</div>` : ''}
+          </div>
+          <div class="group-sensor-cell">
+            <div class="group-sensor-lbl">Avg Humidity</div>
+            <div class="group-sensor-num ${stHum}">${fmt(avgHum)}%</div>
+            ${thr.hum ? `<div class="group-sensor-thr">warn &gt;${thr.hum.warn}% · crit &gt;${thr.hum.danger}%</div>` : ''}
+          </div>
+          <div class="group-sensor-cell">
+            <div class="group-sensor-lbl">Avg CO2</div>
+            <div class="group-sensor-num ${stCo2}">${fmtInt(avgCo2)} ppm</div>
+            ${thr.co2 ? `<div class="group-sensor-thr">warn &gt;${thr.co2.warn} · crit &gt;${thr.co2.danger}</div>` : ''}
+          </div>
+          <div class="group-sensor-cell">
+            <div class="group-sensor-lbl">Avg PM2.5</div>
+            <div class="group-sensor-num ${stPm25}">${fmt(avgPm25)}</div>
+            ${thr.pm25 ? `<div class="group-sensor-thr">warn &gt;${thr.pm25.warn} · crit &gt;${thr.pm25.danger}</div>` : ''}
+          </div>
+          <div class="group-sensor-cell">
+            <div class="group-sensor-lbl">Avg VOC</div>
+            <div class="group-sensor-num ${stVoc}">${fmtInt(avgVoc)} ppb</div>
+            ${thr.voc ? `<div class="group-sensor-thr">warn &gt;${thr.voc.warn} · crit &gt;${thr.voc.danger}</div>` : ''}
+          </div>
+          <div class="group-sensor-cell">
+            <div class="group-sensor-lbl">Devices Online</div>
+            <div class="group-sensor-num good">${onlineCount} / ${group.deviceCount}</div>
+          </div>
+        </div>
+        <div class="group-card-footer">
+          <span class="group-devices-text">${members.slice(0,3).map(d => d.name.split(/[\s']/)[0]).join(', ')}${members.length > 3 ? ' +' + (members.length - 3) + ' more' : ''}</span>
+          <span class="group-alert-badge ${alertCount > 0 ? 'has-alerts' : 'no-alerts'}">
+            ${alertCount > 0 ? alertCount + ' alert' + (alertCount > 1 ? 's' : '') : 'All clear'}
+          </span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ── RENDER GROUP TABLE ─────────────────────────────────────── */
+
+function renderGroupTable(groups, devices) {
+  const body = document.getElementById('groupTableBody');
+  document.getElementById('groupTableBadge').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  const statusLabels = { good: 'Normal', warn: 'Elevated', danger: 'Critical', unknown: 'N/A' };
+
+  body.innerHTML = groups.map(group => {
+    const avgTemp = groupAvg(group, devices, 'temp');
+    const avgHum  = groupAvg(group, devices, 'hum');
+    const avgPm25 = groupAvg(group, devices, 'pm25');
+    const avgCo2  = groupAvg(group, devices, 'co2');
+    const avgVoc  = groupAvg(group, devices, 'voc');
+    const stTemp  = groupStatusForSensor(group, 'temp', avgTemp);
+    const stHum   = groupStatusForSensor(group, 'hum',  avgHum);
+    const stPm25  = groupStatusForSensor(group, 'pm25', avgPm25);
+    const stCo2   = groupStatusForSensor(group, 'co2',  avgCo2);
+    const stVoc   = groupStatusForSensor(group, 'voc',  avgVoc);
+    const overall = groupOverallStatus(group, devices);
+    const thr     = group.thresholds || {};
+
+    const vc = (avgVal, st, sensor) => {
+      const thrWarn = thr[sensor] ? thr[sensor].warn : null;
+      return `<td>
+        <span class="cell-val cv-${st}">${fmt(avgVal)}</span>
+        ${thrWarn ? `<span class="thr-indicator">warn &gt;${thrWarn}</span>` : ''}
+      </td>`;
+    };
+
+    return `<tr>
+      <td><div class="group-name-cell">${group.label}</div></td>
+      <td><div class="group-devices-cell">${group.deviceCount} devices</div></td>
+      ${vc(avgTemp, stTemp, 'temp')}
+      ${vc(avgHum,  stHum,  'hum')}
+      ${vc(avgPm25, stPm25, 'pm25')}
+      ${vc(avgCo2,  stCo2,  'co2')}
+      ${vc(avgVoc,  stVoc,  'voc')}
+      <td><span class="cell-status ${overall}"><span class="cell-dot"></span>${statusLabels[overall]}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ── RENDER GROUP CHARTS ────────────────────────────────────── */
+
+function renderGroupCharts(groups, devices) {
+  Object.values(groupCharts).forEach(c => { try { c.destroy(); } catch {} });
+  groupCharts = {};
+
+  const labels = groups.map(g => g.label);
+  const defaultRgb = { temp: '56,189,248', co2: '16,185,129', pm25: '168,85,247', voc: '245,158,11' };
+
+  const getColor = (group, sensor, alpha) => {
+    const st = groupStatusForSensor(group, sensor, groupAvg(group, devices, sensor));
+    if (st === 'danger') return `rgba(239,68,68,${alpha})`;
+    if (st === 'warn')   return `rgba(245,158,11,${alpha})`;
+    return `rgba(${defaultRgb[sensor]},${alpha})`;
+  };
+
+  const makeChart = (canvasId, sensor, horizontal) => {
+    const data     = groups.map(g => groupAvg(g, devices, sensor) ?? 0);
+    const bgColors = groups.map(g => getColor(g, sensor, 0.7));
+    const bdColors = groups.map(g => getColor(g, sensor, 1));
+    groupCharts[sensor] = new Chart(document.getElementById(canvasId), {
+      type: 'bar',
+      data: { labels, datasets: [{ data, backgroundColor: bgColors, borderColor: bdColors, borderWidth: 1, borderRadius: 4 }] },
+      options: horizontal ? bOpts(true) : bOptsV()
+    });
+  };
+
+  makeChart('chartGroupTemp', 'temp', true);
+  makeChart('chartGroupCo2',  'co2',  true);
+  makeChart('chartGroupAqi',  'pm25', false);
+  makeChart('chartGroupVoc',  'voc',  false);
+}
+
+/* ── RENDER GROUP HEATMAP ───────────────────────────────────── */
+
+function renderGroupHeatmap(groups, devices) {
+  const container = document.getElementById('groupHeatmapContainer');
+  container.style.cssText = `display:grid;grid-template-columns:150px repeat(${SDEFS.length},1fr);gap:4px`;
+
+  let h = `<div class="hm-label-cell" style="font-weight:700;font-size:0.7rem;color:rgba(255,255,255,0.5)">Group</div>`;
+  SDEFS.forEach(s => { h += `<div class="hm-header-cell">${s.label}</div>`; });
+
+  groups.forEach(group => {
+    h += `<div class="hm-label-cell"><span title="${group.label}">${group.label}</span></div>`;
+    SDEFS.forEach(s => {
+      const avg  = groupAvg(group, devices, s.key);
+      const thr  = group.thresholds ? group.thresholds[s.key] : null;
+      const maxV = thr ? thr.danger : s.max;
+      const norm = (avg != null && !isNaN(avg)) ? Math.min(1, Math.max(0, avg / maxV)) : null;
+      const bg   = norm != null ? heatColor(norm) : 'rgba(255,255,255,0.04)';
+      const tx   = norm != null ? (norm > 0.55 ? '#fff' : '#111') : 'rgba(255,255,255,0.2)';
+      const disp = norm != null ? Math.round(norm * 100) + '%' : '—';
+      h += `<div class="hm-cell" style="background:${bg};color:${tx}" title="${s.label}: ${avg != null ? fmt(avg) + s.unit : 'N/A'}">${disp}</div>`;
+    });
+  });
+
+  container.innerHTML = h;
+}
+
+/* ── SET VIEW: device or group ──────────────────────────────── */
+
+function setView(view, btn) {
+  currentView = view;
+  document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+
+  const deviceSections = [
+    'deviceRankingsHead', 'rankingsGrid',
+    'deviceTableHead',    'deviceTableCard',
+    'deviceChartsHead',   'deviceChartsGrid',
+    'deviceHeatmapHead',  'deviceHeatmapCard'
+  ];
+
+  if (view === 'group') {
+    deviceSections.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    document.getElementById('groupViewSection').style.display = 'block';
+    if (groupsData.length && devicesData.length) {
+      renderGroupCards(groupsData, devicesData);
+      renderGroupTable(groupsData, devicesData);
+      renderGroupCharts(groupsData, devicesData);
+      renderGroupHeatmap(groupsData, devicesData);
+    }
+  } else {
+    deviceSections.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = ''; });
+    document.getElementById('groupViewSection').style.display = 'none';
+  }
+}
   /* ── ERROR ──────────────────────────── */
   function showError(m){document.getElementById('errorMsg').textContent=m;document.getElementById('errorBar').classList.add('visible');}
   function hideError(){document.getElementById('errorBar').classList.remove('visible');}
@@ -1054,6 +1496,12 @@ Give concise, actionable advice. Reference specific device names. Use bullet poi
       renderStats(devicesData); renderRankings(devicesData);
       renderTable(devicesData); renderCharts(devicesData);
       renderHeatmap(devicesData); renderInsights(devicesData);
+      if (currentView === 'group' && groupsData.length){
+        renderGroupCards(groupsData, devicesData);
+        renderGroupTable(groupsData, devicesData);
+        renderGroupCharts(groupsData, devicesData);
+        renderGroupHeatmap(groupsData, devicesData);
+      }
       document.getElementById('lastUpdated').textContent='Last updated: '+new Date().toLocaleTimeString();
     } catch(e){ showError(`Refresh failed: ${e.message}`); }
     finally{ pill.classList.remove('show'); }
