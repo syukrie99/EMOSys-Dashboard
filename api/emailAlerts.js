@@ -63,8 +63,8 @@ function markSent(deviceId, sensor) {
 }
 
 /* SEVERITY HELPER */
-function getSeverity(sensor, value) {
-  const t = thresholds[sensor];
+function getSeverity(sensor, value, customThresholds = null) {
+  const t = customThresholds ? customThresholds[sensor] : thresholds[sensor];
   if (!t || value == null || isNaN(value)) return null;
   if (value >= t.danger) return 'critical';
   if (value >= t.warn)   return 'warning';
@@ -217,7 +217,7 @@ function buildEmailText(alerts, deviceName, location) {
  * @param {string} location    room / zone label
  * @returns {Promise<string[]>} array of sensors that triggered emails
  */
-async function checkAndSendAlerts(sensorData, deviceId, deviceName, location = '') {
+async function checkAndSendAlerts(sensorData, deviceId, deviceName, location = '', customThresholds = null) {
   if (!config.enabled) return [];
   if (!config.from || !config.to.length) return [];
 
@@ -227,7 +227,7 @@ async function checkAndSendAlerts(sensorData, deviceId, deviceName, location = '
   for (const [sensor, value] of Object.entries(sensorData)) {
     if (!(sensor in thresholds)) continue;
     const v   = parseFloat(value);
-    const sev = getSeverity(sensor, v);
+    const sev = getSeverity(sensor, v, customThresholds);
     if (!sev) continue;
     if (config.criticalOnly && sev !== 'critical') continue;
     if (!isCooledDown(deviceId, sensor)) continue;
@@ -356,6 +356,10 @@ function getConfig() {
   };
 }
 
+function updateGroupThresholds(groupThr) {
+  console.log('[EMOSys Email] Group thresholds updated for groups', Object.keys(groupThr).join(', '));
+}
+
 /* EXPORTS */
 module.exports = {
   checkAndSendAlerts,
@@ -364,5 +368,6 @@ module.exports = {
   getActiveAlerts,
   updateConfig,
   updateThresholds,
+  updateGroupThresholds,
   getConfig
 };

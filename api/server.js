@@ -9,6 +9,7 @@ app.use(cors());
 app.use(express.json());
 
 const path = require('path');
+const fs = require('fs');
 app.use(express.static(path.join(__dirname, '..')));
 
 // ── InfluxDB config ─────────────────────────────────────────
@@ -205,6 +206,146 @@ const DEVICES = {
     }
 };
 
+// GROUP DEFINITIONS
+// Defines which devices belong to which room group
+// Device assignments are fixed here for now
+// Future: load from groups.json to allow editing via UI
+const GROUPS = {
+    mainoffice: {
+        label : 'Main Office',
+        devices: [
+            'admin_workstation1',
+            'eng_workstation1',
+            'eng_workstation2',
+            'main_entrance'
+        ]
+    },
+    management: {
+        label: 'C-Suite Office',
+        devices: [
+            'ceo_office',
+            'cto_office',
+            'cfo_office'
+        ]
+    },
+    hall: {
+        label: 'Hall',
+        devices: [
+            'mulu_hall'
+        ]
+    },
+    lab: {
+        label: 'Laboratory',
+        devices: [
+            'testing_lab_1',
+            'testing_lab_2'
+        ]
+    },
+    training: {
+        label: 'Training Room',
+        devices: [
+            'training_room_1',
+            'training_room_2'
+        ]
+    },
+    meeting: {
+        label: 'Meeting Room',
+        devices: [
+            'santubong'
+        ]
+    },
+    murud: {
+        label: 'Murud Wing',
+        devices: [
+            'sams_workstation',
+            'eng_workstation_mw1',
+            'eng_workstation_mw2'
+        ]
+    }
+};
+// DEFAULT THRESHOLDS PER GROUP
+// Each group has its own warn and danger levels per sensor
+// These are the factory default. Can be override via UI later on
+const DEFAULT_GROUP_THRESHOLDS = {
+    mainoffice: {
+        temp: { warn: 28,  danger: 35  },
+        hum : { warn: 65,  danger: 80  },
+        pm25: { warn: 15,  danger: 30  },
+        co2 : { warn: 800, danger: 1200},
+        voc : { warn: 300, danger: 600 }
+    },
+    management: {
+        temp: { warn: 26,  danger: 32  },
+        hum : { warn: 60,  danger: 75  },
+        pm25: { warn: 12,  danger: 25  },
+        co2 : { warn: 700, danger: 1000},
+        voc : { warn: 250, danger: 500 } 
+    },
+    hall : {
+        temp: { warn: 28,  danger: 35  },
+        hum : { warn: 65,  danger: 80  },
+        pm25: { warn: 15,  danger: 30  },
+        co2 : { warn: 800, danger: 1200},
+        voc : { warn: 300, danger: 600 }
+    },
+    lab : {
+        temp: { warn: 25,  danger: 30  },
+        hum : { warn: 60,  danger: 70  },
+        pm25: { warn: 10,  danger: 20  },
+        co2 : { warn: 900, danger: 1000},
+        voc : { warn: 200, danger: 400 }
+    },
+    training : {
+        temp: { warn: 28,  danger: 35  },
+        hum : { warn: 65,  danger: 80  },
+        pm25: { warn: 15,  danger: 30  },
+        co2 : { warn: 900, danger: 1400},
+        voc : { warn: 300, danger: 600 }
+    },
+    meeting : {
+        temp: { warn: 28,  danger: 35  },
+        hum : { warn: 65,  danger: 80  },
+        pm25: { warn: 15,  danger: 30  },
+        co2 : { warn: 800, danger: 1200},
+        voc : { warn: 300, danger: 600 }
+    },
+    murud: {
+        temp: { warn: 28,  danger: 35  },
+        hum : { warn: 65,  danger: 80  },
+        pm25: { warn: 15,  danger: 30  },
+        co2 : { warn: 800, danger: 1200},
+        voc : { warn: 300, danger: 600 }
+    },
+};
+
+// LOAD SAVED GROUP THRESHOLDS
+// On startup, read groupThreshilds.json if it exists
+// If not, use defaults. Admin saves via POST /api/groups/thresholds
+const THRESHOLDS_FILE = path.join(__dirname, 'groupThresholds.json');
+let groupThresholds = JSON.parse(JSON.stringify(DEFAULT_GROUP_THRESHOLDS));
+
+try {
+    if (fs.existsSync(THRESHOLDS_FILE)) {
+        const saved = JSON.parse(fs.readFileSync(THRESHOLDS_FILE, 'utf8'));
+        Object.keys(DEFAULT_GROUP_THRESHOLDS).forEach(gid => {
+            if (saved[gid]) groupThresholds[gid] = saved[gid];
+        });
+        console.log('[EMOSys] Group thresholds loaded from groupThresholds.json');
+    } else {
+        console.log('[EMOSys] No saved group thresholds found, using defaults');
+    }
+} catch (e) {
+    console.warn('[EMOSys] Could not load group thresholds, using defaults: ', e.message);
+}
+
+// HELPER: get group ID for a device
+function getDeviceGroup(deviceId) {
+    for (const [gid, group] of Object.entries(GROUPS)) {
+        if(group.devices.includes(deviceId)) return gid;
+    }
+    return null;
+}
+
 // ── Helper — fetch one entity state from HA ─────────────────
 async function fetchHAState(entityId) {
     const response = await fetch(`${HA_URL}/api/states/${entityId}`, {
@@ -265,11 +406,14 @@ app.get('/api/ha/latest', async (req, res) => {
             pm25 : pm25Value
         };
 
+        const groupId = getDeviceGroup(deviceId);
+        const groupThr = groupId ? groupThresholds[groupId] : null;
         emailAlerts.checkAndSendAlerts(
             sensorValues,
             deviceId,
             device.label,
-            device.location
+            device.location,
+            groupThr
         ).catch(err => console.error('[Alert] Check failed: ', err));
 
         res.json({
@@ -499,6 +643,72 @@ app.post('/api/alerts/test', async (req, res) => {
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
+});
+
+// ── GET /api/groups ──────────────────────────────────────────
+// Returns all group definitions with their current thresholds.
+// Used by Analytics, Alerts, and Dashboard pages.
+app.get('/api/groups', (req, res) => {
+  const result = Object.entries(GROUPS).map(([id, g]) => ({
+    id,
+    label       : g.label,
+    deviceCount : g.devices.length,
+    devices     : g.devices,
+    thresholds  : groupThresholds[id] || DEFAULT_GROUP_THRESHOLDS[id]
+  }));
+  res.json(result);
+});
+
+// ── GET /api/groups/:id ──────────────────────────────────────
+// Returns a single group with thresholds.
+app.get('/api/groups/:id', (req, res) => {
+  const gid = req.params.id;
+  const g   = GROUPS[gid];
+  if (!g) return res.status(404).json({ error: `Unknown group: ${gid}` });
+  res.json({
+    id         : gid,
+    label      : g.label,
+    deviceCount: g.devices.length,
+    devices    : g.devices,
+    thresholds : groupThresholds[gid] || DEFAULT_GROUP_THRESHOLDS[gid]
+  });
+});
+
+// ── POST /api/groups/thresholds ──────────────────────────────
+// Saves updated thresholds for one or more groups.
+// Body: { workstations: { temp: { warn: 28, danger: 35 }, ... }, ... }
+// Persists to groupThresholds.json so changes survive restarts.
+app.post('/api/groups/thresholds', (req, res) => {
+  try {
+    const updates = req.body;
+    if (!updates || typeof updates !== 'object') {
+      return res.status(400).json({ error: 'Invalid request body' });
+    }
+    Object.keys(updates).forEach(gid => {
+      if (!groupThresholds[gid]) return;
+      const groupUpdate = updates[gid];
+      Object.keys(groupUpdate).forEach(sensor => {
+        if (!groupThresholds[gid][sensor]) return;
+        const u = groupUpdate[sensor];
+        if (u.warn   !== undefined) groupThresholds[gid][sensor].warn   = parseFloat(u.warn);
+        if (u.danger !== undefined) groupThresholds[gid][sensor].danger = parseFloat(u.danger);
+      });
+    });
+    fs.writeFileSync(THRESHOLDS_FILE, JSON.stringify(groupThresholds, null, 2));
+    emailAlerts.updateGroupThresholds(groupThresholds);
+    console.log('[EMOSys] Group thresholds saved to file');
+    res.json({ ok: true, message: 'Group thresholds saved successfully' });
+  } catch (e) {
+    console.error('[EMOSys] Failed to save group thresholds:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── GET /api/groups/thresholds/defaults ─────────────────────
+// Returns the factory default thresholds for all groups.
+// Used by the Alerts UI reset button.
+app.get('/api/groups/thresholds/defaults', (req, res) => {
+  res.json(DEFAULT_GROUP_THRESHOLDS);
 });
 
 // ── Start server ─────────────────────────────────────────────
