@@ -400,6 +400,74 @@
   .hist-page-btn:active { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
   .hist-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
   .hist-page-info { font-size: 0.78rem; color: #64748b; margin-left: auto; }
+
+  /* GROUP THRESHOLD TAB */
+  .group-thr-tabs {
+    display: flex; flex-wrap: wrap;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc; overflow-x: auto;
+  }
+  .group-thr-tab {
+    padding: 11px 18px;
+    font-size: 0.8rem; font-weight: 600;
+    color: #64748b; cursor: pointer;
+    border: none; background: transparent;
+    font-family: 'Barlow', sans-serif;
+    border-bottom: 3px solid transparent;
+    transition: all 0.15s; white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .group-thr-tab:hover:not(.active) {
+    color: #0057B8; background: rgba(0,87,184,0.04);
+  }
+  .group-thr-tab.active {
+    color: #0057B8; border-bottom-color: #0057B8; background: #fff;
+  }
+  .group-thr-info {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 18px; border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc; flex-wrap: wrap;
+  }
+  .group-thr-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1rem; font-weight: 800;
+    color: #1e293b; text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .group-thr-meta { font-size: 0.75rem; color: #64748b; }
+  .group-thr-device-list {
+    font-size: 0.72rem; color: #94a3b8;
+    margin-left: auto; text-align: right;
+  }
+
+  /* GROUP THRESHOLD ROWS */
+  .group-thr-row {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px; padding: 14px 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    align-items: center; gap: 14px;
+  }
+  .group-thr-sensor-name { font-size: 0.82rem; font-weight: 700; color: #1e293b; }
+  .group-thr-sensor-unit { font-size: 0.68rem; color: #64748b; margin-top: 2px; }
+  .group-thr-field label {
+    display: block; font-size: 0.64rem; font-weight: 700;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    color: #64748b; margin-bottom: 5px;
+  }
+  .group-thr-input {
+    width: 100%; box-sizing: border-box;
+    background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 6px; padding: 7px 10px;
+    color: #0f172a; font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.98rem; font-weight: 700; outline: none;
+    transition: border-color 0..18s;
+  }
+  .group-thr-input.warn-input:focus { border-color: #f59e0b; }
+  .group-thr-input.crit-input:focus { border-color: #ef4444; }
+  .group-thr-input.warn-input { border-left: 3px solid #f59e0b; }
+  .group-thr-input.crit-input { border-left: 3px solid #ef4444; }
+
   </style>
 </head>
 <body class="light">
@@ -683,23 +751,46 @@
         </div>
       </div>
 
-      <!-- THRESHOLD CONFIGURATION -->
-      <div class="section-head"><h3>Alert Thresholds</h3></div>
+      <!-- THRESHOLD CONFIGURATION — PER GROUP -->
+      <div class="section-head"><h3>Alert Thresholds — By Group</h3></div>
       <div class="threshold-card">
         <div class="threshold-card-header">
-          <h4>Sensor Thresholds</h4>
-          <span class="count-badge">5 sensors configured</span>
+          <h4>Group Threshold Profiles</h4>
+          <span class="count-badge" id="thrGroupBadge">Loading…</span>
         </div>
-        <div class="threshold-body">
-          <div class="threshold-grid" id="thresholdGrid">
-            <!-- populated by JS -->
+
+        <!-- Group selector tabs -->
+        <div class="group-thr-tabs" id="groupThrTabs">
+          <div style="padding:16px;color:#64748b;font-size:0.82rem">Loading groups…</div>
+        </div>
+
+        <!-- Active group info bar -->
+        <div class="group-thr-info" id="groupThrInfo" style="display:none">
+          <div>
+            <div class="group-thr-name" id="groupThrName">—</div>
+            <div class="group-thr-meta" id="groupThrMeta">—</div>
           </div>
-          <div class="threshold-save-row">
-            <button class="btn-save" onclick="saveThresholds()">
+          <div class="group-thr-device-list" id="groupThrDeviceList">—</div>
+        </div>
+
+        <!-- Threshold input grid -->
+        <div class="threshold-body">
+          <div class="threshold-grid" id="thresholdGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px">
+            <div style="padding:24px;text-align:center;color:#94a3b8;font-size:0.85rem;grid-column:1/-1">
+              Select a group tab above to edit its thresholds.
+            </div>
+          </div>
+
+          <div class="threshold-save-row" style="margin-top:16px;padding-top:14px;border-top:1px solid #e2e8f0;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button class="btn-save" onclick="saveGroupThresholds()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;display:inline;vertical-align:middle;margin-right:5px"><polyline points="20 6 9 17 4 12"/></svg>
-              Save Thresholds
+              Save This Group
             </button>
-            <button class="btn-test" onclick="resetThresholds()" style="background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.4)">
+            <button class="btn-save" onclick="saveAllGroupThresholds()" style="background:linear-gradient(135deg,#10b981,#059669)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;display:inline;vertical-align:middle;margin-right:5px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Save All Groups
+            </button>
+            <button class="btn-test" onclick="resetGroupThresholds()" style="background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.1);color:#64748b">
               Reset to Defaults
             </button>
             <span class="config-status" id="thrStatus" style="display:none"></span>
@@ -768,9 +859,20 @@
   /* STATE */
   let activeAlerts  = [];
   let alertHistory  = [];
+  let groupsData    = [];
+  let activeGroupId = null;
   let currentFilter = 'all';
   let acknowledged  = new Set();
   let refreshTimer  = null;
+
+  /* SENSOR METADATA - labels and units only, values come from groups API */
+  const SENSOR_META = {
+    temp: { label: 'Temperature', unit: '°C'  },
+    hum:  { label: 'Humidity',    unit: '%RH' },
+    pm25: { label: 'PM2.5/ AQI',  unit: ''    },
+    co2:  { label: 'CO₂',         unit: ' ppm'},
+    voc:  { label: 'VOC',         unit: ' ppb'}
+  };
 
   /*  HELPERS */
   function fmt(v, d=1) { return (v == null || isNaN(v)) ? '—' : Number(v).toFixed(d); }
@@ -1030,25 +1132,188 @@ function renderHistory(history, page) {
 }
 
 
-  /* RENDER THRESHOLD INPUTS  */
-  function renderThresholds() {
-    const grid = document.getElementById('thresholdGrid');
-    grid.innerHTML = Object.entries(thresholds).map(([key, t]) => `
-      <div class="threshold-row">
-        <div>
-          <div class="threshold-sensor-name">${t.label}</div>
-          <div class="threshold-sensor-unit">${t.unit || 'index'}</div>
-        </div>
-        <div class="thr-field">
-          <label style="color:rgba(245,158,11,0.7)">⚠ Warn</label>
-          <input class="thr-input warn-input" type="number" id="thr_warn_${key}" value="${t.warn}" step="0.5"/>
-        </div>
-        <div class="thr-field">
-          <label style="color:rgba(239,68,68,0.7)">🔴 Critical</label>
-          <input class="thr-input crit-input" type="number" id="thr_crit_${key}" value="${t.danger}" step="0.5"/>
-        </div>
-      </div>`).join('');
+/* ── GROUP THRESHOLD FUNCTIONS ────────────────────────────── */
+
+async function loadGroups() {
+  try {
+    const data = await apiGet('/groups');
+    if (Array.isArray(data)) {
+      groupsData = data;
+      document.getElementById('thrGroupBadge').textContent = data.length + ' groups configured';
+      renderGroupTabs(data);
+      if (data.length) setActiveGroupTab(data[0].id);
+    }
+  } catch (e) {
+    console.warn('Could not load groups:', e.message);
+    document.getElementById('groupThrTabs').innerHTML =
+      '<div style="padding:16px;color:#ef4444;font-size:0.82rem">Could not load groups from server.</div>';
   }
+}
+
+function renderGroupTabs(groups) {
+  const tabs = document.getElementById('groupThrTabs');
+  tabs.innerHTML = groups.map(g => `
+    <button class="group-thr-tab" id="gtab_${g.id}" onclick="setActiveGroupTab('${g.id}')">
+      ${g.label}
+      <span style="font-size:0.65rem;color:#94a3b8;margin-left:5px">${g.deviceCount}</span>
+    </button>
+  `).join('');
+}
+
+function setActiveGroupTab(groupId) {
+  activeGroupId = groupId;
+  const group = groupsData.find(g => g.id === groupId);
+  if (!group) return;
+
+  /* Update tab active state */
+  document.querySelectorAll('.group-thr-tab').forEach(t => t.classList.remove('active'));
+  const activeTab = document.getElementById('gtab_' + groupId);
+  if (activeTab) activeTab.classList.add('active');
+
+  /* Update info bar */
+  const infoBar = document.getElementById('groupThrInfo');
+  infoBar.style.display = 'flex';
+  document.getElementById('groupThrName').textContent = group.label;
+  document.getElementById('groupThrMeta').textContent =
+    group.deviceCount + ' device' + (group.deviceCount !== 1 ? 's' : '') + ' in this group';
+  document.getElementById('groupThrDeviceList').textContent =
+    group.devices.slice(0, 4).join(', ') + (group.devices.length > 4 ? ' +' + (group.devices.length - 4) + ' more' : '');
+
+  /* Render threshold inputs */
+  renderGroupThresholdInputs(group);
+}
+
+function renderGroupThresholdInputs(group) {
+  const grid = document.getElementById('thresholdGrid');
+  const thr  = group.thresholds || {};
+
+  grid.innerHTML = Object.entries(SENSOR_META).map(([key, meta]) => {
+    const warn = thr[key] ? thr[key].warn   : '';
+    const crit = thr[key] ? thr[key].danger : '';
+    return `
+      <div class="group-thr-row">
+        <div>
+          <div class="group-thr-sensor-name">${meta.label}</div>
+          <div class="group-thr-sensor-unit">${meta.unit || 'index'}</div>
+        </div>
+        <div class="group-thr-field">
+          <label style="color:rgba(245,158,11,0.8)">Warning</label>
+          <input class="group-thr-input warn-input" type="number"
+            id="gthr_warn_${key}" value="${warn}" step="0.5"
+            placeholder="warn level"/>
+        </div>
+        <div class="group-thr-field">
+          <label style="color:rgba(239,68,68,0.8)">Critical</label>
+          <input class="group-thr-input crit-input" type="number"
+            id="gthr_crit_${key}" value="${crit}" step="0.5"
+            placeholder="crit level"/>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function saveGroupThresholds() {
+  if (!activeGroupId) {
+    showThrStatus('err', 'No group selected.');
+    return;
+  }
+
+  /* Collect input values for active group */
+  const update = {};
+  update[activeGroupId] = {};
+  let valid = true;
+
+  Object.keys(SENSOR_META).forEach(key => {
+    const warnEl = document.getElementById('gthr_warn_' + key);
+    const critEl = document.getElementById('gthr_crit_' + key);
+    if (!warnEl || !critEl) return;
+    const warn = parseFloat(warnEl.value);
+    const crit = parseFloat(critEl.value);
+    if (isNaN(warn) || isNaN(crit)) { valid = false; return; }
+    if (warn >= crit) {
+      showThrStatus('err', 'Warning must be lower than Critical for all sensors.');
+      valid = false;
+    }
+    update[activeGroupId][key] = { warn, danger: crit };
+  });
+
+  if (!valid) return;
+
+  showThrStatus('info', 'Saving…');
+  try {
+    await apiPost('/groups/thresholds', update);
+    /* Update local groupsData cache */
+    const g = groupsData.find(g => g.id === activeGroupId);
+    if (g) g.thresholds = update[activeGroupId];
+    showThrStatus('ok', '✓ ' + groupsData.find(g => g.id === activeGroupId)?.label + ' thresholds saved');
+  } catch (e) {
+    showThrStatus('err', 'Save failed: ' + e.message);
+  }
+}
+
+async function saveAllGroupThresholds() {
+  showThrStatus('info', 'Saving all groups…');
+  const allUpdates = {};
+  let hasError = false;
+
+  groupsData.forEach(group => {
+    allUpdates[group.id] = {};
+    Object.keys(SENSOR_META).forEach(key => {
+      /* Use current cached thresholds for non-active groups */
+      if (group.id === activeGroupId) {
+        const warnEl = document.getElementById('gthr_warn_' + key);
+        const critEl = document.getElementById('gthr_crit_' + key);
+        if (warnEl && critEl) {
+          const warn = parseFloat(warnEl.value);
+          const crit = parseFloat(critEl.value);
+          if (!isNaN(warn) && !isNaN(crit)) {
+            allUpdates[group.id][key] = { warn, danger: crit };
+            return;
+          }
+        }
+      }
+      /* Use cached values for non-active groups */
+      if (group.thresholds && group.thresholds[key]) {
+        allUpdates[group.id][key] = {
+          warn:   group.thresholds[key].warn,
+          danger: group.thresholds[key].danger
+        };
+      }
+    });
+  });
+
+  try {
+    await apiPost('/groups/thresholds', allUpdates);
+    /* Update local cache */
+    groupsData.forEach(g => {
+      if (allUpdates[g.id]) g.thresholds = allUpdates[g.id];
+    });
+    showThrStatus('ok', '✓ All ' + groupsData.length + ' group thresholds saved');
+  } catch (e) {
+    showThrStatus('err', 'Save failed: ' + e.message);
+  }
+}
+
+async function resetGroupThresholds() {
+  showThrStatus('info', 'Resetting to defaults…');
+  try {
+    const defaults = await apiGet('/groups/thresholds/defaults');
+    await apiPost('/groups/thresholds', defaults);
+    /* Reload groups to get fresh data */
+    await loadGroups();
+    showThrStatus('ok', '✓ All groups reset to factory defaults');
+  } catch (e) {
+    showThrStatus('err', 'Reset failed: ' + e.message);
+  }
+}
+
+function showThrStatus(type, msg) {
+  const el = document.getElementById('thrStatus');
+  el.style.display = 'inline-block';
+  el.className = 'config-status ' + type;
+  el.textContent = msg;
+  if (type === 'ok') setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
 
   /* ACKNOWLEDGE */
   function acknowledgeAlert(id) {
@@ -1159,42 +1424,6 @@ function renderHistory(history, page) {
     if (type === 'ok') setTimeout(() => { el.style.display = 'none'; }, 5000);
   }
 
-  /* SAVE THRESHOLDS  */
-  function saveThresholds() {
-    const thrStatus = document.getElementById('thrStatus');
-    Object.keys(thresholds).forEach(key => {
-      const warn = parseFloat(document.getElementById(`thr_warn_${key}`)?.value);
-      const crit = parseFloat(document.getElementById(`thr_crit_${key}`)?.value);
-      if (!isNaN(warn)) thresholds[key].warn   = warn;
-      if (!isNaN(crit)) thresholds[key].danger = crit;
-    });
-
-    /* Persist to server (best effort) */
-    apiPost('/alerts/thresholds', thresholds).catch(() => {
-      localStorage.setItem('emosys_thresholds', JSON.stringify(thresholds));
-    });
-
-    thrStatus.style.display = 'inline-block';
-    thrStatus.className = 'config-status ok';
-    thrStatus.textContent = '✓ Thresholds saved';
-    setTimeout(() => { thrStatus.style.display = 'none'; }, 4000);
-  }
-
-  function resetThresholds() {
-    thresholds = {
-      temp: { warn:29,   danger:35,   unit:'°C',  label:'Temperature' },
-      hum:  { warn:70,   danger:80,   unit:'%RH', label:'Humidity' },
-      pm25: { warn:15,   danger:30,   unit:'',    label:'PM2.5 / AQI' },
-      co2:  { warn:800, danger:1200, unit:' ppm',label:'CO₂' },
-      voc:  { warn:300,  danger:600, unit:' ppb',label:'VOC' }
-    };
-    renderThresholds();
-    const thrStatus = document.getElementById('thrStatus');
-    thrStatus.style.display = 'inline-block';
-    thrStatus.className = 'config-status info';
-    thrStatus.textContent = 'Reset to defaults — click Save to apply';
-    setTimeout(() => { thrStatus.style.display = 'none'; }, 4000);
-  }
 
   /* LOAD SAVED CONFIG */
   function loadSavedConfig() {
@@ -1213,13 +1442,6 @@ function renderHistory(history, page) {
           updateEmailToggle();
         }
         if (c.criticalOnly) document.getElementById('critOnlyToggle').checked = true;
-      }
-      const savedThr = localStorage.getItem('emosys_thresholds');
-      if (savedThr) {
-        const t = JSON.parse(savedThr);
-        Object.keys(thresholds).forEach(k => {
-          if (t[k]) { thresholds[k].warn = t[k].warn; thresholds[k].danger = t[k].danger; }
-        });
       }
     } catch {}
   }
@@ -1266,7 +1488,7 @@ function renderHistory(history, page) {
   /* INIT */
   setDates();
   loadSavedConfig();
-  renderThresholds();
+  loadGroups();
   refreshAlerts(true);
   refreshTimer = setInterval(() => refreshAlerts(false), REFRESH_MS);
   </script>
