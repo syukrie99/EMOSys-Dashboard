@@ -56,6 +56,91 @@
     .dev-page-btn:hover, .dev-page-btn.active { background:#0057B8; color:#fff; border-color:#0057B8; }
     .dev-page-btn:disabled { opacity:0.4; cursor:not-allowed; }
     .dev-page-info { font-size:0.75rem; color:var(--muted); padding:0 4px; }
+
+    /* GROUP STRIP */
+    .group-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .gs-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 12px 14px;
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transition: box-shadow 0.15s, transform 0.15s;
+      text-decoration: none;
+    }
+    .gs-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+    }
+    .gs-card.gs-good::before { background: #10b981; }
+    .gs-card.gs-ward::before { background: #f59e0b; }
+    .gs-card.gs-danger::before { background: #ef4444; }
+    .gs-card.gs-loading::before { background: #e5e7eb; }
+    .gs-name {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.82rem; font-weight: 800;
+      color: #0d1b2a; text-transform: uppercase;
+      letter-spacing: 0.03em; margin-bottom: 8px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .gs-readings {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 6px; margin-bottom: 8px;
+    }
+    .gs-reading-label {
+      font-size: 0.6rem; font-weight: 700;
+      color: #9ca3af; text-transform: uppercase;
+      letter-spacing: 0.05em; margin-bottom: 2px;
+    }
+    .gs-reading-val {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.95rem; font-weight: 800; line-height: 1;
+    }
+    .gs-reading-val.gs-good   { color: #374151; }
+    .gs-reading-val.gs-warn   { color: #d97706; }
+    .gs-reading-val.gs-danger { color: #dc2626; }
+    .gs-reading-val.gs-na     { color: #9ca3af; }
+    .gs-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-top: 7px; border-top: 1px solid #f3f4f6;
+    }
+    .gs-online { 
+      font-size: 0.67rem; color: #6b7280;
+    }
+    .gs-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 0.65rem; font-weight: 700; padding: 1px 6px;
+      border-radius: 20px;
+    }
+    .gs-badge.gs-good    { background: rgba(16,185,129,0.1); color: #059669; }
+    .gs-badge.gs-warn    { background: rgba(245,158,11,0.1); color: #d97706; }
+    .gs-badge.gs-warning { background: rgba(239,68,68,0.1);  color: #dc2626; }
+    .gs-badge-dot {
+      width: 4px; height: 4px; border-radius: 50%;
+      background: currentColor;
+    }
+    /* Skeleton for group strip loadin */
+    .gs-skeleton {
+      background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+      background-size: 200% 100%;
+      animation: gsShimmer 1.2s infinite;
+      border-radius: 4px; height: 10px; margin-bottom: 6px;
+    }
+    @keyframes gsShimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    @media (max-width: 768px) {
+      .group-strip { grid-template-columns: repeat(2, 1fr); }
+    }
   </style>
 </head>
 <body class="light">
@@ -377,6 +462,50 @@
 
       </div>
 
+           <!-- GROUP OVERVIEW STRIP -->
+       <div class="section-head">
+        <h3>Group Overview</h3>
+        <div class="last-updated" id="groupStripUpdated" style="font-size:0.75rem;color:var(--muted)">Loading...</div>
+       </div>
+       <div class="group-strip" id="groupStrip">
+        <!-- 7 loading skeletons -->
+         <div class="gs-card gs-loading">
+          <div class="gs-skeleton" style="width:60%;height:12px"></div>
+          <div class="gs-skeleton" style="width:100%;height:9px"></div>
+          <div class="gs-skeleton" style="width:80%;height:9px"></div>
+         </div>
+          <div class="gs-card gs-loading">
+          <div class="gs-skeleton" style="width:60%;height:12px"></div>
+          <div class="gs-skeleton" style="width:100%;height:9px"></div>
+          <div class="gs-skeleton" style="width:80%;height:9px"></div>
+         </div>
+          <div class="gs-card gs-loading">
+          <div class="gs-skeleton" style="width:60%;height:12px"></div>
+          <div class="gs-skeleton" style="width:100%;height:9px"></div>
+          <div class="gs-skeleton" style="width:80%;height:9px"></div>
+         </div>
+          <div class="gs-card gs-loading">
+          <div class="gs-skeleton" style="width:60%;height:12px"></div>
+          <div class="gs-skeleton" style="width:100%;height:9px"></div>
+          <div class="gs-skeleton" style="width:80%;height:9px"></div>
+         </div>
+          <div class="gs-card gs-loading">
+          <div class="gs-skeleton" style="width:60%;height:12px"></div>
+          <div class="gs-skeleton" style="width:100%;height:9px"></div>
+          <div class="gs-skeleton" style="width:80%;height:9px"></div>
+         </div>
+          <div class="gs-card gs-loading">
+          <div class="gs-skeleton" style="width:60%;height:12px"></div>
+          <div class="gs-skeleton" style="width:100%;height:9px"></div>
+          <div class="gs-skeleton" style="width:80%;height:9px"></div>
+         </div>
+          <div class="gs-card gs-loading">
+          <div class="gs-skeleton" style="width:60%;height:12px"></div>
+          <div class="gs-skeleton" style="width:100%;height:9px"></div>
+          <div class="gs-skeleton" style="width:80%;height:9px"></div>
+         </div>
+       </div>
+
       <!-- ── ALL DEVICES OVERVIEW -->
       <div class="section-head"><h3>All Devices Overview</h3></div>
       <div class="table-card" id="allDevicesCard">
@@ -429,5 +558,165 @@
   <script src="assets/js/auth.js"></script>
   <script src="assets/js/charts.js"></script>
   <script src="assets/js/dashboard.js"></script>
+  <script>
+    /* ── GROUP STRIP — self-contained, does not depend on dashboard.js ── */
+    (function() {
+
+    var REFRESH_MS = 30000;
+    var groupsData = [];
+    var devicesData = {};
+
+    /* Sensor status using group-specific thresholds */
+    function sensorStatus(sensor, value, groupThresholds) {
+      if (value == null || isNaN(value)) return 'gs-na';
+      var thr = groupThresholds ? groupThresholds[sensor] : null;
+      if (!thr) return 'gs-good';
+      if (value >= thr.danger) return 'gs-danger';
+      if (value >= thr.warn)   return 'gs-warn';
+      return 'gs-good';
+    }
+
+    function groupOverallStatus(group, deviceReadings) {
+      var sensors = ['temp', 'hum', 'co2', 'pm25', 'voc'];
+      var statuses = sensors.map(function(s) {
+        return sensorStatus(s, groupAvg(group, deviceReadings, s), group.thresholds);
+      });
+      if (statuses.indexOf('gs-danger') !== -1) return 'gs-danger';
+      if (statuses.indexOf('gs-warn')   !== -1) return 'gs-warn';
+      return 'gs-good';
+    }
+
+    function groupAvg(group, deviceReadings, key) {
+      var vals = group.devices
+        .map(function(id) { return deviceReadings[id]; })
+        .filter(function(d) { return d && d[key] != null && !isNaN(d[key]); })
+        .map(function(d) { return d[key]; });
+      if (!vals.length) return null;
+      return vals.reduce(function(a, b) { return a + b; }, 0) / vals.length;
+    }
+
+    function fmt(v, d) {
+      if (v == null || isNaN(v)) return '—';
+      return Number(v).toFixed(d != null ? d : 1);
+    }
+
+    /* Fetch all device latest readings in parallel */
+    async function fetchAllDevices(deviceList) {
+      var results = await Promise.allSettled(
+        deviceList.map(function(dev) {
+          return fetch('/api/ha/latest?device=' + dev.id, { signal: AbortSignal.timeout(5000) })
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .catch(function() { return null; });
+        })
+      );
+      var readings = {};
+      results.forEach(function(r, i) {
+        if (r.status === 'fulfilled' && r.value) {
+          var d = r.value;
+          readings[deviceList[i].id] = {
+            temp : parseFloat(d.temperature),
+            hum  : parseFloat(d.humidity),
+            co2  : parseFloat(d.co2),
+            voc  : parseFloat(d.voc),
+            pm25 : parseFloat(d.pm25),
+            online: true
+          };
+        }
+      });
+      return readings;
+    }
+
+    /* Render the strip */
+    function renderStrip(groups, deviceReadings) {
+      var strip = document.getElementById('groupStrip');
+      if (!strip) return;
+
+      var statusLabels = { 'gs-good': 'Normal', 'gs-warn': 'Elevated', 'gs-danger': 'Critical' };
+
+      strip.innerHTML = groups.map(function(group) {
+        var avgTemp = groupAvg(group, deviceReadings, 'temp');
+        var avgHum  = groupAvg(group, deviceReadings, 'hum');
+        var avgCo2  = groupAvg(group, deviceReadings, 'co2');
+        var avgPm25 = groupAvg(group, deviceReadings, 'pm25');
+        var stTemp  = sensorStatus('temp', avgTemp, group.thresholds);
+        var stHum   = sensorStatus('hum',  avgHum,  group.thresholds);
+        var stCo2   = sensorStatus('co2',  avgCo2,  group.thresholds);
+        var stPm25  = sensorStatus('pm25', avgPm25, group.thresholds);
+        var overall = groupOverallStatus(group, deviceReadings);
+        var onlineCount = group.devices.filter(function(id) {
+          return deviceReadings[id] != null;
+        }).length;
+
+        return [
+          '<div class="gs-card ' + overall + '" onclick="window.location.href=\'Analytics.html\'" title="View in Analytics">',
+            '<div class="gs-name">' + group.label + '</div>',
+            '<div class="gs-readings">',
+              '<div>',
+                '<div class="gs-reading-label">Avg Temp</div>',
+                '<div class="gs-reading-val ' + stTemp + '">' + fmt(avgTemp) + '°C</div>',
+              '</div>',
+              '<div>',
+                '<div class="gs-reading-label">Avg Humidity</div>',
+                '<div class="gs-reading-val ' + stHum + '">' + fmt(avgHum) + '%</div>',
+              '</div>',
+              '<div>',
+                '<div class="gs-reading-label">Avg CO2</div>',
+                '<div class="gs-reading-val ' + stCo2 + '">' + (avgCo2 != null && !isNaN(avgCo2) ? Math.round(avgCo2) : '—') + ' ppm</div>',
+              '</div>',
+              '<div>',
+                '<div class="gs-reading-label">Avg PM2.5</div>',
+                '<div class="gs-reading-val ' + stPm25 + '">' + fmt(avgPm25) + '</div>',
+              '</div>',
+            '</div>',
+            '<div class="gs-footer">',
+              '<span class="gs-online">' + onlineCount + ' / ' + group.deviceCount + ' online</span>',
+              '<span class="gs-badge ' + overall + '">',
+                '<span class="gs-badge-dot"></span>',
+                (statusLabels[overall] || 'Normal'),
+              '</span>',
+            '</div>',
+          '</div>'
+        ].join('');
+      }).join('');
+
+      var updEl = document.getElementById('groupStripUpdated');
+      if (updEl) updEl.textContent = 'Updated: ' + new Date().toLocaleTimeString();
+    }
+
+    /* Main load function */
+    async function loadGroupStrip() {
+      try {
+        /* Fetch groups and device list in parallel */
+        var results = await Promise.allSettled([
+          fetch('/api/groups').then(function(r) { return r.json(); }),
+          fetch('/api/devices').then(function(r) { return r.json(); })
+        ]);
+
+        var groups  = results[0].status === 'fulfilled' ? results[0].value : [];
+        var devices = results[1].status === 'fulfilled' ? results[1].value : [];
+
+        if (!groups.length || !devices.length) return;
+        groupsData = groups;
+
+        /* Fetch all device readings */
+        var readings = await fetchAllDevices(devices);
+        devicesData  = readings;
+
+        renderStrip(groups, readings);
+      } catch (e) {
+        console.warn('[GroupStrip] Load failed:', e.message);
+        var strip = document.getElementById('groupStrip');
+        if (strip) strip.innerHTML = '<div style="grid-column:1/-1;padding:16px;color:#9ca3af;font-size:0.82rem">Could not load group data. Check server connection.</div>';
+      }
+    }
+
+    /* Init and auto-refresh */
+    document.addEventListener('DOMContentLoaded', function() {
+      loadGroupStrip();
+      setInterval(loadGroupStrip, REFRESH_MS);
+    });
+
+  })();
+</script>
 </body>
 </html>
