@@ -178,12 +178,6 @@ document.addEventListener('DOMContentLoaded', function () {
     /* ── REFRESH SPARKLINES */
     drawAllSparklines(hist);
 
-    /* ── UPDATE STATUS PILL with active device name */
-    var activeInfo = devices.find(function(d) { return d.id === activeDevice; });
-    var pill = document.querySelector('.status-pill');
-    if (pill && activeInfo) {
-      pill.innerHTML = '<div class="pulse-dot"></div> ' + activeInfo.label + ' — ' + activeInfo.location;
-    }
 
     updateAlerts(t, h, pm25, aqi, co2, voc);
   }
@@ -394,6 +388,7 @@ document.addEventListener('DOMContentLoaded', function () {
           }
 
           updateCards();
+          updateQuickStats();
         }
       })
       .catch(function(err) {
@@ -510,7 +505,8 @@ function loadOverviewTable() {
         });
 
         Promise.all(promises).then(function(results) {
-          document.getElementById('overviewBadge').textContent = list.length + ' devices';
+          var onlineCount = results.filter(function(r) { return r[1] && r[1].online === true; }).length;
+          document.getElementById('overviewBadge').textContent = onlineCount + ' / ' + list.length + ' online';
           overviewAllRows = list.map(function(d, i) {
             var data   = results[i][0];
             var status = results[i][1];
@@ -521,6 +517,15 @@ function loadOverviewTable() {
               data  : (data && !data.error) ? data : null
             };
           });
+          var pill = document.querySelector('.status-pill');
+          if (pill) {
+            if (onlineCount === list.length) {
+              pill.innerHTML = '<div class="pulse-dot"></div> All ' + list.length + ' Devices Online';
+            } else {
+              var offlineCount = list.length - onlineCount;
+              pill.innerHTML = '<div class="pulse-dot" style="background:#f59e0b"></div> ' + offlineCount + ' Device' + (offlineCount > 1 ? 's' : '') + ' Offline';
+            }
+          }
           renderOverviewPage(1);
         });
       });
