@@ -1,0 +1,156 @@
+{
+  "mainoffice": {
+    "temp": {
+      "warn": 28,
+      "danger": 35
+    },
+    "hum": {
+      "warn": 80,
+      "danger": 90
+    },
+    "pm25": {
+      "warn": 15,
+      "danger": 30
+    },
+    "co2": {
+      "warn": 800,
+      "danger": 1200
+    },
+    "voc": {
+      "warn": 300,
+      "danger": 600
+    }
+  },
+  "management": {
+    "temp": {
+      "warn": 26,
+      "danger": 32
+    },
+    "hum": {
+      "warn": 80,
+      "danger": 90
+    },
+    "pm25": {
+      "warn": 12,
+      "danger": 25
+    },
+    "co2": {
+      "warn": 700,
+      "danger": 1000
+    },
+    "voc": {
+      "warn": 250,
+      "danger": 500
+    }
+  },
+  "hall": {
+    "temp": {
+      "warn": 28,
+      "danger": 35
+    },
+    "hum": {
+      "warn": 80,
+      "danger": 90
+    },
+    "pm25": {
+      "warn": 15,
+      "danger": 30
+    },
+    "co2": {
+      "warn": 800,
+      "danger": 1200
+    },
+    "voc": {
+      "warn": 300,
+      "danger": 600
+    }
+  },
+  "lab": {
+    "temp": {
+      "warn": 25,
+      "danger": 30
+    },
+    "hum": {
+      "warn": 80,
+      "danger": 90
+    },
+    "pm25": {
+      "warn": 10,
+      "danger": 20
+    },
+    "co2": {
+      "warn": 900,
+      "danger": 1000
+    },
+    "voc": {
+      "warn": 200,
+      "danger": 400
+    }
+  },
+  "training": {
+    "temp": {
+      "warn": 28,
+      "danger": 35
+    },
+    "hum": {
+      "warn": 80,
+      "danger": 90
+    },
+    "pm25": {
+      "warn": 15,
+      "danger": 30
+    },
+    "co2": {
+      "warn": 900,
+      "danger": 1400
+    },
+    "voc": {
+      "warn": 300,
+      "danger": 600
+    }
+  },
+  "meeting": {
+    "temp": {
+      "warn": 28,
+      "danger": 35
+    },
+    "hum": {
+      "warn": 80,
+      "danger": 90
+    },
+    "pm25": {
+      "warn": 15,
+      "danger": 30
+    },
+    "co2": {
+      "warn": 800,
+      "danger": 1200
+    },
+    "voc": {
+      "warn": 300,
+      "danger": 600
+    }
+  },
+  "murud": {
+    "temp": {
+      "warn": 28,
+      "danger": 35
+    },
+    "hum": {
+      "warn": 80,
+      "danger": 90
+    },
+    "pm25": {
+      "warn": 15,
+      "danger": 30
+    },
+    "co2": {
+      "warn": 800,
+      "danger": 1200
+    },
+    "voc": {
+      "warn": 300,
+      "danger": 600
+    }
+  }
+}
