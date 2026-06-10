@@ -346,6 +346,29 @@ function getDeviceGroup(deviceId) {
     return null;
 }
 
+// Write alert breaches to InfluxDB
+// Called after checkAndSendAlerts returns triggered alert entries
+// Each beach is stored as a point in the 'alerts' measurement.
+async function writeAlertsToInflux(alerts, deviceId, groupId) {
+  if (!alerts || !alerts.length) return;
+  try {
+    const escField = s => String(s || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const lines = alerts.map(a => {
+      const gid = groupId || 'none';
+      return (
+        `alerts,device_id=${deviceId},sensor=${a.sensor},severity=${a.severity},group_id=${gid}` +
+        ` value=${Number(a.value) || 0},threshold=${Number(a.threshold) || 0}` +
+        `,email_sent=${a.emailSent ? 'true' : 'false'}` +
+        `,device_name="${escField(a.device)}"` +
+        `,location="${escField(a.location)}"`
+      );
+    }).join('\n');
+    await client.write(lines, INFLUX_DB);
+    console.log(`[EMOSys Alert] Written ${alerts.length} alert(s) to InfluxDB — device: ${deviceId}`);
+  } catch (e) {
+    console.error('[EMOSys Alert] InfluxDB write failed:', e.message);
+  }
+}
 // ── Helper — fetch one entity state from HA ─────────────────
 async function fetchHAState(entityId) {
     const response = await fetch(`${HA_URL}/api/states/${entityId}`, {
@@ -414,7 +437,11 @@ app.get('/api/ha/latest', async (req, res) => {
             device.label,
             device.location,
             groupThr
-        ).catch(err => console.error('[Alert] Check failed: ', err));
+        ).then(triggeredAlerts => {
+            if (triggeredAlerts && triggeredAlerts.length) {
+                writeAlertsToInflux(triggeredAlerts, deviceId, groupId);
+            }
+        }).catch(err => console.error('[Alert] Check failed: ', err));
 
         res.json({
             temperature : parseFloat(tempData.state).toFixed(2),
@@ -604,12 +631,82 @@ app.post('/api/ai/chat', async (req, res) => {
     }
 });
 
-app.get('/api/alerts/active', (req, res) => {
-    res.json(emailAlerts.getActiveAlerts());
+app.get('/api/alerts/active', async (req, res) => {
+    try {
+        const query = `
+            SELECT time, device_id, device_name, sensor, severity,
+                   value, threshold, email_sent, location, group_id
+            FROM alerts
+            WHERE time >= now() - INTERVAL '30 minutes'
+            ORDER BY time DESC
+            LIMIT 50
+        `;
+        const rows = [];
+        const result = await client.query(query, INFLUX_DB);
+        for await (const row of result) {
+            rows.push({
+                id        : `${row.device_id}_${row.sensor}_${new Date(row.time).getTime()}`,
+                sensor    : row.sensor    || '',
+                device    : row.device_name || row.device_id || '',
+                location  : row.location  || '—',
+                value     : parseFloat(row.value)     || 0,
+                threshold : parseFloat(row.threshold) || 0,
+                severity  : row.severity  || 'warning',
+                timestamp : new Date(row.time).toISOString(),
+                emailSent : row.email_sent === true || row.email_sent === 'true',
+                groupId   : row.group_id  || ''
+            });
+        }
+        if (rows.length > 0) {
+            return res.json(rows);
+        }
+        res.json(emailAlerts.getActiveAlerts());
+    } catch (e) {
+        if (e.code !== 'INTERNAL') {
+            console.error('[EMOSys] Active alerts query failed:', e.message);
+        }
+        res.json(emailAlerts.getActiveAlerts());
+    }
 });
 
-app.get('/api/alerts/history', (req, res) => {
-    res.json(emailAlerts.getAlertHistory());
+app.get('/api/alerts/history', async (req, res) => {
+    const hours = parseInt(req.query.hours) || 72;
+    try {
+        const query = `
+            SELECT time, device_id, device_name, sensor, severity,
+                   value, threshold, email_sent, location, group_id
+            FROM alerts
+            WHERE time >= now() - INTERVAL '${hours} hours'
+            ORDER BY time DESC
+            LIMIT 200
+        `;
+        const rows = [];
+        const result = await client.query(query, INFLUX_DB);
+        for await (const row of result) {
+            rows.push({
+                id        : `${row.device_id}_${row.sensor}_${new Date(row.time).getTime()}`,
+                sensor    : row.sensor    || '',
+                device    : row.device_name || row.device_id || '',
+                location  : row.location  || '—',
+                value     : parseFloat(row.value)     || 0,
+                threshold : parseFloat(row.threshold) || 0,
+                severity  : row.severity  || 'warning',
+                timestamp : new Date(row.time).toISOString(),
+                emailSent : row.email_sent === true || row.email_sent === 'true',
+                groupId   : row.group_id  || ''
+            });
+        }
+        if (rows.length > 0) {
+            return res.json(rows);
+        }
+        /* No InfluxDB data yet — fall back to in-memory */
+        res.json(emailAlerts.getAlertHistory());
+    } catch (e) {
+        if (e.code !== 'INTERNAL') {
+            console.error('[EMOSys] Alert history query failed:', e.message);
+        }
+        res.json(emailAlerts.getAlertHistory());
+    }
 });
 
 app.get('/api/alerts/config', (req, res) => {

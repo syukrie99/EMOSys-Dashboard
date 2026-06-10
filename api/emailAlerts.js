@@ -237,21 +237,25 @@ async function checkAndSendAlerts(sensorData, deviceId, deviceName, location = '
 
   if (!triggered.length) return [];
 
-  /* Log every triggered alert regardless of whether email goes out */
+  /* Log every triggered alert - store references so we can return them */
+  const logEntries = [];
   triggered.forEach(a => {
+    const activeThr = customThresholds || thresholds;
+    const t = (activeThr && activeThr[a.sensor]) ? activeThr[a.sensor] : (thresholds[a.sensor] || {});
     const entry = {
       id:        `${deviceId}_${a.sensor}_${Date.now()}`,
       sensor:    a.sensor,
       device:    deviceName,
       location,
       value:     a.value,
-      threshold: a.severity === 'critical' ? thresholds[a.sensor].danger : thresholds[a.sensor].warn,
+      threshold: a.severity === 'critical' ? (t.danger || 0) : (t.warn || 0),
       severity:  a.severity,
       timestamp: new Date().toISOString(),
       emailSent: false   // updated below if send succeeds
     };
     alertLog.unshift(entry);
     if (alertLog.length > 100) alertLog.pop();
+    logEntries.push(entry);
   });
 
   /* Send one combined email for all triggered sensors on this device */
@@ -280,11 +284,12 @@ async function checkAndSendAlerts(sensorData, deviceId, deviceName, location = '
     });
 
     console.log(`[EMOSys Email] Sent alert for ${deviceName}: ${triggered.map(a=>a.sensor).join(', ')}`);
-    return triggered.map(a => a.sensor);
+    logEntries.forEach(e => { e.emailSent = true; });
+    return logEntries;
 
   } catch (err) {
     console.error('[EMOSys Email] Send failed:', err.message);
-    return [];
+    return logEntries;
   }
 }
 
