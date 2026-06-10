@@ -22,10 +22,10 @@
     flex-shrink: 0;
   }
   .sev-badge .sev-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-  .sev-badge.critical { background: rgba(239,68,68,0.14);  color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
-  .sev-badge.warning  { background: rgba(245,158,11,0.14); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
-  .sev-badge.info     { background: rgba(56,189,248,0.12); color: #38bdf8; border: 1px solid rgba(56,189,248,0.25); }
-  .sev-badge.resolved { background: rgba(16,185,129,0.1);  color: #34d399; border: 1px solid rgba(16,185,129,0.2); }
+  .sev-badge.critical { background: rgba(239,68,68,0.10);  color: #dc2626; border: 1px solid rgba(239,68,68,0.25); }
+  .sev-badge.warning  { background: rgba(245,158,11,0.10); color: #b45309; border: 1px solid rgba(245,158,11,0.25); }
+  .sev-badge.info     { background: rgba(14,165,233,0.10); color: #0369a1; border: 1px solid rgba(14,165,233,0.25); }
+  .sev-badge.resolved { background: rgba(16,185,129,0.10); color: #059669; border: 1px solid rgba(16,185,129,0.25); }
 
   /* STAT STRIP */
   .alert-stat-strip {
@@ -125,7 +125,7 @@
     display: flex; flex-wrap: wrap; gap: 8px;
   }
   .alert-meta span { display: flex; align-items: center; gap: 4px; }
-  .alert-meta .dot-sep { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,0.2); }
+  .alert-meta .dot-sep { width: 3px; height: 3px; border-radius: 50%; background: #cbd5e1; }
 
   .alert-value-col {
     text-align: right; flex-shrink: 0;
@@ -150,15 +150,15 @@
   /* empty state */
   .alerts-empty {
     padding: 40px; text-align: center;
-    color: rgba(255,255,255,0.22); font-size: 0.88rem; line-height: 1.8;
+    color: #94a3b8; font-size: 0.88rem; line-height: 1.8;
   }
-  .alerts-empty svg { 
-    width: 36px; height: 36px; 
-    stroke: rgba(255,255,255,0.14); 
-    fill: none; stroke-width: 1.5; 
-    display: block; 
-    margin: 0 auto 12px; 
-}
+  .alerts-empty svg {
+    width: 36px; height: 36px;
+    stroke: #cbd5e1;
+    fill: none; stroke-width: 1.5;
+    display: block;
+    margin: 0 auto 12px;
+  }
 
   /* HISTORY TABLE */
   .history-card {
@@ -180,7 +180,7 @@
     vertical-align: middle;
   }
   .history-card tbody tr:last-child td { border-bottom: none; }
-  .history-card tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .history-card tbody tr:hover td { background: #f8fafc; }
   .history-time { font-size: 0.75rem; color: #64748b; font-family: 'Barlow Condensed', sans-serif; }
   .history-device { font-weight: 600; color: #1e293b; font-size: 0.82rem; }
   .history-val { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.92rem; }
@@ -194,9 +194,9 @@
   }
   .email-no-badge {
     display: inline-flex; align-items: center; gap: 4px;
-    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+    background: #f1f5f9; border: 1px solid #e2e8f0;
     border-radius: 20px; padding: 2px 8px;
-    font-size: 0.67rem; color: rgba(255,255,255,0.3);
+    font-size: 0.67rem; color: #94a3b8;
   }
 
   /* EMAIL CONFIG CARD */
@@ -213,7 +213,7 @@
   .email-config-header {
     display: flex; align-items: center; gap: 13px;
     padding: 16px 20px 14px;
-    border-bottom: 1px solid rgba(255,255,255,0.07);
+    border-bottom: 1px solid #e2e8f0;
   }
   .email-config-icon {
     width: 38px; height: 38px; border-radius: 10px;
@@ -236,14 +236,14 @@
   }
   .toggle-switch input { opacity: 0; width: 0; height: 0; }
   .toggle-slider {
-    position: absolute; inset: 0; background: rgba(255,255,255,0.1);
+    position: absolute; inset: 0; background: #e2e8f0;
     border-radius: 34px; cursor: pointer; transition: 0.25s;
-    border: 1px solid #64748b;
+    border: 1px solid #cbd5e1;
   }
   .toggle-slider::before {
     content: ''; position: absolute; height: 16px; width: 16px;
     left: 3px; bottom: 3px; border-radius: 50%;
-    background: #64748b; transition: 0.25s;
+    background: #94a3b8; transition: 0.25s;
   }
   .toggle-switch input:checked + .toggle-slider { background: #0ea5e9; border-color: #0ea5e9; }
   .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); background: #fff; }
@@ -285,23 +285,23 @@
   .btn-save:hover { opacity: 0.88; }
   .btn-save:active { transform: scale(0.97); }
   .btn-test {
-    background: rgba(16,185,129,0.1);
-    border: 1px solid rgba(16,185,129,0.25);
+    background: rgba(16,185,129,0.08);
+    border: 1px solid rgba(16,185,129,0.3);
     border-radius: 8px; padding: 9px 20px;
-    color: #34d399; font-family: 'Barlow', sans-serif;
+    color: #059669; font-family: 'Barlow', sans-serif;
     font-size: 0.875rem; font-weight: 600; cursor: pointer;
     transition: all 0.18s; display: flex; align-items: center; gap: 7px;
   }
-  .btn-test:hover { background: rgba(16,185,129,0.16); border-color: rgba(16,185,129,0.4); }
+  .btn-test:hover { background: rgba(16,185,129,0.14); border-color: rgba(16,185,129,0.5); }
   .btn-test:disabled { opacity: 0.4; cursor: not-allowed; }
   .btn-test svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
   .config-status {
     font-size: 0.8rem; margin-left: auto;
     padding: 6px 12px; border-radius: 7px;
   }
-  .config-status.ok   { background: rgba(16,185,129,0.1); color: #34d399; }
-  .config-status.err  { background: rgba(239,68,68,0.1);  color: #f87171; }
-  .config-status.info { background: rgba(56,189,248,0.1); color: #38bdf8; }
+  .config-status.ok   { background: rgba(16,185,129,0.1); color: #059669; border: 1px solid rgba(16,185,129,0.2); }
+  .config-status.err  { background: rgba(239,68,68,0.1);  color: #dc2626; border: 1px solid rgba(239,68,68,0.2); }
+  .config-status.info { background: rgba(14,165,233,0.1); color: #0369a1; border: 1px solid rgba(14,165,233,0.2); }
 
   /* ── THRESHOLD CONFIG CARD ───────────────── */
   .threshold-card {
@@ -822,7 +822,7 @@
               </tr>
             </thead>
             <tbody id="historyBody">
-              <tr><td colspan="8" style="text-align:center;color:rgba(255,255,255,0.25);padding:24px">Loading history…</td></tr>
+              <tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:24px">Loading history…</td></tr>
             </tbody>
           </table>
         </div>
