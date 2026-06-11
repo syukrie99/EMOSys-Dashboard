@@ -1138,18 +1138,31 @@ async function fetchSensors(id) {
     return `rgb(${Math.round(245-6*t)},${Math.round(158-90*t)},${Math.round(11+57*t)})`;
   }
 
-  /* Room definitions — pos: [left%, top%, width%, height%] inside each office box */
+  /* Room definitions — pos: [left%, top%, width%, height%] inside each office box
+     Layout based on actual SMD office sketches:
+     Office A: CEO top-left, CTO+CFO top-center, Eng Main Office center,
+               Santubong bottom-center, Main Entrance bottom-left,
+               Admin right column, Mulu Hall far-right column
+     Office B: Training Room 1+2 stacked on left,
+               Testing Lab 2+1 top-right,
+               MW Engineering center+right, door bottom-center
+  */
   const FLOOR_ROOMS = [
-    { id:'main_entrance', label:'Main Entrance',  devices:['main_entrance'],                                            pos:[2,2,18,18],  office:'A' },
-    { id:'mulu_hall',     label:'Mulu Hall',       devices:['mulu_hall'],                                               pos:[2,22,18,30], office:'A' },
-    { id:'santubong',     label:'Santubong',       devices:['santubong'],                                               pos:[2,54,18,20], office:'A' },
-    { id:'main_office',   label:'Main Office',     devices:['admin_workstation1','eng_workstation1','eng_workstation2'], pos:[22,2,50,45], office:'A' },
-    { id:'cfo_office',    label:'CFO Office',      devices:['cfo_office'],                                              pos:[22,49,22,22],office:'A' },
-    { id:'cto_office',    label:'CTO Office',      devices:['cto_office'],                                              pos:[46,49,22,22],office:'A' },
-    { id:'ceo_office',    label:'CEO Office',      devices:['ceo_office'],                                              pos:[70,49,22,22],office:'A' },
-    { id:'murud_wing',    label:'Murud Wing',      devices:['sams_workstation','eng_workstation_mw1','eng_workstation_mw2'], pos:[2,2,45,45],  office:'B' },
-    { id:'testing_lab',   label:'Testing Labs',    devices:['testing_lab_1','testing_lab_2'],                           pos:[2,49,45,22], office:'B' },
-    { id:'training_rooms',label:'Training Rooms',  devices:['training_room_1','training_room_2'],                       pos:[50,2,45,68], office:'B' },
+    /* ── OFFICE A ── */
+    { id:'ceo_office',    label:'CEO Office',   devices:['ceo_office'],                                              pos:[1,2,18,35],  office:'A' },
+    { id:'cto_office',    label:'CTO Office',   devices:['cto_office'],                                              pos:[20,2,13,17], office:'A' },
+    { id:'cfo_office',    label:'CFO Office',   devices:['cfo_office'],                                              pos:[34,2,13,17], office:'A' },
+    { id:'eng_office',    label:'Main Office',  devices:['eng_workstation1','eng_workstation2'],                     pos:[20,20,27,35],office:'A' },
+    { id:'santubong',     label:'Santubong',    devices:['santubong'],                                               pos:[20,56,27,18],office:'A' },
+    { id:'main_entrance', label:'Entrance',     devices:['main_entrance'],                                           pos:[1,38,18,36], office:'A' },
+    { id:'admin_ws',      label:'Admin',        devices:['admin_workstation1'],                                      pos:[48,2,14,72], office:'A' },
+    { id:'mulu_hall',     label:'Mulu Hall',    devices:['mulu_hall'],                                               pos:[63,2,36,72], office:'A' },
+    /* ── OFFICE B ── */
+    { id:'training_room_1', label:'Training 1', devices:['training_room_1'],                                         pos:[1,2,28,47],  office:'B' },
+    { id:'training_room_2', label:'Training 2', devices:['training_room_2'],                                         pos:[1,50,28,45], office:'B' },
+    { id:'testing_lab_2',   label:'Lab 2',      devices:['testing_lab_2'],                                           pos:[58,2,19,30], office:'B' },
+    { id:'testing_lab_1',   label:'Lab 1',      devices:['testing_lab_1'],                                           pos:[79,2,19,30], office:'B' },
+    { id:'murud_wing',      label:'MW Eng.',     devices:['sams_workstation','eng_workstation_mw1','eng_workstation_mw2'], pos:[31,33,39,35],office:'B' },
   ];
 
   function getRoomColor(deviceIds, devices, customThr) {
@@ -1160,12 +1173,20 @@ async function fetchSensors(id) {
       return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
     };
     const aT=avg('temp'),aH=avg('hum'),aC=avg('co2'),aP=avg('pm25'),aV=avg('voc');
+    const thr = customThr || THR;
+    function scoreSensor(val, warn, danger) {
+      if (val == null || isNaN(val)) return null;
+      if (val >= danger) return 1.0;
+      if (val >= warn) return 0.55;
+      return 0.1;
+    }
     const scores=[];
-    if(aT!=null) scores.push(Math.min(1,Math.max(0,(aT-18)/(THR.temp.danger-18))));
-    if(aC!=null) scores.push(Math.min(1,aC/THR.co2.danger));
-    if(aP!=null) scores.push(Math.min(1,aP/THR.pm25.danger));
-    if(aV!=null) scores.push(Math.min(1,aV/THR.voc.danger));
-    if(aH!=null) scores.push(Math.min(1,aH/THR.hum.danger));
+    const s = scoreSensor;
+    if(aT!=null) scores.push(s(aT, thr.temp.warn, thr.temp.danger));
+    if(aC!=null) scores.push(s(aC, thr.co2.warn, thr.co2.danger));
+    if(aP!=null) scores.push(s(aP, thr.pm25.warn, thr.pm25.danger));
+    if(aV!=null) scores.push(s(aV, thr.voc.warn, thr.voc.danger));
+    if(aH!=null) scores.push(s(aH, thr.hum.warn, thr.hum.danger));
     if(!scores.length) return { bg:'#e2e8f0', norm:null, avg:{} };
     const worst=Math.max(...scores);
     return { bg:heatColor(worst), norm:worst, avg:{temp:aT,hum:aH,co2:aC,pm25:aP,voc:aV} };
@@ -1177,10 +1198,21 @@ async function fetchSensors(id) {
     const officeA = rooms.filter(r=>r.office==='A');
     const officeB = rooms.filter(r=>r.office==='B');
 
-    function buildOffice(rList, title) {
-      let h = `<div style="flex:1;min-width:260px">`;
+    /* Door definitions per office — pos: [left%, width%] along the bottom wall */
+    const DOORS = {
+      A: [ { left:2,  width:8, label:'Door' } ],
+      B: [ { left:40, width:8, label:'Door' } ]
+    };
+
+    function buildOffice(rList, title, officeKey) {
+      let h = `<div style="flex:1;min-width:300px">`;
       h += `<div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:8px">${title}</div>`;
-      h += `<div style="position:relative;width:100%;padding-bottom:72%;background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:10px;overflow:hidden">`;
+      /* Outer building wrapper — extra bottom padding for door area */
+      h += `<div style="position:relative;width:100%;background:#f1f5f9;border:2px solid #94a3b8;border-radius:4px;padding-bottom:78%">`;
+
+      /* Inner floor area (rooms live here) */
+      h += `<div style="position:absolute;inset:0;bottom:7%">`;
+
       rList.forEach(room => {
         let cd;
         if (isGroupMode) {
@@ -1194,9 +1226,9 @@ async function fetchSensors(id) {
           cd = getRoomColor(room.devices, dataSource, grpThr);
         }
         const [lx,ly,lw,lh] = room.pos;
-        const tc = (cd.norm!=null && cd.norm>0.6) ? '#fff' : '#1e293b';
-        const sc = (cd.norm!=null && cd.norm>0.6) ? 'rgba(255,255,255,0.75)' : '#64748b';
-        const dc = cd.norm==null?'#94a3b8':cd.norm>0.67?'#ef4444':cd.norm>0.4?'#f59e0b':'#10b981';
+        const tc = (cd.norm!=null && cd.norm>0.55) ? '#fff' : '#1e293b';
+        const sc = (cd.norm!=null && cd.norm>0.55) ? 'rgba(255,255,255,0.8)' : '#64748b';
+        const dc = cd.norm==null?'#94a3b8':cd.norm>=1.0?'#ef4444':cd.norm>=0.55?'#f59e0b':'#10b981';
         const ad = cd.avg;
         const tip = [room.label,
           ad.temp!=null?`Temp: ${ad.temp.toFixed(1)}°C`:null,
@@ -1209,17 +1241,36 @@ async function fetchSensors(id) {
         h += `<div title="${tip}"
           onclick="fpClick('${room.id}','${containerId}',${adJson})"
           style="position:absolute;left:${lx}%;top:${ly}%;width:${lw}%;height:${lh}%;
-            background:${cd.bg};border:1.5px solid rgba(0,0,0,0.07);border-radius:6px;
+            background:${cd.bg};
+            border:1px solid rgba(255,255,255,0.4);
+            outline:1.5px solid rgba(0,0,0,0.12);
             display:flex;flex-direction:column;align-items:center;justify-content:center;
-            cursor:pointer;padding:3px;box-sizing:border-box;overflow:hidden;transition:filter 0.15s"
-          onmouseenter="this.style.filter='brightness(0.88)'"
-          onmouseleave="this.style.filter=''">
-          <div style="width:6px;height:6px;border-radius:50%;background:${dc};margin-bottom:2px;flex-shrink:0"></div>
-          <div style="font-size:0.6rem;font-weight:700;color:${tc};text-align:center;line-height:1.2">${room.label}</div>
-          ${ad.temp!=null?`<div style="font-size:0.57rem;color:${sc};margin-top:1px">${ad.temp.toFixed(1)}°C</div>`:''}
+            cursor:pointer;padding:3px;box-sizing:border-box;overflow:hidden;transition:filter 0.15s;
+            border-radius:2px"
+          onmouseenter="this.style.filter='brightness(0.85)';this.style.zIndex='5'"
+          onmouseleave="this.style.filter='';this.style.zIndex=''">
+          <div style="width:6px;height:6px;border-radius:50%;background:${dc};margin-bottom:2px;flex-shrink:0;box-shadow:0 0 3px rgba(0,0,0,0.3)"></div>
+          <div style="font-size:0.58rem;font-weight:700;color:${tc};text-align:center;line-height:1.2;word-break:break-word">${room.label}</div>
+          ${ad.temp!=null?`<div style="font-size:0.54rem;color:${sc};margin-top:1px">${ad.temp.toFixed(1)}°C</div>`:''}
         </div>`;
       });
-      h += `</div></div>`;
+
+      h += `</div>`; /* close inner floor */
+
+      /* Bottom wall with door cutouts */
+      const doors = DOORS[officeKey] || [];
+      h += `<div style="position:absolute;bottom:0;left:0;right:0;height:7%;display:flex;align-items:center;padding:0 1%">`;
+      doors.forEach(door => {
+        h += `<div style="position:absolute;left:${door.left}%;width:${door.width}%;height:100%;
+          background:#f1f5f9;border-top:2px solid #0ea5e9;
+          display:flex;align-items:center;justify-content:center">
+          <span style="font-size:0.48rem;font-weight:700;color:#0ea5e9;text-transform:uppercase;letter-spacing:0.05em">${door.label}</span>
+        </div>`;
+      });
+      h += `</div>`; /* close bottom wall */
+
+      h += `</div>`; /* close outer building */
+      h += `</div>`; /* close wrapper div */
       return h;
     }
 
@@ -1229,13 +1280,14 @@ async function fetchSensors(id) {
       <span style="display:flex;align-items:center;gap:4px;font-size:0.72rem;color:#374151"><span style="width:11px;height:11px;border-radius:3px;background:#f59e0b;display:inline-block"></span>Elevated</span>
       <span style="display:flex;align-items:center;gap:4px;font-size:0.72rem;color:#374151"><span style="width:11px;height:11px;border-radius:3px;background:#ef4444;display:inline-block"></span>Critical</span>
       <span style="display:flex;align-items:center;gap:4px;font-size:0.72rem;color:#374151"><span style="width:11px;height:11px;border-radius:3px;background:#e2e8f0;display:inline-block"></span>No data</span>
+      <span style="display:flex;align-items:center;gap:4px;font-size:0.72rem;color:#374151"><span style="width:11px;height:3px;background:#0ea5e9;display:inline-block;border-radius:1px"></span>Door</span>
       <span style="font-size:0.7rem;color:#94a3b8;margin-left:auto">Click any room for details</span>
     </div>`;
 
     container.innerHTML = legend +
-      `<div style="display:flex;gap:16px;flex-wrap:wrap">
-        ${buildOffice(officeA,'Office A — Main Building')}
-        ${buildOffice(officeB,'Office B — Murud Wing & Labs')}
+      `<div style="display:flex;gap:20px;flex-wrap:wrap">
+        ${buildOffice(officeA, 'Office A — Main Building', 'A')}
+        ${buildOffice(officeB, 'Office B — Murud Wing & Labs', 'B')}
       </div>
       <div id="fp_detail_${containerId}" style="display:none;margin-top:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px"></div>`;
   }
