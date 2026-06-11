@@ -639,7 +639,7 @@ app.get('/api/alerts/active', async (req, res) => {
             FROM alerts
             WHERE time >= now() - INTERVAL '30 minutes'
             ORDER BY time DESC
-            LIMIT 50
+            LIMIT 200
         `;
         const rows = [];
         const result = await client.query(query, INFLUX_DB);
@@ -658,6 +658,13 @@ app.get('/api/alerts/active', async (req, res) => {
             });
         }
         if (rows.length > 0) {
+            const seen = new Set();
+            const deduped = rows.filter(row => {
+                const key = `${row.device}_${row.sensor}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
             return res.json(rows);
         }
         res.json(emailAlerts.getActiveAlerts());

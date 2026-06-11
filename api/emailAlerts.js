@@ -1,4 +1,6 @@
 const nodemailer = require('nodemailer');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 /* CONFIG  (reads from .env, with safe defaults) */
@@ -23,8 +25,22 @@ let thresholds = {
 /* IN-MEMORY STATE */
 /* cooldownMap: key = `${deviceId}_${sensor}` → timestamp of last email sent */
 const cooldownMap  = new Map();
-/* alertLog: array of alert objects (last 100) */
-const alertLog     = [];
+/* alertLog: array of alert objects (last 100) - persisted to file */
+const HISTORY_FILE = path.join(__dirname, 'alertHistory.json');
+let alertLog = [];
+
+/* Load saved history from file on startup */
+try {
+  if (fs.existsSync(HISTORY_FILE)) {
+    const saved = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf-8'));
+    if (Array.isArray(saved)) {
+      alertLog = saved.slice(0, 100);
+      console.log(`[EMOSys Email] Loaded ${alertLog.length} alert(s) from alertHistory.json`);
+    }
+  }
+} catch (e) {
+  console.warn('[EMOSys Email] Could not load alert history:', e.message);
+}
 
 /* TRANSPORTER  (created lazily so bad config doesn't crash the whole server on startup) */
 let _transporter = null;
@@ -256,6 +272,7 @@ async function checkAndSendAlerts(sensorData, deviceId, deviceName, location = '
     alertLog.unshift(entry);
     if (alertLog.length > 100) alertLog.pop();
     logEntries.push(entry);
+    try { fs.writeFileSync(HISTORY_FILE, JSON.stringify(alertLog)); } catch (_) {}
   });
 
   /* Send one combined email for all triggered sensors on this device */
