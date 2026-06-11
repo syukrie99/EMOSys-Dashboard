@@ -665,7 +665,7 @@ app.get('/api/alerts/active', async (req, res) => {
                 seen.add(key);
                 return true;
             });
-            return res.json(rows);
+            return res.json(deduped);
         }
         res.json(emailAlerts.getActiveAlerts());
     } catch (e) {
