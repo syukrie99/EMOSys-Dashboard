@@ -703,11 +703,11 @@
         <div class="analytics-chart-card"><h4>VOC — All Devices</h4><p>Volatile organic compounds ppb</p><div class="chart-wrap-sm"><canvas id="chartVoc"></canvas></div></div>
       </div>
 
-      <!-- HEATMAP -->
-      <div class="section-head" id="deviceHeatmapHead"><h3>Sensor Intensity Heatmap</h3></div>
-      <div class="analytics-chart-card heatmap-outer" id="deviceHeatmapCard" style="margin-bottom:28px">
-        <h4>All Devices × All Sensors</h4>
-        <p>Normalised 0–100% intensity · green = safe · red = critical</p>
+      <!-- FLOOR PLAN — DEVICE VIEW -->
+      <div class="section-head" id="deviceHeatmapHead"><h3>Floor Plan — Room Status</h3></div>
+      <div class="analytics-chart-card" id="deviceHeatmapCard" style="margin-bottom:28px">
+        <h4>Office Floor Plan</h4>
+        <p>Live sensor status per room · click any room for details · green = safe · amber = elevated · red = critical</p>
         <div id="heatmapContainer" style="margin-top:16px"></div>
       </div>
 
@@ -770,10 +770,10 @@
           </div>
         </div>
 
-        <div class="section-head"><h3>Group Intensity Heatmap</h3></div>
-        <div class="analytics-chart-card heatmap-outer" style="margin-bottom:28px">
-          <h4>All Groups x All Sensors</h4>
-          <p>Normalised 0–100% intensity based on per-group thresholds — green = safe, red = critical</p>
+        <div class="section-head"><h3>Floor Plan — Group Status</h3></div>
+        <div class="analytics-chart-card" style="margin-bottom:28px">
+          <h4>Office Floor Plan — By Group</h4>
+          <p>Average sensor readings per room group · click any room for details · green = safe · amber = elevated · red = critical</p>
           <div id="groupHeatmapContainer" style="margin-top:16px"></div>
         </div>
 
@@ -1130,39 +1130,145 @@ async function fetchSensors(id) {
     charts.voc  = new Chart(document.getElementById('chartVoc'), {type:'bar',data:{labels:labs,datasets:[{data:devices.map(d=>d.voc??0), backgroundColor:devices.map(d=>col('voc','245,158,11',0.65,d)),borderColor:devices.map(d=>col('voc','245,158,11',1,d)),borderWidth:1,borderRadius:4}]},options:bOptsV()});
   }
 
-  /* ── HEATMAP ─────────────────────────── */
+  /* ── FLOOR PLAN ──────────────────────── */
   function heatColor(n) {
     n=Math.max(0,Math.min(1,n));
-    if (n<0.5){
-      const t=n*2;return `rgb(${Math.round(16+229*t)},
-      ${Math.round(185-27*t)},
-      ${Math.round(129-118*t)})`;
+    if (n<0.5){ const t=n*2; return `rgb(${Math.round(16+229*t)},${Math.round(185-27*t)},${Math.round(129-118*t)})`; }
+    const t=(n-0.5)*2;
+    return `rgb(${Math.round(245-6*t)},${Math.round(158-90*t)},${Math.round(11+57*t)})`;
+  }
+
+  /* Room definitions — pos: [left%, top%, width%, height%] inside each office box */
+  const FLOOR_ROOMS = [
+    { id:'main_entrance', label:'Main Entrance',  devices:['main_entrance'],                                            pos:[2,2,18,18],  office:'A' },
+    { id:'mulu_hall',     label:'Mulu Hall',       devices:['mulu_hall'],                                               pos:[2,22,18,30], office:'A' },
+    { id:'santubong',     label:'Santubong',       devices:['santubong'],                                               pos:[2,54,18,20], office:'A' },
+    { id:'main_office',   label:'Main Office',     devices:['admin_workstation1','eng_workstation1','eng_workstation2'], pos:[22,2,50,45], office:'A' },
+    { id:'cfo_office',    label:'CFO Office',      devices:['cfo_office'],                                              pos:[22,49,22,22],office:'A' },
+    { id:'cto_office',    label:'CTO Office',      devices:['cto_office'],                                              pos:[46,49,22,22],office:'A' },
+    { id:'ceo_office',    label:'CEO Office',      devices:['ceo_office'],                                              pos:[70,49,22,22],office:'A' },
+    { id:'murud_wing',    label:'Murud Wing',      devices:['sams_workstation','eng_workstation_mw1','eng_workstation_mw2'], pos:[2,2,45,45],  office:'B' },
+    { id:'testing_lab',   label:'Testing Labs',    devices:['testing_lab_1','testing_lab_2'],                           pos:[2,49,45,22], office:'B' },
+    { id:'training_rooms',label:'Training Rooms',  devices:['training_room_1','training_room_2'],                       pos:[50,2,45,68], office:'B' },
+  ];
+
+  function getRoomColor(deviceIds, devices, customThr) {
+    const members = devices.filter(d => deviceIds.includes(d.id));
+    if (!members.length) return { bg:'#e2e8f0', norm:null, avg:{} };
+    const avg = key => {
+      const vals = members.map(d=>d[key]).filter(v=>v!=null&&!isNaN(v));
+      return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+    };
+    const aT=avg('temp'),aH=avg('hum'),aC=avg('co2'),aP=avg('pm25'),aV=avg('voc');
+    const scores=[];
+    if(aT!=null) scores.push(Math.min(1,Math.max(0,(aT-18)/(THR.temp.danger-18))));
+    if(aC!=null) scores.push(Math.min(1,aC/THR.co2.danger));
+    if(aP!=null) scores.push(Math.min(1,aP/THR.pm25.danger));
+    if(aV!=null) scores.push(Math.min(1,aV/THR.voc.danger));
+    if(aH!=null) scores.push(Math.min(1,aH/THR.hum.danger));
+    if(!scores.length) return { bg:'#e2e8f0', norm:null, avg:{} };
+    const worst=Math.max(...scores);
+    return { bg:heatColor(worst), norm:worst, avg:{temp:aT,hum:aH,co2:aC,pm25:aP,voc:aV} };
+  }
+
+  function buildFloorPlanHTML(containerId, rooms, dataSource, isGroupMode) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const officeA = rooms.filter(r=>r.office==='A');
+    const officeB = rooms.filter(r=>r.office==='B');
+
+    function buildOffice(rList, title) {
+      let h = `<div style="flex:1;min-width:260px">`;
+      h += `<div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:8px">${title}</div>`;
+      h += `<div style="position:relative;width:100%;padding-bottom:72%;background:#f8fafc;border:1.5px solid #cbd5e1;border-radius:10px;overflow:hidden">`;
+      rList.forEach(room => {
+        let cd;
+        if (isGroupMode) {
+          const grp = dataSource.find(g => g.devices && g.devices.some(did=>room.devices.includes(did)));
+          const devs = grp ? devicesData.filter(d=>grp.devices.includes(d.id)) : [];
+          const grpThr = grp && grp.thresholds ? grp.thresholds : null;
+          cd = getRoomColor(room.devices, devs.length ? devs : devicesData, grpThr);
+        } else {
+          const grp = groupsData.find(g => g.devices && g.devices.some(did=>room.devices.includes(did)));
+          const grpThr = grp && grp.thresholds ? grp.thresholds : null;
+          cd = getRoomColor(room.devices, dataSource, grpThr);
+        }
+        const [lx,ly,lw,lh] = room.pos;
+        const tc = (cd.norm!=null && cd.norm>0.6) ? '#fff' : '#1e293b';
+        const sc = (cd.norm!=null && cd.norm>0.6) ? 'rgba(255,255,255,0.75)' : '#64748b';
+        const dc = cd.norm==null?'#94a3b8':cd.norm>0.67?'#ef4444':cd.norm>0.4?'#f59e0b':'#10b981';
+        const ad = cd.avg;
+        const tip = [room.label,
+          ad.temp!=null?`Temp: ${ad.temp.toFixed(1)}°C`:null,
+          ad.hum!=null?`Hum: ${ad.hum.toFixed(1)}%`:null,
+          ad.co2!=null?`CO2: ${Math.round(ad.co2)}ppm`:null,
+          ad.pm25!=null?`PM2.5: ${ad.pm25.toFixed(1)}`:null,
+          ad.voc!=null?`VOC: ${Math.round(ad.voc)}ppb`:null
+        ].filter(Boolean).join(' | ');
+        const adJson = JSON.stringify(ad).replace(/"/g,"'");
+        h += `<div title="${tip}"
+          onclick="fpClick('${room.id}','${containerId}',${adJson})"
+          style="position:absolute;left:${lx}%;top:${ly}%;width:${lw}%;height:${lh}%;
+            background:${cd.bg};border:1.5px solid rgba(0,0,0,0.07);border-radius:6px;
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            cursor:pointer;padding:3px;box-sizing:border-box;overflow:hidden;transition:filter 0.15s"
+          onmouseenter="this.style.filter='brightness(0.88)'"
+          onmouseleave="this.style.filter=''">
+          <div style="width:6px;height:6px;border-radius:50%;background:${dc};margin-bottom:2px;flex-shrink:0"></div>
+          <div style="font-size:0.6rem;font-weight:700;color:${tc};text-align:center;line-height:1.2">${room.label}</div>
+          ${ad.temp!=null?`<div style="font-size:0.57rem;color:${sc};margin-top:1px">${ad.temp.toFixed(1)}°C</div>`:''}
+        </div>`;
+      });
+      h += `</div></div>`;
+      return h;
     }
 
-    const t=(n-0.5)*2;
-    return `rgb(${Math.round(245-6*t)},
-    ${Math.round(158-90*t)},
-    ${Math.round(11+57*t)})`;
+    const legend = `<div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;flex-wrap:wrap">
+      <span style="font-size:0.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em">Status:</span>
+      <span style="display:flex;align-items:center;gap:4px;font-size:0.72rem;color:#374151"><span style="width:11px;height:11px;border-radius:3px;background:#10b981;display:inline-block"></span>Normal</span>
+      <span style="display:flex;align-items:center;gap:4px;font-size:0.72rem;color:#374151"><span style="width:11px;height:11px;border-radius:3px;background:#f59e0b;display:inline-block"></span>Elevated</span>
+      <span style="display:flex;align-items:center;gap:4px;font-size:0.72rem;color:#374151"><span style="width:11px;height:11px;border-radius:3px;background:#ef4444;display:inline-block"></span>Critical</span>
+      <span style="display:flex;align-items:center;gap:4px;font-size:0.72rem;color:#374151"><span style="width:11px;height:11px;border-radius:3px;background:#e2e8f0;display:inline-block"></span>No data</span>
+      <span style="font-size:0.7rem;color:#94a3b8;margin-left:auto">Click any room for details</span>
+    </div>`;
+
+    container.innerHTML = legend +
+      `<div style="display:flex;gap:16px;flex-wrap:wrap">
+        ${buildOffice(officeA,'Office A — Main Building')}
+        ${buildOffice(officeB,'Office B — Murud Wing & Labs')}
+      </div>
+      <div id="fp_detail_${containerId}" style="display:none;margin-top:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px"></div>`;
   }
+
+  function fpClick(roomId, containerId, avgData) {
+    const el = document.getElementById('fp_detail_' + containerId);
+    if (!el) return;
+    const room = FLOOR_ROOMS.find(r=>r.id===roomId);
+    if (!room) return;
+    const f1 = v => (v!=null&&!isNaN(v)) ? Number(v).toFixed(1) : '—';
+    const fi = v => (v!=null&&!isNaN(v)) ? Math.round(v) : '—';
+    const card = (label, val, color) =>
+      `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px;border-top:3px solid ${color}">
+        <div style="font-size:0.62rem;font-weight:700;color:#94a3b8;text-transform:uppercase;margin-bottom:4px">${label}</div>
+        <div style="font-size:1.05rem;font-weight:800;font-family:'Barlow Condensed',sans-serif;color:#1e293b">${val}</div>
+      </div>`;
+    el.style.display = 'block';
+    el.innerHTML =
+      `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:1rem;font-weight:800;color:#1e293b;text-transform:uppercase">${room.label}</div>
+        <div style="font-size:0.7rem;color:#94a3b8">${room.devices.length} device${room.devices.length>1?'s':''}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px">
+        ${card('Temperature', f1(avgData.temp)+'°C', '#e53e3e')}
+        ${card('Humidity',    f1(avgData.hum)+'%',   '#0ea5e9')}
+        ${card('CO2',         fi(avgData.co2)+' ppm','#7c3aed')}
+        ${card('PM2.5',       f1(avgData.pm25),       '#10b981')}
+        ${card('VOC',         fi(avgData.voc)+' ppb', '#f59e0b')}
+      </div>`;
+  }
+
   function renderHeatmap(devices) {
-    const c=document.getElementById('heatmapContainer');
-    c.style.cssText=`display:grid;grid-template-columns:140px repeat(${SDEFS.length},1fr);gap:4px`;
-    let h=`<div class="hm-label-cell" style="font-weight:700;font-size:0.7rem;color:rgba(255,255,255,0.5)">Device</div>`;
-    SDEFS.forEach(s=>{h+=`<div class="hm-header-cell">${s.label}</div>`;});
-    devices.forEach(d=>{
-      h+=`<div class="hm-label-cell"><span title="${d.name}">${(d.name)}</span></div>`;
-      SDEFS.forEach(s=>{
-        const v=d[s.key], nr=(v!=null&&!isNaN(v))
-          ? (s.key==='temp'
-              ? Math.min(1, Math.max(0, (v-18)/(s.max-18)))
-              : Math.min(1, v/s.max))
-            : null;
-        const bg=nr!=null?heatColor(nr):'rgba(255,255,255,0.04)';
-        const tx=nr!=null?(nr>0.55?'#fff':'#111'):'rgba(255,255,255,0.2)';
-        h+=`<div class="hm-cell" style="background:${bg};color:${tx}" title="${s.label}: ${v!=null?fmt(v)+s.unit:'N/A'}">${nr!=null?Math.round(nr*100)+'%':'—'}</div>`;
-      });
-    });
-    c.innerHTML=h;
+    buildFloorPlanHTML('heatmapContainer', FLOOR_ROOMS, devices, false);
   }
 
   /* ── INSIGHTS ───────────────────────── */
@@ -1425,30 +1531,10 @@ function renderGroupCharts(groups, devices) {
   makeChart('chartGroupVoc',  'voc',  false);
 }
 
-/* ── RENDER GROUP HEATMAP ───────────────────────────────────── */
+/* ── RENDER GROUP FLOOR PLAN ────────────────────────────────── */
 
 function renderGroupHeatmap(groups, devices) {
-  const container = document.getElementById('groupHeatmapContainer');
-  container.style.cssText = `display:grid;grid-template-columns:150px repeat(${SDEFS.length},1fr);gap:4px`;
-
-  let h = `<div class="hm-label-cell" style="font-weight:700;font-size:0.7rem;color:rgba(255,255,255,0.5)">Group</div>`;
-  SDEFS.forEach(s => { h += `<div class="hm-header-cell">${s.label}</div>`; });
-
-  groups.forEach(group => {
-    h += `<div class="hm-label-cell"><span title="${group.label}">${group.label}</span></div>`;
-    SDEFS.forEach(s => {
-      const avg  = groupAvg(group, devices, s.key);
-      const thr  = group.thresholds ? group.thresholds[s.key] : null;
-      const maxV = thr ? thr.danger : s.max;
-      const norm = (avg != null && !isNaN(avg)) ? Math.min(1, Math.max(0, avg / maxV)) : null;
-      const bg   = norm != null ? heatColor(norm) : 'rgba(255,255,255,0.04)';
-      const tx   = norm != null ? (norm > 0.55 ? '#fff' : '#111') : 'rgba(255,255,255,0.2)';
-      const disp = norm != null ? Math.round(norm * 100) + '%' : '—';
-      h += `<div class="hm-cell" style="background:${bg};color:${tx}" title="${s.label}: ${avg != null ? fmt(avg) + s.unit : 'N/A'}">${disp}</div>`;
-    });
-  });
-
-  container.innerHTML = h;
+  buildFloorPlanHTML('groupHeatmapContainer', FLOOR_ROOMS, groups, true);
 }
 
 /* ── SET VIEW: device or group ──────────────────────────────── */
