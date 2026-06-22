@@ -1,0 +1,57 @@
+[
+  {
+    "id": 1,
+    "name": "Admin",
+    "email": "admin@company.com",
+    "dept": "IT / Systems",
+    "role": "Administrator",
+    "status": "active",
+    "avatar": "A",
+    "color": "#6366f1",
+    "lastLogin": "—"
+  },
+  {
+    "id": 2,
+    "name": "James Bond",
+    "email": "james@smd.com.my",
+    "dept": "Engineering",
+    "role": "Operator",
+    "status": "active",
+    "avatar": "H",
+    "color": "#0ea5e9",
+    "lastLogin": "—"
+  },
+  {
+    "id": 3,
+    "name": "Nurul Ain",
+    "email": "ain@smd.com.my",
+    "dept": "Management",
+    "role": "Viewer",
+    "status": "active",
+    "avatar": "N",
+    "color": "#10b981",
+    "lastLogin": "—"
+  },
+  {
+    "id": 4,
+    "name": "Razif Azmee",
+    "email": "razif@smd.com.my",
+    "dept": "Operations",
+    "role": "Operator",
+    "status": "inactive",
+    "avatar": "R",
+    "color": "#f59e0b",
+    "lastLogin": "—"
+  },
+  {
+    "id": 5,
+    "name": "Sarpi Arep",
+    "email": "arep@smd.com",
+    "dept": "Engineering",
+    "role": "Viewer",
+    "status": "active",
+    "avatar": "S",
+    "color": "#8b5cf6",
+    "lastLogin": "—"
+  }
+]

@@ -338,6 +338,24 @@ try {
     console.warn('[EMOSys] Could not load group thresholds, using defaults: ', e.message);
 }
 
+const USERS_FILE = path.join(__dirname, 'users.json');
+let users = [];
+
+try {
+    if (fs.existsSync(USERS_FILE)) {
+        users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+        console.log(`[EMOSys] Loaded ${users.length} users from users.json`);
+    } else {
+        console.log('[EMOsys] No users.json found, starting with empty user list');
+    }
+} catch (e) {
+    console.warn('[EMOSys] Could not load users.json: ', e.message);
+}
+
+function saveUsers() {
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+}
+
 // HELPER: get group ID for a device
 function getDeviceGroup(deviceId) {
     for (const [gid, group] of Object.entries(GROUPS)) {
@@ -815,6 +833,86 @@ app.get('/api/groups/thresholds/defaults', (req, res) => {
   res.json(DEFAULT_GROUP_THRESHOLDS);
 });
 
+ //GET api/users
+ //Returns the full list of registered users.
+app.get('/api/users', (req, res) => {
+    res.json(users);
+});
+
+// POST /api/users
+// Adds a new user. Body: { name, email, dept, role }
+app.post('/api/users', (req, res) => {
+    try {
+        const { name, email, dept, role } = req.body;
+        if (!name || !email) {
+            return res.status(400).json({ error: 'Name and email are required' });
+        }
+
+        const COLORS = ['#6355f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+        const nextId = users.length ? Math.max(...users.map(u => u.id)) + 1 : 1;
+
+        const newUser = {
+            id: nextId,
+            name,
+            email,
+            dept: dept || 'General',
+            role: role || 'Viewer',
+            status: 'active',
+            avatar: name[0].toUpperCase(),
+            color: COLORS[nextId % COLORS.length],
+            lastLogin: '—'
+        };
+
+        users.push(newUser);
+        saveUsers();
+        res.json({ ok:true, user: newUser });
+    } catch (e) {
+        console.error('[EMOSys] Failed to add user:', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// PATCH /api/users/:id
+// Update a user's status or role. Body: { status } or { role }
+app.patch('/api/users/:id', (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const user = users.find(u => u.id == id);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const { status, role } = req.body;
+        if (status !== undefined) user.status = status;
+        if (role !== undefined) user.role = role;
+
+        saveUsers();
+        res.json({ ok: true, user});
+    } catch (e) {
+        console.error('[EMOSys] Failed to update user:', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// DELETE /api/users/:id
+// Removes a user. Blocks removal of the last Administrator
+app.delete('/api/users/:id', (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const user = users.find(u => u.id === id);
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        const adminCount = users.filter(u => u.role === 'Administrator').length;
+        if (user.role === 'Administrator' && adminCount === 1){
+            return res.status(400).json({ error: 'Cannot remove the last Administrator' });
+        }
+
+        users = users.filter(u => u.id !== id);
+        saveUsers();
+        res.json({ ok: true });
+    } catch (e) {
+        console.error('[EMOSys] Failed to delete user:', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
 // ── Start server ─────────────────────────────────────────────
 const PORT = 3000;
 app.listen(PORT, () => {

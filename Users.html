@@ -427,14 +427,22 @@
 
       <script src="assets/js/auth.js"></script>
       <script>
-        /* USER DATA (hardcoded seed) */
-        let users = [
-            { id:1, name:'Admin',        email:'admin@company.com', dept:'IT / Systems', role:'Administrator', status:'active',   avatar:'A', color:'#6366f1', lastLogin:'Today, 08:15 AM' },
-            { id:2, name:'James Bond',   email:'james@smd.com.my',  dept:'Engineering',  role:'Operator',      status:'active',   avatar:'H', color:'#0ea5e9', lastLogin:'Today, 09:32 AM' },
-            { id:3, name:'Nurul Ain',    email:'ain@smd.com.my',    dept:'Management',   role:'Viewer',        status:'active',   avatar:'N', color:'#10b981', lastLogin:'Yesterday, 03:15 PM'},
-            { id:4, name:'Razif Azmee',  email:'razif@smd.com.my',  dept:'Operations',   role:'Operator',      status:'inactive', avatar:'R', color:'#f59e0b', lastLogin:'3 days ago' }
-        ];
-        let nextId = 5;
+        /* USER DATA (loaded live from API) */
+        const API_BASE = '/api';
+        let users = [];
+
+        async function loadUsers() {
+            try {
+                const res = await fetch(`${API_BASE}/users`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                users = await res.json();
+                renderTable();
+            } catch (e) {
+                console.error('Failed to load users:', e.message);
+                document.getElementById('userTableBody').innerHTML = 
+                    '<tr><td colspan="6" style="text-align:center; color:#ef4444; padding:24px">Could not load users from server.</td></tr>';
+            }
+        }
 
         /* RENDER TABLE */
         function renderTable() {
@@ -481,39 +489,71 @@
         function closeModal() { document.getElementById('modalBackdrop').classList.remove('open'); }
 
         /* ADD USER */
-        const COLORS = ['#6366f1','#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
-        function addUser() {
+        async function addUser() {
             const name = document.getElementById('newName').value.trim();
             const email = document.getElementById('newEmail').value.trim();
             const dept = document.getElementById('newDept').value.trim();
             const role = document.getElementById('newRole').value;
             if (!name || !email) { alert('Please enter name and email.'); return; }
-            users.push({
-                id: nextId++, name, email, dept: dept || 'General',
-                role, status: 'active',
-                avatar: name[0].toUpperCase(),
-                color : COLORS[nextId % COLORS.length],
-                lastLogin: 'Just now'
-            });
-            closeModal();
-            document.getElementById('newName').value = '';
-            document.getElementById('newEmail').value = '';
-            document.getElementById('newDept').value = '';
-            renderTable();
-            showToast('User "' + u.name + '" ' + (u.status === 'active' ? 'activated.' : 'deactivated.'));
+
+            try {
+                const res = await fetch(`${API_BASE}/users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, dept, role})
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+                closeModal();
+                document.getElementById('newName').value = '';
+                document.getElementById('newEmai').value = '';
+                document.getElementById('newDept').value = '';
+                await loadUsers();
+                showToast('User "' + name + '"added successfully.');
+            } catch (e) {
+                alert('Failed to add user: ' + e.message);
+            }
+        }
+
+        /* TOGGLE STATUS */
+        async function toggleStatus(id) {
+            const u = users.find(u => u.id === id);
+            if (!u) return;
+            const newStatus = u.status === 'active' ? 'inactive' : 'active';
+
+            try {
+                const res = await fetch(`${API_BASE}/users/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+                
+                await loadUsers();
+                showToast('User "' + '" ' + (newStatus === 'active' ? 'activated.' : 'deactivated.'));
+            } catch (e) {
+                alert('Failed to update user: ' + e.message);
+            }
         }
 
         /* DELETE USER */
-        function deleteUser(id) {
+        async function deleteUser(id) {
             const u = users.find(u => u.id === id);
             if (!u) return;
-            if (u.role === 'Administrator' && users.filter(x => x.role === 'Administrator').length === 1) {
-                alert('Cannot remove the last Administrator.'); return;
-            }
             if (!confirm('Remove user "' + u.name + '"?')) return;
-            users = users.filter(u => u.id !== id);
-            renderTable();
-            showToast('User removed.');
+
+            try {
+                const res = await fetch(`${API_BASE}/users/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+                await loadUsers();
+                showToast('User removed.');
+            } catch (e) {
+                alert('Failed to remove user: ' + e.message);
+            }
         }
 
         /* TOAST */
@@ -538,7 +578,7 @@
         document.getElementById('lastUpdated').textContent = 'System time: ' + d.toLocaleTimeString();
 
         /* INIT */
-        renderTable();
+        loadUsers();
       </script>
 </body>
 </html>
