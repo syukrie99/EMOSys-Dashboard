@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const { InfluxDBClient } = require('@influxdata/influxdb3-client');
 const emailAlerts = require('./emailAlerts');
+const bcrypt = require('bcrypt');
 
 const app = express();
 app.use(cors());
@@ -552,18 +553,40 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'EMOSys API is running' });
 });
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
-    const ADMIN_EMAIL    = 'admin@company.com';
-    const ADMIN_PASSWORD = 'admin123';
 
-    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required.' });
+    }
+
+    try {
+        const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid email or password.' });
+        }
+
+        if (user.status === 'inactive') {
+            return res.status(403).json({ error: 'This account has been deactivated.' });
+        }
+
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) {
+            return res.status(401).json({ error: 'Invalid email or password.' });
+        }
+
+        /* Update last login timestamp */
+        user.lastLogin = new Date().toLocaleString('en-MY');
+        saveUsers();
+
         res.json({
             token: 'emosys-session-token',
-            user : { name: 'Admin', role: 'Administrator', email }
+            user : { id: user.id, name: user.name, role: user.role, email: user.email }
         });
-    } else {
-        res.status(401).json({ error: 'Invalid email or password.' });
+    } catch (e) {
+        console.error('[EMOSys] Login error:', e.message);
+        res.status(500).json({ error: 'Login failed. Please try again.' });
     }
 });
 
@@ -836,25 +859,33 @@ app.get('/api/groups/thresholds/defaults', (req, res) => {
  //GET api/users
  //Returns the full list of registered users.
 app.get('/api/users', (req, res) => {
-    res.json(users);
+    const safeUsers = users.map(({ password, ...rest }) => rest);
+    res.json(safeUsers);
 });
 
 // POST /api/users
 // Adds a new user. Body: { name, email, dept, role }
-app.post('/api/users', (req, res) => {
+app.post('/api/users', async (req, res) => {
     try {
-        const { name, email, dept, role } = req.body;
-        if (!name || !email) {
-            return res.status(400).json({ error: 'Name and email are required' });
+        const { name, email, dept, role, password } = req.body;
+        if (!name || !email || !password) {
+            return res.status(400).json({ error: 'Name, email, and password are required' });
         }
 
-        const COLORS = ['#6355f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+        const exists = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+        if (exists) {
+            return res.status(400).json({ error: 'A user with this email already exists' });
+        }
+
+        const COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
         const nextId = users.length ? Math.max(...users.map(u => u.id)) + 1 : 1;
+        const hashedPassword = await bcrypt.hash(password, 10);
 
         const newUser = {
             id: nextId,
             name,
             email,
+            password: hashedPassword,
             dept: dept || 'General',
             role: role || 'Viewer',
             status: 'active',
@@ -865,7 +896,10 @@ app.post('/api/users', (req, res) => {
 
         users.push(newUser);
         saveUsers();
-        res.json({ ok:true, user: newUser });
+
+        /* Never send the password hash back to the frontend */
+        const { password: _, ...safeUser } = newUser;
+        res.json({ ok: true, user: safeUser });
     } catch (e) {
         console.error('[EMOSys] Failed to add user:', e.message);
         res.status(500).json({ error: e.message });
