@@ -9,7 +9,7 @@
     "status": "active",
     "avatar": "A",
     "color": "#6366f1",
-    "lastLogin": "22/06/2026, 3:01:30 pm"
+    "lastLogin": "25/06/2026, 10:35:14 am"
   },
   {
     "id": 2,
@@ -21,7 +21,7 @@
     "status": "active",
     "avatar": "H",
     "color": "#0ea5e9",
-    "lastLogin": "22/06/2026, 3:35:58 pm"
+    "lastLogin": "22/06/2026, 4:28:05 pm"
   },
   {
     "id": 3,
@@ -49,13 +49,14 @@
   },
   {
     "id": 5,
-    "name": "Muhd Syukrie",
+    "name": "Muhammad Syukrie",
     "email": "syukrie@smd.com",
+    "password": "$2b$10$XJMihf.RP6j/5SFMTbYdbOmzMg.6P0cj9INpvQddmvIm93WuiqVju",
     "dept": "Engineering",
     "role": "Viewer",
     "status": "active",
     "avatar": "M",
     "color": "#8b5cf6",
-    "lastLogin": "—"
+    "lastLogin": "24/06/2026, 9:26:13 am"
   }
 ]

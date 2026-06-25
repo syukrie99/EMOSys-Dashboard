@@ -800,7 +800,13 @@
 
   <script src="assets/js/auth.js"></script>
   <script>
-
+  /* AUTH CHECK + SIDEBAR SYNC */
+  const currentUser = requireAuth();
+  if (currentUser) {
+    document.getElementById('userName').textContent = currentUser.name || 'Admin';
+    document.getElementById('userRole').textContent = currentUser.role || 'User';
+    document.getElementById('userAvatar').textContent = (currentUser.name || 'A')[0].toUpperCase();
+  }
   /* ── CONFIG ─────────────────────────── */
   const API_BASE   = '/api';
   const AI_API     = '/api/ai/chat';

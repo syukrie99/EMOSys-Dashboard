@@ -403,6 +403,10 @@
                     <input class="modal-input" type="text" id="newDept" placeholder="e.g. Engineering"/>
                 </div>
                 <div class="modal-field">
+                    <label>Temporary Password</label>
+                    <input class="modal-input" type="password" id="newPassword" placeholder="Min. 6 characters" minlength="6"/>
+                </div>
+                <div class="modal-field">
                     <label>Role</label>
                     <select class="modal-select" id="newRole">
                         <option value="Viewer">Viewer</option>
@@ -445,6 +449,9 @@
         /* RENDER TABLE */
         function renderTable() {
             const body = document.getElementById('userTableBody');
+            const currentUser = JSON.parse(sessionStorage.getItem('emosi_user') || '{}');
+            const isAdmin = currentUser.role === 'Administrator';
+
             body.innerHTML = users.map(u => `
                 <tr>
                     <td>
@@ -470,8 +477,10 @@
                     </td>
                     <td>
                         <div class="action-btns">
+                            ${isAdmin ? `
                             <button class="act-btn" onclick="toggleStatus(${u.id})">${u.status === 'active' ? 'Deactivate' : 'Activate'}</button>
                             <button class="act-btn danger" onclick="deleteUser(${u.id})">Remove</button>
+                            ` : `<span style="color:#94a3b8;font-size:0.75rem">View only</span>`}
                         </div>
                     </td>
                     </tr>`).join('');
@@ -491,14 +500,17 @@
             const name = document.getElementById('newName').value.trim();
             const email = document.getElementById('newEmail').value.trim();
             const dept = document.getElementById('newDept').value.trim();
+            const password = document.getElementById('newPassword').value.trim();
             const role = document.getElementById('newRole').value;
+
             if (!name || !email) { alert('Please enter name and email.'); return; }
+            if (!password || password.length < 6) { alert('Password must be at least 6 characters.'); return; }
 
             try {
                 const res = await fetch(`${API_BASE}/users`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, email, dept, role})
+                    body: JSON.stringify({ name, email, dept, role, password })
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -507,6 +519,7 @@
                 document.getElementById('newName').value = '';
                 document.getElementById('newEmail').value = '';
                 document.getElementById('newDept').value = '';
+                document.getElementById('newPassword').value = '';
                 await loadUsers();
                 showToast('User "' + name + '"added successfully.');
             } catch (e) {
@@ -576,6 +589,13 @@
         document.getElementById('lastUpdated').textContent = 'System time: ' + d.toLocaleTimeString();
 
         /* INIT */
+        (function() {
+            const currentUser = JSON.parse(sessionStorage.getItem('emosi_user') || '{}');
+            if (currentUser.role !== 'Administrator') {
+                const addBtn = document.querySelector('.btn-add-user');
+                if (addBtn) addBtn.style.display = 'none';
+            }
+        })();
         loadUsers();
       </script>
 </body>

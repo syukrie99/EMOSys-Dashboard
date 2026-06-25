@@ -672,8 +672,8 @@
       </div>
 
       <!--EMAIL NOTIFICATION CONFIG -->
-      <div class="section-head"><h3>Email Notification Settings</h3></div>
-      <div class="email-config-card">
+      <div id= "adminOnlySection1" class="section-head"><h3>Email Notification Settings</h3></div>
+      <div id= "adminOnlySection1b" class="email-config-card">
         <div class="email-config-header">
           <div class="email-config-icon">
             <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
@@ -752,8 +752,8 @@
       </div>
 
       <!-- THRESHOLD CONFIGURATION — PER GROUP -->
-      <div class="section-head"><h3>Alert Thresholds — By Group</h3></div>
-      <div class="threshold-card">
+      <div id="adminOnlySection2" class="section-head"><h3>Alert Thresholds — By Group</h3></div>
+      <div id="adminOnlySection2b" class="threshold-card">
         <div class="threshold-card-header">
           <h4>Group Threshold Profiles</h4>
           <span class="count-badge" id="thrGroupBadge">Loading…</span>
@@ -876,6 +876,10 @@
 
   /*  HELPERS */
   function fmt(v, d=1) { return (v == null || isNaN(v)) ? '—' : Number(v).toFixed(d); }
+  function isUserAdmin() {
+    const currentUser = JSON.parse(sessionStorage.getItem('emosi_user') || '{}');
+    return currentUser.role === 'Administrator';
+  }
 
   function getSeverity(sensor, value) {
     const t = thresholds[sensor];
@@ -1067,11 +1071,13 @@
             <span class="sev-badge ${isAcked ? 'resolved' : sev}">
               <span class="sev-dot"></span>${isAcked ? 'Acked' : sev}
             </span>
+            ${isUserAdmin()? `
             <button class="ack-btn ${isAcked ? 'acked' : ''}"
               onclick="acknowledgeAlert('${a.id}')"
               ${isAcked ? 'disabled' : ''}>
               ${isAcked ? '✓ Acked' : 'Ack'}
             </button>
+            ` : ''}
           </div>
         </div>`;
     }).join('');
@@ -1487,10 +1493,21 @@ function showThrStatus(type, msg) {
 
   /* INIT */
   setDates();
+  applyRolePermissions();
   loadSavedConfig();
   loadGroups();
   refreshAlerts(true);
   refreshTimer = setInterval(() => refreshAlerts(false), REFRESH_MS);
+
+  function applyRolePermissions() {
+    const currentUser = JSON.parse(sessionStorage.getItem('emosi_user') || '{}');
+    if (currentUser.role !== 'Administrator') {
+      ['adminOnlySection1', 'adminOnlySection1b', 'adminOnlySection2', 'adminOnlySection2b'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      }); 
+    }
+  }
   </script>
 </body>
 </html>
