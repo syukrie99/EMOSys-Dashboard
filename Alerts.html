@@ -844,6 +844,15 @@
   <script>
   /* ALERTS.JS — EMOSys Alert Management */
 
+  /* AUTH + SIDEBAR SYNC */
+  const currentUser = requireAuth();
+  if (currentUser) {
+    document.getElementById('userName').textContent = currentUser.name || 'Admin';
+    document.getElementById('userRole').textContent = currentUser.role || 'User';
+    document.getElementById('userAvatar').textContent = (currentUser.name || 'A')[0].toUpperCase(); 
+  }
+
+
   const API_BASE   = '/api';
   const REFRESH_MS = 30000;
 
