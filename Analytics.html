@@ -457,6 +457,55 @@
 }
 .group-devices-cell { font-size: 0.7rem; color: #94a3b8; margin-top: 2px; }
 .thr-indicator { display: block; font-size: 0.62rem; color: #cbd5e1; margin-top: 2px; }
+
+/* GROUP DETAIL MODAL */
+.group-modal-backdrop {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45); z-index: 1000;
+  align-items: center; justify-content: center; padding: 20px;
+}
+.group-modal-backdrop.open { display: flex; }
+.group-modal-box {
+  background: #fff; border-radius: 16px;
+  width: 100%; max-width: 640px; max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+.group-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px; border-bottom: 1px solid #e2e8f0;
+  position: sticky; top: 0; background: #fff; z-index: 1;
+}
+.group-modal-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.15rem; font-weight: 800; color: #1e293b;
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
+.group-modal-sub { font-size: 0.78rem; color: #64748b; margin-top: 2px; }
+.group-modal-close {
+  background: #f1f5f9; border: 1px solid #e2e8f0;
+  border-radius: 7px; width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #64748b; flex-shrink: 0;
+}
+.group-modal-close:hover { background: #e2e8f0; color: #1e293b; }
+.group-modal-close svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.5; }
+.group-modal-body { padding: 18px 22px; }
+.gm-device-card {
+  background: #f8fafc; border: 1px solid #e2e8f0;
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 10px;
+}
+.gm-device-card:last-child { margin-bottom: 0; }
+.gm-device-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.gm-device-name { font-size: 0.88rem; font-weight: 700; color: #1e293b; }
+.gm-device-readings {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+}
+.gm-reading-lbl { font-size: 0.6rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; }
+.gm-reading-val { font-family: 'Barlow Condensed', sans-serif; font-size: 1rem; font-weight: 800; }
   </style>
 </head>
 <body class="light">
@@ -795,6 +844,24 @@
       <span id="footerDate"></span>
     </div>
   </main>
+
+  <!-- GROUP DETAIL MODAL -->
+  <div class="group-modal-backdrop" id="groupModalBackdrop" onclick="if(event.target===this) closeGroupModal()">
+    <div class="group-modal-box">
+      <div class="group-modal-header">
+        <div>
+          <div class="group-modal-title" id="gmTitle">Group Name</div>
+          <div class="group-modal-sub" id="gmSub">- devices</div>
+        </div>
+        <button class="group-modal-close" onclick="closeGroupModal()">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="group-modal-body" id="gmBody">
+
+      </div>
+    </div>
+  </div>
 
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
@@ -1543,7 +1610,7 @@ function renderGroupTable(groups, devices) {
       </td>`;
     };
 
-    return `<tr>
+    return `<tr onclick="openGroupModal('${group.id}')" style="cursor:pointer">
       <td><div class="group-name-cell">${group.label}</div></td>
       <td><div class="group-devices-cell">${group.deviceCount} devices</div></td>
       ${vc(avgTemp, stTemp, 'temp')}
@@ -1555,8 +1622,57 @@ function renderGroupTable(groups, devices) {
     </tr>`;
   }).join('');
 }
+/* GROUP DETAIL MODAL */
 
-/* ── RENDER GROUP CHARTS ────────────────────────────────────── */
+function openGroupModal(groupId) {
+  const group = groupsData.find(g => g.id === groupId);
+  if (!group) return;
+
+  const members = devicesData.filter(d => group.devices.includes(d.id));
+
+  document.getElementById('gmTitle').textContent = group.label;
+  document.getElementById('gmSub').textContent =
+    members.length + ' device' + (members.length !== 1 ? 's' : '') + ' in this group';
+
+  const thr = group.thresholds || {};
+  const sensorCell = (label, val, unit, sensorKey, deviceVal) => {
+    const st = sensorKey ? groupStatusForSensor(group, sensorKey, deviceVal) : 'good';
+    const color = st === 'danger' ? '#dc2626' : st === 'warn' ? '#d97706' : '#334155';
+    return `<div>
+      <div class="gm-reading-lbl">${label}</div>
+      <div class="gm-reading-val" style="color:${color}">${val}${unit}</div>
+    </div>`;
+  };
+
+  document.getElementById('gmBody').innerHTML = members.length
+    ? members.map(d => {
+        const dot = d.online === false
+          ? `<span style="width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block;margin-right:6px"></span>`
+          : `<span style="width:7px;height:7px;border-radius:50%;background:#10b981;display:inline-block;margin-right:6px"></span>`;
+        return `<div class="gm-device-card">
+          <div class="gm-device-head">
+            <div class="gm-device-name">${dot}${d.name}</div>
+            <div style="font-size:0.7rem;color:#94a3b8">${d.location}</div>
+          </div>
+          <div class="gm-device-readings">
+            ${sensorCell('Temp', fmt(d.temp), '°C', 'temp', d.temp)}
+            ${sensorCell('Hum',  fmt(d.hum),  '%',  'hum',  d.hum)}
+            ${sensorCell('PM2.5', fmt(d.pm25), '',  'pm25', d.pm25)}
+            ${sensorCell('CO2',  fmtInt(d.co2), ' ppm', 'co2', d.co2)}
+            ${sensorCell('VOC',  fmtInt(d.voc), ' ppb', 'voc', d.voc)}
+          </div>
+        </div>`;
+      }).join('')
+    : `<div style="text-align:center;color:#94a3b8;padding:24px;font-size:0.85rem">No devices found in this group.</div>`;
+
+  document.getElementById('groupModalBackdrop').classList.add('open');
+}
+
+function closeGroupModal() {
+  document.getElementById('groupModalBackdrop').classList.remove('open');
+}
+
+/* RENDER GROUP CHARTS  */
 
 function renderGroupCharts(groups, devices) {
   Object.values(groupCharts).forEach(c => { try { c.destroy(); } catch {} });

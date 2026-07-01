@@ -863,6 +863,91 @@ app.get('/api/users', (req, res) => {
     res.json(safeUsers);
 });
 
+//GET /api/reports/group?groupId=X&hours=168
+// Aggregates history + alerts for one group over a period
+// Used by Reports.html to build a pdf summary
+
+app.get('api/reports/group', async (req, res) => {
+    const groupId = req.query.groupId;
+    const hours   = parserInt(req.query.hours) || 168;
+    const group   = GROUPS[groupId];
+
+    if (!group) {
+        return res.status(400).json({ error: `Unknown group: ${groupId}` });
+    }
+
+    try {
+        const deviceSummaries = await Promise.all(group.devices.map(async (deviceId) => {
+            const device = DEVICES[deviceId];
+            const query = `
+                SELECT temperature, humidity, co2, voc, pm25, time
+                FROM sensors
+                WHERE device_id = '${deviceId}'
+                AND time >= now() - INTERVAL '${hours} hours'
+                ORDER BY time ASC
+            `;
+            const rows = [];
+            try {
+                const result = await client.query(query, INFLUX_DB);
+                for await (const row of result) { rows.push(row); }
+            } catch (e) {
+                console.warn(`[Reports] No data for ${deviceId}:`, e.message);
+            }
+
+            const stat = key => {
+                const vals = rows.map(r => parseFloat(r[key])).filter(v => !isNaN(v));
+                if (!vals.length) return { min:null, max:null, avg: null };
+                return {
+                    min: Math.min(...vals),
+                    max: Math.max(...vals),
+                    avg: vals.reduce((a, b) => a + b, 0) / vals.length
+                };
+            };
+
+            return {
+                id: deviceId,
+                label: device ? device.label : deviceId,
+                recordCount: rows.length,
+                temp : stat('temperature'),
+                hum : stat('humidity'),
+                co2 : stat('co2'),
+                voc : stat('voc'),
+                pm25 : stat('pm25')
+            };
+        }));
+
+        let alertCounts = { critical: 0, warning: 0 };
+        try {
+            const alertQuery = `
+                SELECT severity
+                FROM alerts
+                WHERE group_id = '${groupId}'
+                AND time >= now() - INTERVAL '${hours} hours'
+                `;
+                const result = await client.query(alertQuery, INFLUX_DB);
+                for await (const row of result) {
+                    if(row.severity === 'critical') alertCounts.critical++;
+                    else if (row.severity === 'warning') alertCounts.warning++;
+                }
+        } catch (e) {
+            console.warn('[Reports] Alert count query failed:', e.message);
+        }
+
+        res.json({
+            groupId,
+            groupLabel : group.label,
+            hours,
+            threshold: groupThresholds[groupId] || DEFAULT_GROUP_THRESHOLDS[groupId],
+            devices : deviceSummaries,
+            alertCounts,
+            generatedAt: new Date().toISOString()
+        });
+    } catch (err) {
+        console.error('[Reports] Group report failed:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // POST /api/users
 // Adds a new user. Body: { name, email, dept, role }
 app.post('/api/users', async (req, res) => {
