@@ -867,7 +867,7 @@ app.get('/api/users', (req, res) => {
 // Aggregates history + alerts for one group over a period
 // Used by Reports.html to build a pdf summary
 
-app.get('api/reports/group', async (req, res) => {
+app.get('/api/reports/group', async (req, res) => {
     const groupId = req.query.groupId;
     const hours   = parserInt(req.query.hours) || 168;
     const group   = GROUPS[groupId];
