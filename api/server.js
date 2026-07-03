@@ -869,7 +869,7 @@ app.get('/api/users', (req, res) => {
 
 app.get('/api/reports/group', async (req, res) => {
     const groupId = req.query.groupId;
-    const hours   = parserInt(req.query.hours) || 168;
+    const hours   = Math.min(parseInt(req.query.hours) || 24, 48);
     const group   = GROUPS[groupId];
 
     if (!group) {
@@ -884,7 +884,8 @@ app.get('/api/reports/group', async (req, res) => {
                 FROM sensors
                 WHERE device_id = '${deviceId}'
                 AND time >= now() - INTERVAL '${hours} hours'
-                ORDER BY time ASC
+                ORDER BY time DESC
+                LIMIT 500
             `;
             const rows = [];
             try {

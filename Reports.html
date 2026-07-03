@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EMOSys — Reports</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="stylesheet" href="assets/css/main.css"/>
+  <link rel="stylesheet" href="assets/css/dashboard.css"/>
+  <style>
+    .report-config-card {
+      background: #fff; border: 1px solid #e2e8f0;
+      border-radius: 14px; overflow: hidden; margin-bottom: 26px;
+    }
+    .report-config-header {
+      display: flex; align-items: center; gap: 13px;
+      padding: 16px 20px 14px; border-bottom: 1px solid #e2e8f0;
+    }
+    .report-config-icon {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .report-config-icon svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; }
+    .report-config-title { font-family: 'Barlow Condensed', sans-serif; font-size: 0.95rem; font-weight: 700; color: #1e293b; letter-spacing: 0.04em; text-transform: uppercase; }
+    .report-config-sub { font-size: 0.73rem; color: #64748b; margin-top: 1px; }
+    .report-config-body { padding: 20px; }
+    .report-config-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px; margin-bottom: 20px;
+    }
+    .report-field label {
+      display: block; font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      color: #64748b; margin-bottom: 7px;
+    }
+    .report-select, .report-input {
+      width: 100%; box-sizing: border-box;
+      background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 8px; padding: 10px 12px;
+      color: #1e293b; font-family: 'Barlow', sans-serif;
+      font-size: 0.875rem; outline: none; transition: border-color 0.18s;
+    }
+    .report-select:focus, .report-input:focus { border-color: #0ea5e9; }
+    .btn-generate {
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      border: none; border-radius: 8px; padding: 11px 28px;
+      color: #fff; font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1rem; font-weight: 700; letter-spacing: 0.05em;
+      cursor: pointer; transition: opacity 0.18s;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-generate:hover { opacity: 0.88; }
+    .btn-generate:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-generate svg { width: 16px; height: 16px; stroke: #fff; fill: none; stroke-width: 2; }
+
+    /* PREVIEW CARD */
+    .report-preview-card {
+      background: #fff; border: 1px solid #e2e8f0;
+      border-radius: 14px; overflow: hidden; margin-bottom: 26px;
+      display: none;
+    }
+    .report-preview-card.visible { display: block; }
+    .report-preview-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; border-bottom: 1px solid #e2e8f0;
+      flex-wrap: wrap; gap: 10px;
+    }
+    .report-preview-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1rem; font-weight: 800; color: #1e293b;
+      text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .btn-download {
+      background: #10b981; border: none; border-radius: 8px;
+      padding: 9px 20px; color: #fff;
+      font-family: 'Barlow', sans-serif; font-size: 0.875rem;
+      font-weight: 600; cursor: pointer; transition: opacity 0.18s;
+      display: inline-flex; align-items: center; gap: 7px;
+    }
+    .btn-download:hover { opacity: 0.88; }
+    .btn-download svg { width: 14px; height: 14px; stroke: #fff; fill: none; stroke-width: 2; }
+
+    /* PREVIEW CONTENT */
+    .report-preview-body { padding: 24px; }
+    .rp-section-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.85rem; font-weight: 800; color: #0057B8;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin: 20px 0 10px; padding-bottom: 6px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .rp-section-title:first-child { margin-top: 0; }
+
+    /* SUMMARY STATS */
+    .rp-stat-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px; margin-bottom: 16px;
+    }
+    .rp-stat-box {
+      background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 8px; padding: 10px 12px;
+      border-top: 3px solid #e2e8f0;
+    }
+    .rp-stat-box.s-temp  { border-top-color: #e53e3e; }
+    .rp-stat-box.s-hum   { border-top-color: #0ea5e9; }
+    .rp-stat-box.s-pm25  { border-top-color: #10b981; }
+    .rp-stat-box.s-co2   { border-top-color: #7c3aed; }
+    .rp-stat-box.s-voc   { border-top-color: #f59e0b; }
+    .rp-stat-label { font-size: 0.62rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
+    .rp-stat-vals { display: flex; gap: 8px; flex-wrap: wrap; }
+    .rp-stat-item .sv-lbl { font-size: 0.6rem; color: #94a3b8; }
+    .rp-stat-item .sv-val { font-family: 'Barlow Condensed', sans-serif; font-size: 0.95rem; font-weight: 800; color: #1e293b; }
+
+    /* DEVICE TABLE */
+    .rp-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-bottom: 16px; }
+    .rp-table thead th {
+      padding: 8px 12px; text-align: left;
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: #64748b;
+      background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+    }
+    .rp-table tbody td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; color: #475569; }
+    .rp-table tbody tr:last-child td { border-bottom: none; }
+    .rp-table tbody tr:hover td { background: #f8fafc; }
+    .rp-val { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.9rem; }
+    .rp-val.good   { color: #334155; }
+    .rp-val.warn   { color: #d97706; }
+    .rp-val.danger { color: #dc2626; }
+
+    /* ALERT SUMMARY */
+    .rp-alert-row {
+      display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .rp-alert-box {
+      flex: 1; min-width: 120px;
+      background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 8px; padding: 12px 16px; text-align: center;
+    }
+    .rp-alert-box.critical { border-top: 3px solid #ef4444; }
+    .rp-alert-box.warning  { border-top: 3px solid #f59e0b; }
+    .rp-alert-box.ok       { border-top: 3px solid #10b981; }
+    .rp-alert-num { font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; font-weight: 800; line-height: 1; }
+    .rp-alert-num.critical { color: #dc2626; }
+    .rp-alert-num.warning  { color: #d97706; }
+    .rp-alert-num.ok       { color: #059669; }
+    .rp-alert-lbl { font-size: 0.72rem; color: #64748b; margin-top: 4px; }
+
+    /* LOADING */
+    .report-loading {
+      display: none; padding: 40px;
+      text-align: center; color: #64748b;
+    }
+    .report-loading.visible { display: block; }
+    .report-spinner {
+      width: 36px; height: 36px;
+      border: 3px solid #e2e8f0; border-top-color: #0057B8;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="light">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-wrap">
+        <img src="assets/images/smd-logo.jpg" alt="SMD Semiconductor"
+          style="width:130px;display:block;margin:0 auto;border-radius:6px;opacity:0.92"/>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">Overview</div>
+      <a class="nav-item" href="Dashboard.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a class="nav-item" href="Analytics.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Analytics
+      </a>
+      <a class="nav-item" href="History.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        History &amp; Logs
+      </a>
+      <div class="nav-section">Devices</div>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        EMOSys Devices
+      </a>
+      <a class="nav-item" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        Network Status
+      </a>
+      <div class="nav-section">Management</div>
+      <a class="nav-item active" href="Reports.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        Reports
+      </a>
+      <a class="nav-item" href="Alerts.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        Alerts
+      </a>
+      <a class="nav-item" href="Users.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+        Users
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="avatar" id="userAvatar">A</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Admin</div>
+          <div class="user-role" id="userRole">Administrator</div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()" title="Logout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="breadcrumb">
+        <span class="breadcrumb-home">EMOSys</span>
+        <span class="breadcrumb-sep">›</span>
+        <span class="breadcrumb-current">Reports</span>
+      </div>
+      <div class="topbar-right">
+        <div class="status-pill"><div class="pulse-dot"></div>Report Generator</div>
+        <span style="font-size:0.75rem;color:rgba(255,255,255,0.4)" id="currentDate"></span>
+      </div>
+    </div>
+
+    <div class="page">
+      <div class="page-title-bar">
+        <h1><span>Environmental Reports</span>Generate PDF Summary</h1>
+        <div class="last-updated" id="lastUpdated">Select a group and time range to begin</div>
+      </div>
+
+      <!-- CONFIG CARD -->
+      <div class="report-config-card">
+        <div class="report-config-header">
+          <div class="report-config-icon">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <div>
+            <div class="report-config-title">Report Configuration</div>
+            <div class="report-config-sub">Choose a group and time range · max 48 hours</div>
+          </div>
+        </div>
+        <div class="report-config-body">
+          <div class="report-config-grid">
+            <div class="report-field">
+              <label>Room Group</label>
+              <select class="report-select" id="reportGroup">
+                <option value="">Loading groups…</option>
+              </select>
+            </div>
+            <div class="report-field">
+              <label>Time Range</label>
+              <select class="report-select" id="reportHours">
+                <option value="6">Last 6 Hours</option>
+                <option value="12">Last 12 Hours</option>
+                <option value="24" selected>Last 24 Hours</option>
+                <option value="48">Last 48 Hours</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn-generate" id="generateBtn" onclick="generateReport()">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Generate Report
+          </button>
+        </div>
+      </div>
+
+      <!-- LOADING -->
+      <div class="report-loading" id="reportLoading">
+        <div class="report-spinner"></div>
+        <div style="font-size:0.85rem">Fetching sensor data from InfluxDB…</div>
+      </div>
+
+      <!-- PREVIEW CARD -->
+      <div class="report-preview-card" id="reportPreview">
+        <div class="report-preview-header">
+          <div class="report-preview-title" id="previewTitle">Report Preview</div>
+          <button class="btn-download" onclick="downloadPDF()">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download PDF
+          </button>
+        </div>
+        <div class="report-preview-body" id="reportPreviewBody">
+        </div>
+      </div>
+
+    </div>
+
+    <div class="page-footer">
+      <span>&copy; 2026 SMD Semiconductor (Sarawak Mircroelectronics Design) · EMOSys Environmental Monitoring System</span>
+      <span id="footerDate"></span>
+    </div>
+  </main>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+  <script src="assets/js/auth.js"></script>
+  <script>
+  /* AUTH */
+  const currentUser = requireAuth();
+  if (currentUser) {
+    document.getElementById('userName').textContent    = currentUser.name || 'Admin';
+    document.getElementById('userRole').textContent    = currentUser.role || 'User';
+    document.getElementById('userAvatar').textContent  = (currentUser.name || 'A')[0].toUpperCase();
+  }
+
+  /* DATES */
+  const ds = new Date().toLocaleDateString('en-MY', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+  document.getElementById('currentDate').textContent = ds;
+  document.getElementById('footerDate').textContent  = ds;
+
+  /* STATE */
+  let reportData = null;
+
+  /* FORMAT HELPERS */
+  const fmt    = (v, d=1) => (v == null || isNaN(v)) ? '—' : Number(v).toFixed(d);
+  const fmtInt = v        => (v == null || isNaN(v)) ? '—' : Math.round(v).toString();
+
+  function valStatus(sensor, value, thr) {
+    if (value == null || !thr || !thr[sensor]) return 'good';
+    if (value >= thr[sensor].danger) return 'danger';
+    if (value >= thr[sensor].warn)   return 'warn';
+    return 'good';
+  }
+
+  /* LOAD GROUPS INTO SELECTOR */
+  async function loadGroups() {
+    try {
+      const groups = await fetch('/api/groups').then(r => r.json());
+      const sel = document.getElementById('reportGroup');
+      sel.innerHTML = groups.map(g =>
+        `<option value="${g.id}">${g.label}</option>`
+      ).join('');
+    } catch (e) {
+      console.error('Could not load groups:', e.message);
+    }
+  }
+
+  /* GENERATE REPORT */
+  async function generateReport() {
+    const groupId = document.getElementById('reportGroup').value;
+    const hours   = document.getElementById('reportHours').value;
+    if (!groupId) { alert('Please select a group.'); return; }
+
+    /* Show loading */
+    document.getElementById('generateBtn').disabled = true;
+    document.getElementById('reportLoading').classList.add('visible');
+    document.getElementById('reportPreview').classList.remove('visible');
+
+    try {
+      const data = await fetch(`/api/reports/group?groupId=${groupId}&hours=${hours}`)
+        .then(r => r.json());
+
+      if (data.error) throw new Error(data.error);
+      reportData = data;
+      renderPreview(data);
+    } catch (e) {
+      alert('Failed to generate report: ' + e.message);
+    } finally {
+      document.getElementById('generateBtn').disabled = false;
+      document.getElementById('reportLoading').classList.remove('visible');
+    }
+  }
+
+  /* RENDER PREVIEW */
+  function renderPreview(data) {
+    const thr = data.threshold || {};
+    const hoursLabel = document.getElementById('reportHours').options[document.getElementById('reportHours').selectedIndex].text;
+
+    document.getElementById('previewTitle').textContent =
+      data.groupLabel + ' — ' + hoursLabel + ' Report';
+
+    /* Fleet averages across all devices in group */
+    const avg = key => {
+      const vals = data.devices.map(d => d[key]?.avg).filter(v => v != null);
+      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    };
+
+    const totalRecords = data.devices.reduce((s, d) => s + d.recordCount, 0);
+
+    document.getElementById('reportPreviewBody').innerHTML = `
+
+      <!-- REPORT HEADER INFO -->
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:20px;display:flex;gap:24px;flex-wrap:wrap">
+        <div><div style="font-size:0.65rem;font-weight:700;color:#94a3b8;text-transform:uppercase">Group</div><div style="font-weight:700;color:#1e293b">${data.groupLabel}</div></div>
+        <div><div style="font-size:0.65rem;font-weight:700;color:#94a3b8;text-transform:uppercase">Period</div><div style="font-weight:700;color:#1e293b">${hoursLabel}</div></div>
+        <div><div style="font-size:0.65rem;font-weight:700;color:#94a3b8;text-transform:uppercase">Devices</div><div style="font-weight:700;color:#1e293b">${data.devices.length}</div></div>
+        <div><div style="font-size:0.65rem;font-weight:700;color:#94a3b8;text-transform:uppercase">Data Points</div><div style="font-weight:700;color:#1e293b">${totalRecords.toLocaleString()}</div></div>
+        <div><div style="font-size:0.65rem;font-weight:700;color:#94a3b8;text-transform:uppercase">Generated</div><div style="font-weight:700;color:#1e293b">${new Date().toLocaleString('en-MY')}</div></div>
+      </div>
+
+      <!-- ALERT SUMMARY -->
+      <div class="rp-section-title">Alert Summary</div>
+      <div class="rp-alert-row">
+        <div class="rp-alert-box critical">
+          <div class="rp-alert-num critical">${data.alertCounts.critical}</div>
+          <div class="rp-alert-lbl">Critical Alerts</div>
+        </div>
+        <div class="rp-alert-box warning">
+          <div class="rp-alert-num warning">${data.alertCounts.warning}</div>
+          <div class="rp-alert-lbl">Warnings</div>
+        </div>
+        <div class="rp-alert-box ok">
+          <div class="rp-alert-num ok">${data.alertCounts.critical === 0 && data.alertCounts.warning === 0 ? '✓' : '!'}</div>
+          <div class="rp-alert-lbl">${data.alertCounts.critical === 0 && data.alertCounts.warning === 0 ? 'All Clear' : 'Action Needed'}</div>
+        </div>
+      </div>
+
+      <!-- GROUP AVERAGES -->
+      <div class="rp-section-title">Group Averages — ${hoursLabel}</div>
+      <div class="rp-stat-grid">
+        <div class="rp-stat-box s-temp">
+          <div class="rp-stat-label">Temperature (°C)</div>
+          <div class="rp-stat-vals">
+            <div class="rp-stat-item"><div class="sv-lbl">Avg</div><div class="sv-val">${fmt(avg('temp'))}</div></div>
+          </div>
+        </div>
+        <div class="rp-stat-box s-hum">
+          <div class="rp-stat-label">Humidity (%RH)</div>
+          <div class="rp-stat-vals">
+            <div class="rp-stat-item"><div class="sv-lbl">Avg</div><div class="sv-val">${fmt(avg('hum'))}</div></div>
+          </div>
+        </div>
+        <div class="rp-stat-box s-pm25">
+          <div class="rp-stat-label">PM2.5</div>
+          <div class="rp-stat-vals">
+            <div class="rp-stat-item"><div class="sv-lbl">Avg</div><div class="sv-val">${fmt(avg('pm25'))}</div></div>
+          </div>
+        </div>
+        <div class="rp-stat-box s-co2">
+          <div class="rp-stat-label">CO₂ (ppm)</div>
+          <div class="rp-stat-vals">
+            <div class="rp-stat-item"><div class="sv-lbl">Avg</div><div class="sv-val">${fmtInt(avg('co2'))}</div></div>
+          </div>
+        </div>
+        <div class="rp-stat-box s-voc">
+          <div class="rp-stat-label">VOC (ppb)</div>
+          <div class="rp-stat-vals">
+            <div class="rp-stat-item"><div class="sv-lbl">Avg</div><div class="sv-val">${fmtInt(avg('voc'))}</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PER DEVICE BREAKDOWN -->
+      <div class="rp-section-title">Per Device Breakdown</div>
+      <div style="overflow-x:auto">
+        <table class="rp-table">
+          <thead>
+            <tr>
+              <th>Device</th>
+              <th>Records</th>
+              <th>Avg Temp (°C)</th>
+              <th>Avg Hum (%)</th>
+              <th>Avg PM2.5</th>
+              <th>Avg CO2 (ppm)</th>
+              <th>Avg VOC (ppb)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.devices.map(d => {
+              const st = s => valStatus(s, d[s]?.avg, thr);
+              return `<tr>
+                <td style="font-weight:600;color:#1e293b">${d.label}</td>
+                <td style="color:#94a3b8">${d.recordCount}</td>
+                <td><span class="rp-val ${st('temp')}">${fmt(d.temp?.avg)}</span></td>
+                <td><span class="rp-val ${st('hum')}">${fmt(d.hum?.avg)}</span></td>
+                <td><span class="rp-val ${st('pm25')}">${fmt(d.pm25?.avg)}</span></td>
+                <td><span class="rp-val ${st('co2')}">${fmtInt(d.co2?.avg)}</span></td>
+                <td><span class="rp-val ${st('voc')}">${fmtInt(d.voc?.avg)}</span></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- MIN MAX TABLE -->
+      <div class="rp-section-title">Min / Max Range per Device</div>
+      <div style="overflow-x:auto">
+        <table class="rp-table">
+          <thead>
+            <tr>
+              <th>Device</th>
+              <th>Temp Min</th><th>Temp Max</th>
+              <th>Hum Min</th><th>Hum Max</th>
+              <th>CO2 Min</th><th>CO2 Max</th>
+              <th>VOC Min</th><th>VOC Max</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.devices.map(d => `<tr>
+              <td style="font-weight:600;color:#1e293b">${d.label}</td>
+              <td>${fmt(d.temp?.min)}</td><td>${fmt(d.temp?.max)}</td>
+              <td>${fmt(d.hum?.min)}</td><td>${fmt(d.hum?.max)}</td>
+              <td>${fmtInt(d.co2?.min)}</td><td>${fmtInt(d.co2?.max)}</td>
+              <td>${fmtInt(d.voc?.min)}</td><td>${fmtInt(d.voc?.max)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- THRESHOLDS REFERENCE -->
+      <div class="rp-section-title">Group Threshold Reference</div>
+      <div style="overflow-x:auto">
+        <table class="rp-table">
+          <thead>
+            <tr><th>Sensor</th><th>Warning Level</th><th>Critical Level</th></tr>
+          </thead>
+          <tbody>
+            ${Object.entries(thr).map(([k, v]) => `<tr>
+              <td style="font-weight:600;color:#1e293b;text-transform:uppercase">${k}</td>
+              <td style="color:#d97706">≥ ${v.warn}</td>
+              <td style="color:#dc2626">≥ ${v.danger}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    document.getElementById('reportPreview').classList.add('visible');
+    document.getElementById('lastUpdated').textContent = 'Report generated: ' + new Date().toLocaleTimeString();
+  }
+
+  /* DOWNLOAD PDF */
+  function downloadPDF() {
+    if (!reportData) return;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const thr = reportData.threshold || {};
+    const hoursLabel = document.getElementById('reportHours').options[document.getElementById('reportHours').selectedIndex].text;
+
+    const W  = 210; /* A4 width mm */
+    const M  = 15;  /* margin */
+    const CW = W - M * 2; /* content width */
+    let y = 20;
+
+    /* ── COLORS ── */
+    const C = {
+      navy:   [11, 22, 38],
+      blue:   [0, 87, 184],
+      text:   [30, 41, 59],
+      muted:  [100, 116, 139],
+      border: [226, 232, 240],
+      red:    [220, 38, 38],
+      amber:  [217, 119, 6],
+      green:  [5, 150, 105],
+      white:  [255, 255, 255],
+      bgGray: [248, 250, 252]
+    };
+
+    /* ── HELPERS ── */
+    const setFont = (size, style='normal', color=C.text) => {
+      doc.setFontSize(size);
+      doc.setFont('helvetica', style);
+      doc.setTextColor(...color);
+    };
+    const line = (x1, y1, x2, y2, color=C.border, w=0.3) => {
+      doc.setDrawColor(...color);
+      doc.setLineWidth(w);
+      doc.line(x1, y1, x2, y2);
+    };
+    const rect = (x, y, w, h, fill) => {
+      doc.setFillColor(...fill);
+      doc.rect(x, y, w, h, 'F');
+    };
+    const checkPage = (needed=20) => {
+      if (y + needed > 275) { doc.addPage(); y = 20; }
+    };
+    const sectionTitle = (title) => {
+      checkPage(14);
+      y += 4;
+      rect(M, y, CW, 7, C.blue);
+      setFont(8, 'bold', C.white);
+      doc.text(title.toUpperCase(), M + 4, y + 5);
+      y += 11;
+    };
+
+    /* ── COVER HEADER ── */
+    rect(0, 0, W, 38, C.navy);
+    setFont(20, 'bold', C.white);
+    doc.text('EMOSys Environmental Report', M, 15);
+    setFont(10, 'normal', [148, 163, 184]);
+    doc.text(`${reportData.groupLabel}  ·  ${hoursLabel}`, M, 23);
+    doc.text(`Generated: ${new Date().toLocaleString('en-MY')}`, M, 30);
+    setFont(8, 'normal', [100, 116, 139]);
+    doc.text('SMD Semiconductor (Sarawak Microelectronics Design)', W - M, 30, { align: 'right' });
+    y = 46;
+
+    /* ── REPORT META ROW ── */
+    rect(M, y, CW, 16, C.bgGray);
+    line(M, y, M + CW, y, C.border);
+    line(M, y + 16, M + CW, y + 16, C.border);
+    const metas = [
+      ['Group', reportData.groupLabel],
+      ['Period', hoursLabel],
+      ['Devices', reportData.devices.length],
+      ['Data Points', reportData.devices.reduce((s, d) => s + d.recordCount, 0).toLocaleString()],
+      ['Critical Alerts', reportData.alertCounts.critical],
+      ['Warnings', reportData.alertCounts.warning]
+    ];
+    const mw = CW / metas.length;
+    metas.forEach(([lbl, val], i) => {
+      const mx = M + i * mw + 4;
+      setFont(6, 'bold', C.muted);
+      doc.text(lbl.toUpperCase(), mx, y + 5);
+      setFont(9, 'bold', C.text);
+      doc.text(String(val), mx, y + 12);
+    });
+    y += 22;
+
+    /* ── ALERT SUMMARY ── */
+    sectionTitle('Alert Summary');
+    const aboxW = CW / 3 - 3;
+    const aboxes = [
+      { label: 'Critical Alerts', val: reportData.alertCounts.critical, color: C.red },
+      { label: 'Warnings',        val: reportData.alertCounts.warning,  color: [217, 119, 6] },
+      { label: 'Status',          val: reportData.alertCounts.critical === 0 && reportData.alertCounts.warning === 0 ? 'All Clear' : 'Review Needed', color: C.green }
+    ];
+    aboxes.forEach((b, i) => {
+      const bx = M + i * (aboxW + 4.5);
+      rect(bx, y, aboxW, 18, C.bgGray);
+      doc.setDrawColor(...C.border); doc.setLineWidth(0.3);
+      doc.rect(bx, y, aboxW, 18);
+      doc.setFillColor(...b.color);
+      doc.rect(bx, y, aboxW, 2, 'F');
+      setFont(14, 'bold', b.color);
+      doc.text(String(b.val), bx + aboxW / 2, y + 11, { align: 'center' });
+      setFont(6.5, 'normal', C.muted);
+      doc.text(b.label, bx + aboxW / 2, y + 16, { align: 'center' });
+    });
+    y += 24;
+
+    /* ── AVG TABLE ── */
+    sectionTitle('Average Sensor Readings per Device');
+    const avgCols = ['Device','Records','Temp (°C)','Hum (%)','PM2.5','CO2 (ppm)','VOC (ppb)'];
+    const avgWs   = [45, 18, 22, 20, 18, 24, 22];
+    let cx = M;
+    rect(M, y, CW, 8, C.navy);
+    avgCols.forEach((col, i) => {
+      setFont(6.5, 'bold', C.white);
+      doc.text(col, cx + 2, y + 5.5);
+      cx += avgWs[i];
+    });
+    y += 8;
+    reportData.devices.forEach((d, ri) => {
+      checkPage(9);
+      if (ri % 2 === 0) rect(M, y, CW, 8, C.bgGray);
+      const row = [
+        d.label,
+        String(d.recordCount),
+        fmt(d.temp?.avg),
+        fmt(d.hum?.avg),
+        fmt(d.pm25?.avg),
+        fmtInt(d.co2?.avg),
+        fmtInt(d.voc?.avg)
+      ];
+      cx = M;
+      row.forEach((val, i) => {
+        let color = C.text;
+        if (i >= 2) {
+          const keys  = ['temp','hum','pm25','co2','voc'];
+          const sKey  = keys[i - 2];
+          const numV  = parseFloat(val);
+          if (thr[sKey] && !isNaN(numV)) {
+            if (numV >= thr[sKey].danger) color = C.red;
+            else if (numV >= thr[sKey].warn) color = [217, 119, 6];
+          }
+        }
+        setFont(i === 0 ? 7 : 7, i === 0 ? 'bold' : 'normal', color);
+        doc.text(val, cx + 2, y + 5.5);
+        cx += avgWs[i];
+      });
+      line(M, y + 8, M + CW, y + 8, C.border, 0.2);
+      y += 8;
+    });
+    y += 4;
+
+    /* MIN MAX TABLE */
+    checkPage(30);
+    sectionTitle('Min / Max Range per Device');
+    const mmCols = ['Device','Temp Min','Temp Max','Hum Min','Hum Max','CO2 Min','CO2 Max','VOC Min','VOC Max'];
+    const mmWs   = [40, 18, 18, 18, 18, 18, 18, 18, 14];
+    cx = M;
+    rect(M, y, CW, 8, C.navy);
+    mmCols.forEach((col, i) => {
+      setFont(6, 'bold', C.white);
+      doc.text(col, cx + 2, y + 5.5);
+      cx += mmWs[i];
+    });
+    y += 8;
+    reportData.devices.forEach((d, ri) => {
+      checkPage(9);
+      if (ri % 2 === 0) rect(M, y, CW, 8, C.bgGray);
+      const row = [
+        d.label,
+        fmt(d.temp?.min), fmt(d.temp?.max),
+        fmt(d.hum?.min),  fmt(d.hum?.max),
+        fmtInt(d.co2?.min), fmtInt(d.co2?.max),
+        fmtInt(d.voc?.min), fmtInt(d.voc?.max)
+      ];
+      cx = M;
+      row.forEach((val, i) => {
+        setFont(6.5, i === 0 ? 'bold' : 'normal', C.text);
+        doc.text(val, cx + 2, y + 5.5);
+        cx += mmWs[i];
+      });
+      line(M, y + 8, M + CW, y + 8, C.border, 0.2);
+      y += 8;
+    });
+    y += 4;
+
+    /* ── THRESHOLDS ── */
+    checkPage(40);
+    sectionTitle('Group Threshold Reference');
+    const thrCols = ['Sensor','Warning Level','Critical Level'];
+    const thrWs   = [60, 60, 60];
+    cx = M;
+    rect(M, y, CW, 8, C.navy);
+    thrCols.forEach((col, i) => {
+      setFont(6.5, 'bold', C.white);
+      doc.text(col, cx + 2, y + 5.5);
+      cx += thrWs[i];
+    });
+    y += 8;
+    Object.entries(thr).forEach(([k, v], ri) => {
+      if (ri % 2 === 0) rect(M, y, CW, 8, C.bgGray);
+      cx = M;
+      const thrRow = [k.toUpperCase(), `>= ${v.warn}`, `>=  ${v.danger}`];
+      thrRow.forEach((val, i) => {
+        const col = i === 1 ? [217, 119, 6] : i === 2 ? C.red : C.text;
+        setFont(7, i === 0 ? 'bold' : 'normal', col);
+        doc.text(val, cx + 2, y + 5.5);
+        cx += thrWs[i];
+      });
+      line(M, y + 8, M + CW, y + 8, C.border, 0.2);
+      y += 8;
+    });
+
+    /* ── FOOTER ── */
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      rect(0, 287, W, 10, C.navy);
+      setFont(6.5, 'normal', [148, 163, 184]);
+      doc.text('EMOSys Environmental Monitoring System · SMD Semiconductor (Sarawak Microelectronics Design) · Confidential', M, 293);
+      doc.text(`Page ${i} of ${pageCount}`, W - M, 293, { align: 'right' });
+    }
+
+    /* ── SAVE ── */
+    const fname = `EMOSys_${reportData.groupLabel.replace(/\s+/g, '_')}_${hoursLabel.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
+    doc.save(fname);
+  }
+
+  /* SIDEBAR */
+  function toggleSidebar() {
+    document.querySelector('.sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('active');
+  }
+
+  /* INIT */
+  loadGroups();
+  </script>
+</body>
+</html>
