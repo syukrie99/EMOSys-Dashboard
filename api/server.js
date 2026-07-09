@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const { InfluxDBClient } = require('@influxdata/influxdb3-client');
 const emailAlerts = require('./emailAlerts');
+const adaptiveThresholds = require('./adaptiveThresholds');
 const bcrypt = require('bcrypt');
 
 const app = express();
@@ -546,6 +547,18 @@ app.get('/api/history', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: err.message });
+    }
+});
+// TEMPORARY TEST ROUTE - remove once Phase 1 is verified
+// GET /api/_test/baseline?device=testing_lab_1&days=14
+app.get('/api/_test/baseline', async (req, res) => {
+    const deviceId = req.query.device || 'testing_lab_1';
+    const days = parseInt(req.query.days) || 14;
+    try {
+        const results = await adaptiveThresholds.computeDeviceBaselines(client, INFLUX_DB, deviceId, days);
+        res.json({ device: deviceId, days, result});
+    } catch(e) {
+        res.status(500).json({ error: e.message });
     }
 });
 
