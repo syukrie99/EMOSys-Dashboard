@@ -468,6 +468,49 @@
   .group-thr-input.warn-input { border-left: 3px solid #f59e0b; }
   .group-thr-input.crit-input { border-left: 3px solid #ef4444; }
 
+  /*SUGGESTED THRESHOLD STRIP */
+  .gthr-suggested {
+    grid-column: 1 / -1;
+    margin-top: 10px;
+    padding-top: 9px;
+    border-top: 1px dashed #e2e8f0;
+    font-size: 0.72rem;
+    color: #475569;
+    line-height: 1.9;
+  }
+  .gthr-sugg-label {
+    font-weight: 700;
+    color: #0057B8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.63rem;
+    display: block;
+    margin-bottom: 3px;
+  }
+  .gthr-sugg-val {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    color: #1e293b;
+  }
+  .gthr-use-btn {
+    background: rgba(0,87,184,0.08);
+    border: 1px solid rgba(0,87,184,0.25);
+    border-radius: 4px;
+    padding: 1px 8px;
+    font-size: 0.63rem;
+    font-weight: 700;
+    color: #0057B8;
+    cursor: pointer;
+    margin-left: 6px;
+    font-family: 'Barlow', sans-serif;
+  }
+  .gthr-use-btn:hover { background: rgba(0,87,184,0.16); }
+  .gthr-loading, .gthr-insufficient {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    font-style: italic;
+  }
+
   </style>
 </head>
 <body class="light">
@@ -1196,6 +1239,7 @@ function setActiveGroupTab(groupId) {
 
   /* Render threshold inputs */
   renderGroupThresholdInputs(group);
+  loadSuggestedThresholds(groupId);
 }
 
 function renderGroupThresholdInputs(group) {
@@ -1223,8 +1267,60 @@ function renderGroupThresholdInputs(group) {
             id="gthr_crit_${key}" value="${crit}" step="0.5"
             placeholder="crit level"/>
         </div>
+        <div class="gthr-suggested" id="gsugg_${key}">
+          <span class="gthr-loading">Loading suggestion...</span>
+        </div>
       </div>`;
   }).join('');
+}
+
+async function loadSuggestedThresholds(groupId) {
+  Object.keys(SENSOR_META).forEach(key => {
+    const el = document.getElementById('gsugg_' + key);
+    if (el) el.innerHTML = '<span class="gthr-loading">Calculating suggested levels from history...</span>';
+  });
+  try {
+    const data = await apiGet(`/thresholds/suggested?groupId=${groupId}&days=14`);
+    if (activeGroupId !== groupId) return;
+    renderSuggestedHints(data.suggested);
+  } catch (e) {
+    Object.keys(SENSOR_META).forEach(key => {
+      const el = document.getElementById('gsugg_' + key);
+      if (el) el.innerHTML = '<span class="gthr-loading">Could not load suggestion.</span>';
+    });
+  }
+}
+
+function renderSuggestedHints(suggested) {
+  Object.entries(SENSOR_META).forEach(([key, meta]) => {
+    const el = document.getElementById('gsugg_' + key);
+    if (!el) return;
+    const s = suggested[key];
+    if (!s || s.error) {
+      el.innerHTML = '<span class="gthr-loading">No suggestion available.</span>';
+      return;
+    }
+    if (s.insufficient) {
+      el.innerHTML = `<span class="gthr-insufficient">Not enough history yet — need ${s.required}+ hourly samples (have ${s.sampleCount}).</span>`;
+      return;
+    }
+    el.innerHTML =
+      `<span class="gthr-sugg-label">Suggested — last ${s.windowDays}d, ${s.sampleCount} samples (mean ${s.mean}, std dev ${s.stdDev})</span>` +
+      `<span class="gthr-sugg-val">Warn ${s.suggestedWarn}${meta.unit}</span>` +
+      `<button type="button" class="gthr-use-btn" onclick="applySuggested('${key}','warn',${s.suggestedWarn})">Use</button>` +
+      `&nbsp;&nbsp;&nbsp;` +
+      `<span class="gthr-sugg-val">Critical ${s.suggestedDanger}${meta.unit}</span>` +
+      `<button type="button" class="gthr-use-btn" onclick="applySuggested('${key}','crit',${s.suggestedDanger})">Use</button>`;
+  });
+}
+
+function applySuggested(key, type, value) {
+  const input = document.getElementById(`gthr_${type}_${key}`);
+  if (input) {
+    input.value = value;
+    input.style.borderColor = '#0057B8';
+    setTimeout(() => { input.style.borderColor = ''; }, 800);
+  }
 }
 
 async function saveGroupThresholds() {

@@ -239,7 +239,11 @@ async function checkAndSendAlerts(sensorData, deviceId, deviceName, location = '
 
   const triggered = [];
 
-  /* Collect all sensors that are currently breaching */
+  /* Collect all sensors that are currently breaching.
+     Cooldown is marked IMMEDIATELY here, not after the email sends —
+     otherwise two overlapping requests for the same device+sensor can
+     both pass isCooledDown() before either one finishes sending,
+     causing duplicate emails within the same cooldown window. */
   for (const [sensor, value] of Object.entries(sensorData)) {
     if (!(sensor in thresholds)) continue;
     const v   = parseFloat(value);
@@ -248,6 +252,7 @@ async function checkAndSendAlerts(sensorData, deviceId, deviceName, location = '
     if (config.criticalOnly && sev !== 'critical') continue;
     if (!isCooledDown(deviceId, sensor)) continue;
 
+    markSent(deviceId, sensor); // claim the cooldown slot now, before sending
     triggered.push({ sensor, value: v, severity: sev });
   }
 
@@ -290,10 +295,8 @@ async function checkAndSendAlerts(sensorData, deviceId, deviceName, location = '
       html:    buildEmailHTML(triggered, deviceName, location)
     });
 
-    /* Mark cooldowns + update emailSent flag in log */
+    /* Update emailSent flag in log — cooldown was already marked above */
     triggered.forEach(a => {
-      markSent(deviceId, a.sensor);
-      /* Find the log entry we just added and mark it sent */
       const entry = alertLog.find(e =>
         e.device === deviceName && e.sensor === a.sensor && !e.emailSent
       );
@@ -306,6 +309,9 @@ async function checkAndSendAlerts(sensorData, deviceId, deviceName, location = '
 
   } catch (err) {
     console.error('[EMOSys Email] Send failed:', err.message);
+    /* Roll back the cooldown claim so a real send failure doesn't
+       block the next legitimate attempt for the full 5 minutes */
+    triggered.forEach(a => cooldownMap.delete(`${deviceId}_${a.sensor}`));
     return logEntries;
   }
 }

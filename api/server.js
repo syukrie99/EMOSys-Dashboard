@@ -549,15 +549,31 @@ app.get('/api/history', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-// TEMPORARY TEST ROUTE - remove once Phase 1 is verified
-// GET /api/_test/baseline?device=testing_lab_1&days=14
-app.get('/api/_test/baseline', async (req, res) => {
-    const deviceId = req.query.device || 'testing_lab_1';
-    const days = parseInt(req.query.days) || 14;
+// GET /api/thresholds/suggested?groupId=lab&days=14
+// Computes statistical baseline thresholds for a group, pooling all its
+// devices' history together. Returns current thresholds alongside the
+// suggested ones so the UI can show them side by side. Suggestion-only
+// does not modify groupThresholds.json
+app.get('/api/thresholds/suggested', async (req, res) => {
+    const groupId = req.query.groupId;
+    const days = Math.min(parseInt(req.query.days) || 14, 30);
+    const group = GROUPS[groupId];
+
+    if (!group) {
+        return res.status(400).json({ error: `Unknown group: ${groupId}` });
+    }
+
     try {
-        const results = await adaptiveThresholds.computeDeviceBaselines(client, INFLUX_DB, deviceId, days);
-        res.json({ device: deviceId, days, result});
-    } catch(e) {
+        const suggested = await adaptiveThresholds.computeGroupBaseline(client, INFLUX_DB, group, days);
+        res.json({
+            groupId,
+            groupLabel: group.label,
+            days,
+            current: groupThresholds[groupId] || DEFAULT_GROUP_THRESHOLDS[groupId],
+            suggested
+        });
+    } catch (e) {
+        console.error('[AdaptiveThresholds] Suggested thresholds failed:', e.message);
         res.status(500).json({ error: e.message });
     }
 });
