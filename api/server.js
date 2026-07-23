@@ -509,6 +509,63 @@ app.get('/api/ha/status', async (req, res) => {
     }
 });
 
+// - GET /api/ha/emotion-snapshot
+// Proxies the latest facial-detection snapshot from HA /local/
+// folder so the frontend never needs direct network access to HA
+app.get('/api/ha/emotion-snapshot', async (req, res) => {
+    try {
+        const response = await fetch(`${HA_URL}/local/xiao_person_check.jpg`);
+        if (!response.ok) {
+            return res.status(502).json({ error: `HA returned ${response.status}` });
+        }
+        const buffer = Buffer.from(await response.arrayBuffer());
+        res.set('Content-Type', 'image/jpeg');
+        res.set('Cache-Control', 'no-store');
+        res.send(buffer);
+    } catch (err) {
+        console.error('[EMOSys] Snapshot fetch failed:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// - POST /api/ai/vision-emotion
+// Sends the latest snapshot to Gemini version and returns a general expression description
+app.post('/api/ai/vision-emotion', async (req,res) => {
+    try {
+        const imgResp = await fetch(`${HA_URL}/local/xiao_person_check.jpg`);
+        if (!imgResp.ok) throw new Error(`HA returned ${imgResp.status}`);
+        const buffer = Buffer.from(await imgResp.arrayBuffer());
+        const base64Image = buffer.toString('base64');
+
+        const geminiResp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${process.env.GEMINI_API_KEY}`,
+            {
+                method: 'POST',
+                headers:{ 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: 'Analyze this image. 1. Is there a person present? 2. If yes, briefly describe the person. 3. Estimate the person`s emotion. Answer ONLY in JSON format: {"person": true, "description": "text", "emotion": "text"}' },
+                            { inline_data: { mime_type: 'image/jpeg', data: base64Image } }
+                        ]
+                    }],
+                    generationConfig: { maxOutputTokens: 300 }
+                })
+            }
+        );
+        const data = await geminiResp.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+            || (data.candidates?.[0]?.finishReason === 'SAFETY'
+                ? 'Response blocked by safety filter.'
+                : 'AI did not return a response.');
+
+        res.json({ text, capturedAt: new Date().toISOString() });
+    } catch (err) {
+        console.error('[EMOSys] Vision analysis failed:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ── InfluxDB endpoints ───────────────────────────────────────
 app.get('/api/latest', async (req, res) => {
     try {
