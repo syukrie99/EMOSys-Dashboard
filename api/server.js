@@ -5,6 +5,8 @@ const { InfluxDBClient } = require('@influxdata/influxdb3-client');
 const emailAlerts = require('./emailAlerts');
 const adaptiveThresholds = require('./adaptiveThresholds');
 const bcrypt = require('bcrypt');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage(), limits: { filesize: 5 * 1024 * 1024} });
 
 const app = express();
 app.use(cors());
@@ -389,6 +391,21 @@ async function writeAlertsToInflux(alerts, deviceId, groupId) {
     console.error('[EMOSys Alert] InfluxDB write failed:', e.message);
   }
 }
+
+// Write each emotion detection result to InfluxDB for history/analytics
+async function writeEmotionToInflux(e) {
+  try {
+    const escField = s => String(s || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const line =
+      `emotion_events,device_id=${e.deviceId},emotion=${e.emotion}` +
+      ` confidence=${Number(e.confidence) || 0}` +
+      `,model_version="${escField(e.modelVersion)}"`;
+    await client.write(line, INFLUX_DB);
+  } catch (err) {
+    console.error('[Emotion] InfluxDB write failed:', err.message);
+  }
+}
+
 // ── Helper — fetch one entity state from HA ─────────────────
 async function fetchHAState(entityId) {
     const response = await fetch(`${HA_URL}/api/states/${entityId}`, {
@@ -397,6 +414,7 @@ async function fetchHAState(entityId) {
     if (!response.ok) throw new Error(`HA returned ${response.status} for ${entityId}`);
     return response.json();
 }
+
 
 // ── Calculate AQI from PM2.5 ────────────────────────────────
 function calcAQI(pm25) {
@@ -509,61 +527,48 @@ app.get('/api/ha/status', async (req, res) => {
     }
 });
 
-// - GET /api/ha/emotion-snapshot
-// Proxies the latest facial-detection snapshot from HA /local/
-// folder so the frontend never needs direct network access to HA
-app.get('/api/ha/emotion-snapshot', async (req, res) => {
-    try {
-        const response = await fetch(`${HA_URL}/local/xiao_person_check.jpg`);
-        if (!response.ok) {
-            return res.status(502).json({ error: `HA returned ${response.status}` });
-        }
-        const buffer = Buffer.from(await response.arrayBuffer());
-        res.set('Content-Type', 'image/jpeg');
-        res.set('Cache-Control', 'no-store');
-        res.send(buffer);
-    } catch (err) {
-        console.error('[EMOSys] Snapshot fetch failed:', err.message);
-        res.status(500).json({ error: err.message });
+const EMOTION_INGEST_TOKEN = process.env.EMOTION_INGEST_TOKEN;
+
+// In memory only - no disk writes, overwritten on every push
+let latestEmotion = null;
+let latestEmotionImage = null;
+
+// POST /api/emotion/ingest - Emotion detection Pi pushes result + frame
+app.post('/api/emotion/ingest', upload.single('image'), (req, res) => {
+    if (req.headers['x-emotion-token'] !== EMOTION_INGEST_TOKEN) {
+        return res.status(401).json({ error: 'Unauthorized' });
     }
+
+    const { emotion, confidence, deviceId, modelVersion } = req.body;
+    if (!emotion) return res.status(400).json({ error: 'Emotion is required' });
+
+    latestEmotion = {
+        emotion,
+        confidence : confidence != null ? parseFloat(confidence) : null,
+        deviceId : deviceId || 'pi4_emotion_cam',
+        modelVersion : modelVersion || 'unknown',
+        time : new Date().toISOString()
+    };
+
+    if (req.file) latestEmotionImage = req.file.buffer;
+
+    // log the result into InfluxDB
+    writeEmotionToInflux(latestEmotion).catch(err => 
+        console.error('[Emotion] Failed to log to Influx: ', err.message));
+    res.json({ ok: true });
 });
 
-// - POST /api/ai/vision-emotion
-// Sends the latest snapshot to Gemini version and returns a general expression description
-app.post('/api/ai/vision-emotion', async (req,res) => {
-    try {
-        const imgResp = await fetch(`${HA_URL}/local/xiao_person_check.jpg`);
-        if (!imgResp.ok) throw new Error(`HA returned ${imgResp.status}`);
-        const buffer = Buffer.from(await imgResp.arrayBuffer());
-        const base64Image = buffer.toString('base64');
+//GET /api/emotion/latest - dashboard poll this
+app.get('/api/emotion/latest', (req, res) => {
+    res.json(latestEmotion || { emotion: null });
+});
 
-        const geminiResp = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${process.env.GEMINI_API_KEY}`,
-            {
-                method: 'POST',
-                headers:{ 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { text: 'Analyze this image. 1. Is there a person present? 2. If yes, briefly describe the person. 3. Estimate the person`s emotion. Answer ONLY in JSON format: {"person": true, "description": "text", "emotion": "text"}' },
-                            { inline_data: { mime_type: 'image/jpeg', data: base64Image } }
-                        ]
-                    }],
-                    generationConfig: { maxOutputTokens: 300 }
-                })
-            }
-        );
-        const data = await geminiResp.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-            || (data.candidates?.[0]?.finishReason === 'SAFETY'
-                ? 'Response blocked by safety filter.'
-                : 'AI did not return a response.');
-
-        res.json({ text, capturedAt: new Date().toISOString() });
-    } catch (err) {
-        console.error('[EMOSys] Vision analysis failed:', err.message);
-        res.status(500).json({ error: err.message });
-    }
+//GET /api/emotion/image - latest frame, streamed from memory
+app.get('/api/emotion/image', (req, res) => {
+    if (!latestEmotionImage) return res.status(404).json({ error: 'No image yet' });
+    res.set('Content-Type', 'image/jpeg');
+    res.set('Cache-Control', 'no-store');
+    res.send(latestEmotionImage);
 });
 
 // ── InfluxDB endpoints ───────────────────────────────────────
@@ -603,6 +608,26 @@ app.get('/api/history', async (req, res) => {
         res.json(rows);
     } catch (err) {
         console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/emotion/history?hours=24
+app.get('/api/emotion/history', async (req, res) => {
+    const hours = parseInt(req.query.hours) || 24;
+    try {
+        const query =`
+            SELECT time, device_id, emotion, confidence, model_version
+            FROM emotion_events
+            WHERE time >= now() - INTERVAL '${hours} hours'
+            ORDER BY time DESC
+        `;
+        const rows = [];
+        const result = await client.query(query, INFLUX_DB);
+        for await (const row of result) { rows.push(row); }
+        res.json(rows);
+    } catch (err) {
+        console.error('[Emotion] History query failed:', err.message);
         res.status(500).json({ error: err.message });
     }
 });

@@ -67,19 +67,6 @@
     }
     @keyframes edBlink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-    .btn-analyze {
-      background: linear-gradient(135deg, #0ea5e9, #6366f1);
-      border: none; border-radius: 8px; padding: 10px 22px;
-      color: #fff; font-family: 'Barlow Condensed', sans-serif;
-      font-size: 0.95rem; font-weight: 700; letter-spacing: 0.04em;
-      cursor: pointer; transition: opacity 0.18s;
-      display: inline-flex; align-items: center; gap: 8px;
-      width: 100%; justify-content: center; margin-top: 14px;
-    }
-    .btn-analyze:hover { opacity: 0.88; }
-    .btn-analyze:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-analyze svg { width: 15px; height: 15px; stroke: #fff; fill: none; stroke-width: 2; }
-
     .ed-result-body { padding: 18px 20px; min-height: 260px; }
     .ed-result-empty {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -97,24 +84,6 @@
     .ed-result-timestamp {
       margin-top: 12px; font-size: 0.72rem; color: #94a3b8;
       display: flex; align-items: center; gap: 6px;
-    }
-
-    .ed-loading {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      height: 100%; min-height: 220px; gap: 12px;
-    }
-    .ed-spinner {
-      width: 32px; height: 32px;
-      border: 3px solid #e2e8f0; border-top-color: #0057B8;
-      border-radius: 50%; animation: edSpin 0.7s linear infinite;
-    }
-    @keyframes edSpin { to { transform: rotate(360deg); } }
-    .ed-loading-text { font-size: 0.82rem; color: #64748b; }
-
-    .ed-error-box {
-      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);
-      border-radius: 10px; padding: 14px 16px;
-      font-size: 0.85rem; color: #dc2626; line-height: 1.6;
     }
 
     .ed-info-card {
@@ -254,14 +223,14 @@
     <div class="page">
 
       <div class="page-title-bar">
-        <h1><span>AI Vision</span>Emotion Detection</h1>
+        <h1><span>Live Detection</span>Emotion Detection</h1>
         <div class="last-updated" id="lastUpdated">Last checked: —</div>
       </div>
 
       <div class="ed-info-card">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <div>
-          <strong>How this works.</strong> The camera captures and overwrites a snapshot in Home Assistant every 5 minutes. Click "Analyze Now" to send the latest snapshot to Gemini AI for a general scene and expression description. This is an AI-generated description, not a clinically validated emotion score.
+          <strong>How this works.</strong> A Raspberry Pi running an on-device emotion detection model captures frames and pushes results to this dashboard automatically. The image and result live in memory only and are never written to disk. This is a general expression estimate, not a clinically validated emotion score.
         </div>
       </div>
 
@@ -274,31 +243,27 @@
           </div>
           <div class="ed-snapshot-body">
             <div class="ed-snapshot-img-wrap">
-              <img id="edSnapshotImg" src="/api/ha/emotion-snapshot" alt="Latest camera snapshot"/>
+              <img id="edSnapshotImg" src="/api/emotion/image" alt="Latest camera snapshot"/>
             </div>
             <div class="ed-snapshot-meta">
               <div class="ed-refresh-note">
                 <div class="ed-pulse-dot"></div>
-                <span>Auto-refreshes every 5 min</span>
+                <span>Auto-refreshes every 5 seconds</span>
               </div>
               <span id="edSnapshotTime">—</span>
             </div>
-            <button class="btn-analyze" id="edAnalyzeBtn" onclick="analyzeSnapshot()">
-              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/></svg>
-              Analyze Now
-            </button>
           </div>
         </div>
 
         <!-- RESULT CARD -->
         <div class="ed-result-card">
           <div class="ed-card-header">
-            <h4>AI Analysis Result</h4>
+            <h4>Detection Result</h4>
           </div>
           <div class="ed-result-body" id="edResultBody">
             <div class="ed-result-empty">
               <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/></svg>
-              Click "Analyze Now" to run the AI on the latest snapshot.
+              Waiting for data from the emotion detection model…
             </div>
           </div>
         </div>
@@ -326,7 +291,7 @@
     document.getElementById('userAvatar').textContent = (currentUser.name || 'A')[0].toUpperCase();
   }
 
-  const REFRESH_MS = 300000; /* 5 minutes, matches HA capture cycle */
+  const REFRESH_MS = 5000; /* matches Pi 4 push interval */
 
   /* DATES */
   function setDates() {
@@ -339,46 +304,32 @@
   /* REFRESH SNAPSHOT IMAGE */
   function refreshSnapshot() {
     const img = document.getElementById('edSnapshotImg');
-    img.src = '/api/ha/emotion-snapshot?t=' + Date.now();
+    img.src = '/api/emotion/image?t=' + Date.now();
     document.getElementById('edSnapshotTime').textContent = 'Loaded: ' + new Date().toLocaleTimeString();
     document.getElementById('lastUpdated').textContent = 'Last checked: ' + new Date().toLocaleTimeString();
   }
 
-  /* ANALYZE BUTTON */
-  async function analyzeSnapshot() {
-    const btn  = document.getElementById('edAnalyzeBtn');
+  /* POLL LATEST EMOTION RESULT */
+  async function pollLiveEmotion() {
     const body = document.getElementById('edResultBody');
-
-    btn.disabled = true;
-    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> Analyzing…`;
-
-    body.innerHTML = `
-      <div class="ed-loading">
-        <div class="ed-spinner"></div>
-        <div class="ed-loading-text">Sending snapshot to Gemini AI…</div>
-      </div>`;
-
     try {
-      const res = await fetch('/api/ai/vision-emotion', { method: 'POST' });
+      const res  = await fetch('/api/emotion/latest');
       const data = await res.json();
+      if (!data.emotion) return; /* still waiting, leave empty state showing */
 
-      if (!res.ok || data.error) {
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
+      refreshSnapshot();
 
       body.innerHTML = `
-        <div class="ed-result-text">${data.text}</div>
+        <div class="ed-result-text">
+          Detected emotion: <strong>${data.emotion}</strong>
+          ${data.confidence != null ? `(${(data.confidence * 100).toFixed(0)}% confidence)` : ''}
+        </div>
         <div class="ed-result-timestamp">
           <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          Analyzed: ${new Date(data.capturedAt).toLocaleString('en-MY')}
+          Updated: ${new Date(data.time).toLocaleString('en-MY')} · ${data.deviceId}
         </div>`;
-
-      document.getElementById('lastUpdated').textContent = 'Last analyzed: ' + new Date().toLocaleTimeString();
     } catch (e) {
-      body.innerHTML = `<div class="ed-error-box">Analysis failed: ${e.message}</div>`;
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/></svg> Analyze Now`;
+      console.warn('Live emotion poll failed:', e.message);
     }
   }
 
@@ -396,8 +347,8 @@
   }
 
   /* INIT */
-  refreshSnapshot();
-  setInterval(refreshSnapshot, REFRESH_MS);
+  pollLiveEmotion();
+  setInterval(pollLiveEmotion, REFRESH_MS);
   </script>
 </body>
 </html>
