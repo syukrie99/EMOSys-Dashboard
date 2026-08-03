@@ -399,7 +399,10 @@ async function writeEmotionToInflux(e) {
     const line =
       `emotion_events,device_id=${e.deviceId},emotion=${e.emotion}` +
       ` confidence=${Number(e.confidence) || 0}` +
-      `,model_version="${escField(e.modelVersion)}"`;
+      `,model_version="${escField(e.modelVersion)}"` +
+      `,inference_speed_ms=${Number(e.inferenceSpeedMs) || 0}` +
+      `,posture_score=${Number(e.postureScore) || 0}` +
+      `,posture_label="${escField(e.postureLabel)}"`;
     await client.write(line, INFLUX_DB);
   } catch (err) {
     console.error('[Emotion] InfluxDB write failed:', err.message);
@@ -529,9 +532,8 @@ app.get('/api/ha/status', async (req, res) => {
 
 const EMOTION_INGEST_TOKEN = process.env.EMOTION_INGEST_TOKEN;
 
-// In memory only - no disk writes, overwritten on every push
-let latestEmotion = null;
-let latestEmotionImage = null;
+// Keyed by deviceId - each entry: { latest, image, receivedAt }
+const emotionDevices = new Map();
 
 // POST /api/emotion/ingest - Emotion detection Pi pushes result + frame
 app.post('/api/emotion/ingest', upload.single('image'), (req, res) => {
@@ -539,36 +541,99 @@ app.post('/api/emotion/ingest', upload.single('image'), (req, res) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { emotion, confidence, deviceId, modelVersion } = req.body;
-    if (!emotion) return res.status(400).json({ error: 'Emotion is required' });
+    const { emotion, confidence, deviceId, modelVersion, inferenceSpeedMs, postureScore, postureLabel } = req.body;
+    if (!emotion) return res.status(400).json({ error: 'emotion is required' });
+    if (!deviceId) return res.status(400).json({ error: 'deviceId is required' });
 
-    latestEmotion = {
-        emotion,
-        confidence : confidence != null ? parseFloat(confidence) : null,
-        deviceId : deviceId || 'pi4_emotion_cam',
-        modelVersion : modelVersion || 'unknown',
-        time : new Date().toISOString()
+    const entry = {
+        latest: {
+            emotion,
+            confidence      : confidence != null ? parseFloat(confidence) : null,
+            deviceId,
+            modelVersion    : modelVersion || 'unknown',
+            inferenceSpeedMs: inferenceSpeedMs != null ? parseFloat(inferenceSpeedMs) : null,
+            postureScore    : postureScore != null ? parseFloat(postureScore) : null,
+            postureLabel    : postureLabel || null,
+            time            : new Date().toISOString()
+        },
+        image      : req.file ? req.file.buffer : (emotionDevices.get(deviceId)?.image || null),
+        receivedAt : Date.now()
     };
 
-    if (req.file) latestEmotionImage = req.file.buffer;
+    emotionDevices.set(deviceId, entry);
 
-    // log the result into InfluxDB
-    writeEmotionToInflux(latestEmotion).catch(err => 
-        console.error('[Emotion] Failed to log to Influx: ', err.message));
+    writeEmotionToInflux(entry.latest).catch(err =>
+        console.error('[Emotion] Failed to log to Influx:', err.message));
+
     res.json({ ok: true });
 });
 
-//GET /api/emotion/latest - dashboard poll this
-app.get('/api/emotion/latest', (req, res) => {
-    res.json(latestEmotion || { emotion: null });
+
+// with its latest result (no image payload, keeps this endpoint light)
+app.get('/api/emotion/history', async (req, res) => {
+    const hours  = parseInt(req.query.hours) || 24;
+    const device = req.query.device;
+    try {
+        const deviceFilter = device ? `AND device_id = '${device}'` : '';
+        const query = `
+            SELECT time, device_id, emotion, confidence, model_version,
+                   inference_speed_ms, posture_score, posture_label
+            FROM emotion_events
+            WHERE time >= now() - INTERVAL '${hours} hours'
+            ${deviceFilter}
+            ORDER BY time DESC
+        `;
+        const rows = [];
+        const result = await client.query(query, INFLUX_DB);
+        for await (const row of result) { rows.push(row); }
+        res.json(rows);
+    } catch (err) {
+        console.error('[Emotion] History query failed:', err.message);
+        res.status(500).json({ error: err.message });
+    }
 });
 
-//GET /api/emotion/image - latest frame, streamed from memory
+// GET /api/emotion/devices/known — distinct device IDs seen in the last 30 days,
+// used to populate the history page's device filter (includes offline devices)
+app.get('/api/emotion/devices/known', async (req, res) => {
+    try {
+        const query = `
+            SELECT DISTINCT device_id
+            FROM emotion_events
+            WHERE time >= now() - INTERVAL '30 days'
+        `;
+        const rows = [];
+        const result = await client.query(query, INFLUX_DB);
+        for await (const row of result) { rows.push(row.device_id); }
+        res.json(rows);
+    } catch (err) {
+        console.error('[Emotion] Known devices query failed:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/emotion/latest?device=pi4_emotion_cam_1
+app.get('/api/emotion/latest', (req, res) => {
+    const entry = emotionDevices.get(req.query.device);
+    res.json(entry ? entry.latest : { emotion: null });
+});
+
+// GET /api/emotion/devices - list every device that has ever pushed
+app.get('/api/emotion/devices', (req, res) => {
+    const list = Array.from(emotionDevices.entries()).map(([id, entry]) => ({
+        deviceId: id,
+        ...entry.latest
+    }));
+    res.json(list);
+});
+
+// GET /api/emotion/image?device=pi4_emotion_cam_1
 app.get('/api/emotion/image', (req, res) => {
-    if (!latestEmotionImage) return res.status(404).json({ error: 'No image yet' });
+    const entry = emotionDevices.get(req.query.device);
+    if (!entry || !entry.image) return res.status(404).json({ error: 'No image yet' });
     res.set('Content-Type', 'image/jpeg');
     res.set('Cache-Control', 'no-store');
-    res.send(latestEmotionImage);
+    res.send(entry.image);
 });
 
 // ── InfluxDB endpoints ───────────────────────────────────────
@@ -616,8 +681,9 @@ app.get('/api/history', async (req, res) => {
 app.get('/api/emotion/history', async (req, res) => {
     const hours = parseInt(req.query.hours) || 24;
     try {
-        const query =`
-            SELECT time, device_id, emotion, confidence, model_version
+        const query = `
+            SELECT time, device_id, emotion, confidence, model_version,
+                   inference_speed_ms, posture_score, posture_label
             FROM emotion_events
             WHERE time >= now() - INTERVAL '${hours} hours'
             ORDER BY time DESC
@@ -631,6 +697,7 @@ app.get('/api/emotion/history', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
 // GET /api/thresholds/suggested?groupId=lab&days=14
 // Computes statistical baseline thresholds for a group, pooling all its
 // devices' history together. Returns current thresholds alongside the
@@ -1144,6 +1211,22 @@ app.delete('/api/users/:id', (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
+
+// Privacy safeguard - clear the in-memory result and image
+// if nothing new has arrived in 30 minutes, so no stale frame lingers
+// in memory indefinitely if the Pi goes offline or stops pushing
+const EMOTION_STALE_MS = 30 * 60 * 1000; // 30 minutes
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [deviceId, entry] of emotionDevices.entries()) {
+        if (now - entry.receivedAt > EMOTION_STALE_MS) {
+            console.log(`[Emotion] ${deviceId} — no new data in 30 minutes, clearing cache`);
+            emotionDevices.delete(deviceId);
+        }
+    }
+}, 60 * 1000); // check every minute
+
 // ── Start server ─────────────────────────────────────────────
 const PORT = 3000;
 app.listen(PORT, () => {

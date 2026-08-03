@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EMOSys — Emotion History</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <link rel="stylesheet" href="assets/css/main.css"/>
+  <link rel="stylesheet" href="assets/css/dashboard.css"/>
+  <style>
+    .filter-bar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      margin-bottom: 24px; background: var(--card, #fff);
+      border: 1px solid var(--border, #e5e7eb); border-radius: 4px; padding: 16px 20px;
+    }
+    .filter-bar label { font-size: 0.78rem; font-weight: 600; color: var(--muted, #6b7a8d); text-transform: uppercase; letter-spacing: 0.05em; }
+    .filter-select {
+      background: var(--surface, #f8fafc); color: var(--text, #0d1b2a);
+      border: 1px solid var(--border, #e5e7eb); padding: 7px 12px;
+      font-size: 0.82rem; font-family: 'Barlow', sans-serif; border-radius: 4px;
+      cursor: pointer; outline: none; min-width: 200px;
+    }
+    .filter-select:focus { border-color: #0057B8; }
+    .btn-apply {
+      background: #0057B8; color: #fff; border: none; padding: 8px 18px;
+      font-size: 0.82rem; font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+      letter-spacing: 0.05em; text-transform: uppercase; border-radius: 4px; cursor: pointer;
+    }
+    .btn-apply:hover { background: #0046a0; }
+    .filter-divider { width: 1px; height: 28px; background: var(--border, #e5e7eb); }
+
+    .stats-row {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--card, #fff); border: 1px solid var(--border, #e5e7eb);
+      border-radius: 4px; padding: 16px 18px; position: relative; overflow: hidden;
+    }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .stat-card.emotion::before  { background: #6366f1; }
+    .stat-card.conf::before     { background: #0ea5e9; }
+    .stat-card.posture::before  { background: #10b981; }
+    .stat-card.speed::before    { background: #f59e0b; }
+    .stat-card.records::before  { background: #64748b; }
+    .stat-label { font-size: 0.68rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .stat-val { font-size: 1.4rem; font-weight: 800; font-family: 'Barlow Condensed', sans-serif; color: var(--text); }
+    .stat-sub { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+
+    .history-chart-card {
+      background: var(--card, #fff); border: 1px solid var(--border, #e5e7eb);
+      border-radius: 4px; padding: 20px 24px; margin-bottom: 20px;
+    }
+    .history-chart-card h4 {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 1rem; font-weight: 700;
+      color: var(--text); margin: 0 0 2px; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .history-chart-card p { font-size: 0.78rem; color: var(--muted); margin: 0 0 16px; }
+    .history-chart-wrap { position: relative; height: 220px; }
+    .charts-2col { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+
+    .data-table-wrap { overflow-x: auto; }
+    .data-table-wrap table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .data-table-wrap thead th {
+      text-align: left; padding: 10px 14px; font-size: 0.72rem; font-weight: 700;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em;
+      border-bottom: 2px solid var(--border); background: var(--surface, #f8fafc);
+    }
+    .data-table-wrap tbody tr { border-bottom: 1px solid var(--border); }
+    .data-table-wrap tbody tr:hover { background: var(--surface, #f8fafc); }
+    .data-table-wrap tbody td { padding: 9px 14px; color: var(--text); }
+    .data-table-wrap tbody td.muted { color: var(--muted); }
+    .emo-pill {
+      display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 20px;
+      font-size: 0.74rem; font-weight: 700; text-transform: capitalize;
+      background: rgba(99,102,241,0.1); color: #4f46e5;
+    }
+    .no-data { padding: 40px; text-align: center; color: var(--muted); font-size: 0.88rem; }
+
+    .pagination {
+      display: flex; align-items: center; justify-content: flex-end; gap: 6px;
+      padding: 12px 16px; border-top: 1px solid var(--border);
+    }
+    .page-btn {
+      background: var(--surface, #f8fafc); border: 1px solid var(--border); color: var(--text);
+      padding: 5px 11px; font-size: 0.78rem; font-family: Barlow, sans-serif;
+      border-radius: 4px; cursor: pointer;
+    }
+    .page-btn:hover { background: #0057B8; color: #fff; border-color: #0057B8; }
+    .page-btn.active { background: #0057B8; color: #fff; border-color: #0057B8; }
+    .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .page-info { font-size: 0.78rem; color: var(--muted); padding: 0 6px; }
+
+    .spinner-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px; gap: 14px; }
+    .spinner {
+      width: 36px; height: 36px; border: 3px solid var(--border, #e5e7eb);
+      border-top-color: #0057B8; border-radius: 50%; animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-text { font-size: 0.82rem; color: var(--muted); font-family: Barlow, sans-serif; }
+
+    @media (max-width: 900px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-wrap">
+        <img src="assets/images/smd-logo.jpg" alt="SMD Semiconductor"
+          style="width: 130px; display:block; margin: 0 auto; border-radius: 6px; opacity:0.92"/>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">Overview</div>
+      <a class="nav-item" href="Dashboard.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a class="nav-item" href="Analytics.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Analytics
+      </a>
+      <a class="nav-item" href="History.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        History &amp; Logs
+      </a>
+
+      <div class="nav-section">Devices</div>
+      <a class="nav-item" href="EmotionDetection.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+          <line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+        </svg>
+        Emotion Detection
+      </a>
+
+      <a class="nav-item active" href="EmotionHistory.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Emotion History
+      </a>
+ 
+      <div class="nav-section">Management</div>
+      <a class="nav-item" href="Reports.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        Reports
+      </a>
+      <a class="nav-item" href="Alerts.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        Alerts
+        <span class="nav-badge" id="alertCount">0</span>
+      </a>
+      <a class="nav-item" href="Users.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+        Users
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="avatar" id="userAvatar">A</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Admin</div>
+          <div class="user-role" id="userRole">Administrator</div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()" title="Logout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="breadcrumb">
+        <span class="breadcrumb-home">EMOSys</span>
+        <span class="breadcrumb-sep">›</span>
+        <span class="breadcrumb-current">Emotion History</span>
+      </div>
+      <div class="topbar-right">
+        <div class="status-pill"><div class="pulse-dot"></div>History &amp; Analytics</div>
+        <span style="font-size:0.75rem;color:rgba(255,255,255,0.4)" id="currentDate"></span>
+      </div>
+    </div>
+
+    <div class="page">
+      <div class="page-title-bar">
+        <h1><span>Emotion Detection</span>History &amp; Analytics</h1>
+        <div class="last-updated" id="lastUpdated">Last updated: —</div>
+      </div>
+
+      <!-- FILTER BAR -->
+      <div class="filter-bar">
+        <label>Device</label>
+        <select class="filter-select" id="deviceSelect">
+          <option value="">All Devices</option>
+        </select>
+
+        <div class="filter-divider"></div>
+
+        <label>Time Range</label>
+        <select class="filter-select" id="hoursSelect" style="min-width:140px">
+          <option value="1">Last 1 Hour</option>
+          <option value="6">Last 6 Hours</option>
+          <option value="24" selected>Last 24 Hours</option>
+          <option value="72">Last 3 Days</option>
+          <option value="168">Last 7 Days</option>
+        </select>
+
+        <button class="btn-apply" onclick="loadHistory()">Apply</button>
+        <button class="btn-apply" onclick="exportCSV()" style="background:#15803d;margin-left:4px">&#8595; Export CSV</button>
+        <div style="margin-left:auto;font-size:0.78rem;color:var(--muted)" id="recordCount"></div>
+      </div>
+
+      <!-- STATS -->
+      <div class="stats-row">
+        <div class="stat-card records">
+          <div class="stat-label">Total Records</div>
+          <div class="stat-val" id="statRecords">—</div>
+          <div class="stat-sub" id="statRange">—</div>
+        </div>
+        <div class="stat-card emotion">
+          <div class="stat-label">Most Common Emotion</div>
+          <div class="stat-val" id="statTopEmotion">—</div>
+          <div class="stat-sub" id="statTopEmotionPct">—</div>
+        </div>
+        <div class="stat-card conf">
+          <div class="stat-label">Avg Confidence</div>
+          <div class="stat-val" id="statAvgConf">—</div>
+          <div class="stat-sub">across all detections</div>
+        </div>
+        <div class="stat-card posture">
+          <div class="stat-label">Avg Posture Score</div>
+          <div class="stat-val" id="statAvgPosture">—</div>
+          <div class="stat-sub" id="statTopPosture">—</div>
+        </div>
+        <div class="stat-card speed">
+          <div class="stat-label">Avg Inference Speed</div>
+          <div class="stat-val" id="statAvgSpeed">—</div>
+          <div class="stat-sub">milliseconds</div>
+        </div>
+      </div>
+
+      <!-- CHARTS -->
+      <div class="section-head"><h3>Trends</h3></div>
+      <div class="charts-2col">
+        <div class="history-chart-card">
+          <h4>Emotion Distribution</h4>
+          <p id="chartSubDist">Count per emotion type</p>
+          <div class="history-chart-wrap"><canvas id="emotionDistChart"></canvas></div>
+        </div>
+        <div class="history-chart-card">
+          <h4>Confidence &amp; Posture Score Over Time</h4>
+          <p id="chartSubTrend">Rolling trend</p>
+          <div class="history-chart-wrap"><canvas id="confPostureChart"></canvas></div>
+        </div>
+      </div>
+      <div class="history-chart-card">
+        <h4>Inference Speed Over Time</h4>
+        <p id="chartSubSpeed">Milliseconds per detection</p>
+        <div class="history-chart-wrap"><canvas id="speedChart"></canvas></div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="section-head"><h3>Detection Log</h3></div>
+      <div class="table-card">
+        <div class="table-head">
+          <h4>Raw Detection Records</h4>
+          <span class="count-badge" id="tableCount">— records</span>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Timestamp</th><th>Device</th><th>Emotion</th><th>Confidence</th>
+                <th>Posture</th><th>Posture Score</th><th>Inference (ms)</th>
+              </tr>
+            </thead>
+            <tbody id="dataTableBody">
+              <tr><td colspan="7" class="no-data">Select a time range and click Apply to load data.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+
+    </div>
+
+    <div class="page-footer">
+      <span>&copy; 2026 SMD Semiconductor (Sarawak Mircroelectronics Design) · EMOSys Environmental Monitoring System</span>
+      <span id="footerDate"></span>
+    </div>
+  </main>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+  <script src="assets/js/auth.js"></script>
+  <script>
+document.addEventListener('DOMContentLoaded', function() {
+
+  var user = requireAuth();
+  if (!user) return;
+
+  document.getElementById('userName').textContent   = user.name || 'Admin';
+  document.getElementById('userRole').textContent   = user.role || 'User';
+  document.getElementById('userAvatar').textContent = (user.name || 'A')[0].toUpperCase();
+
+  var now = new Date();
+  document.getElementById('currentDate').textContent = now.toLocaleDateString('en-MY', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+  document.getElementById('footerDate').textContent  = 'System time: ' + now.toLocaleTimeString();
+
+  var distChart = null, trendChart = null, speedChart = null;
+  var isDark = function() { return document.body.classList.contains('dark-mode'); };
+  var gridColor = function() { return isDark() ? 'rgba(255,255,255,0.06)' : '#f0f2f5'; };
+  var tickColor = function() { return isDark() ? '#6b7a8d' : '#9ca3af'; };
+
+  /* ---- ALL FUNCTION DEFINITIONS FIRST ---- */
+
+  function resetStats() {
+    ['statRecords','statTopEmotion','statTopEmotionPct','statAvgConf','statAvgPosture','statTopPosture','statAvgSpeed']
+      .forEach(function(id) { document.getElementById(id).textContent = '—'; });
+  }
+
+  function renderStats(rows) {
+    document.getElementById('statRecords').textContent = rows.length;
+
+    var emoCounts = {};
+    rows.forEach(function(r) { if (r.emotion) emoCounts[r.emotion] = (emoCounts[r.emotion]||0) + 1; });
+    var topEmo = Object.keys(emoCounts).sort(function(a,b) { return emoCounts[b]-emoCounts[a]; })[0];
+    document.getElementById('statTopEmotion').textContent = topEmo || '—';
+    document.getElementById('statTopEmotionPct').textContent = topEmo
+      ? ((emoCounts[topEmo]/rows.length)*100).toFixed(0) + '% of detections' : '—';
+
+    var confVals = rows.map(function(r) { return parseFloat(r.confidence); }).filter(function(v){return !isNaN(v);});
+    document.getElementById('statAvgConf').textContent = confVals.length
+      ? ((confVals.reduce(function(a,b){return a+b;},0)/confVals.length)*100).toFixed(0) + '%' : '—';
+
+    var postVals = rows.map(function(r) { return parseFloat(r.posture_score); }).filter(function(v){return !isNaN(v)&&v>0;});
+    document.getElementById('statAvgPosture').textContent = postVals.length
+      ? ((postVals.reduce(function(a,b){return a+b;},0)/postVals.length)*100).toFixed(0) + '%' : '—';
+
+    var postCounts = {};
+    rows.forEach(function(r) { if (r.posture_label) postCounts[r.posture_label] = (postCounts[r.posture_label]||0) + 1; });
+    var topPost = Object.keys(postCounts).sort(function(a,b) { return postCounts[b]-postCounts[a]; })[0];
+    document.getElementById('statTopPosture').textContent = topPost ? 'most common: ' + topPost : '—';
+
+    var speedVals = rows.map(function(r) { return parseFloat(r.inference_speed_ms); }).filter(function(v){return !isNaN(v)&&v>0;});
+    document.getElementById('statAvgSpeed').textContent = speedVals.length
+      ? (speedVals.reduce(function(a,b){return a+b;},0)/speedVals.length).toFixed(0) : '—';
+  }
+
+  function renderDistChart(rows) {
+    var counts = {};
+    rows.forEach(function(r) { if (r.emotion) counts[r.emotion] = (counts[r.emotion]||0) + 1; });
+    var labels = Object.keys(counts);
+    var data   = labels.map(function(l) { return counts[l]; });
+    var colors = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444','#a855f7','#14b8a6'];
+
+    if (distChart) distChart.destroy();
+    distChart = new Chart(document.getElementById('emotionDistChart'), {
+      type: 'bar',
+      data: { labels: labels, datasets: [{ data: data, backgroundColor: labels.map(function(_,i){return colors[i%colors.length];}), borderRadius: 4 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: tickColor(), font: { size: 10 } }, grid: { color: gridColor() } },
+          y: { ticks: { color: tickColor(), font: { size: 11 } }, grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  function renderTrendCharts(rows) {
+    var sorted = rows.slice().reverse();
+    var step = Math.max(1, Math.floor(sorted.length / 100));
+    var thinned = sorted.filter(function(_, i) { return i % step === 0; });
+
+    var labels = thinned.map(function(r) {
+      var d = new Date(r.time);
+      return d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0');
+    });
+    var conf  = thinned.map(function(r) { return (parseFloat(r.confidence)||0) * 100; });
+    var post  = thinned.map(function(r) { return (parseFloat(r.posture_score)||0) * 100; });
+    var speed = thinned.map(function(r) { return parseFloat(r.inference_speed_ms) || 0; });
+
+    var baseOpts = {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: tickColor(), font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { backgroundColor: '#0d1b2a', titleColor: '#fff', bodyColor: '#9ca3af', borderColor: '#0057B8', borderWidth: 1, padding: 10, cornerRadius: 0 }
+      }
+    };
+
+    if (trendChart) trendChart.destroy();
+    trendChart = new Chart(document.getElementById('confPostureChart'), {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Confidence (%)', data: conf, borderColor: '#0ea5e9', backgroundColor: 'rgba(14,165,233,0.06)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 },
+          { label: 'Posture Score (%)', data: post, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.05)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 }
+        ]
+      },
+      options: Object.assign({}, baseOpts, {
+        scales: {
+          x: { ticks: { color: tickColor(), font: { size: 10 }, maxTicksLimit: 8 }, grid: { color: gridColor() } },
+          y: { min: 0, max: 100, ticks: { color: tickColor(), font: { size: 10 } }, grid: { color: gridColor() } }
+        }
+      })
+    });
+
+    if (speedChart) speedChart.destroy();
+    speedChart = new Chart(document.getElementById('speedChart'), {
+      type: 'line',
+      data: { labels: labels, datasets: [{ label: 'Inference Speed (ms)', data: speed, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.06)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 }] },
+      options: Object.assign({}, baseOpts, {
+        scales: {
+          x: { ticks: { color: tickColor(), font: { size: 10 }, maxTicksLimit: 8 }, grid: { color: gridColor() } },
+          y: { ticks: { color: tickColor(), font: { size: 10 } }, grid: { color: gridColor() } }
+        }
+      })
+    });
+  }
+
+  var PAGE_SIZE = 20;
+
+  function renderPage(page, sortedRows) {
+    var rows = sortedRows || window._sortedRows;
+    window._sortedRows = rows;
+    var start = (page - 1) * PAGE_SIZE;
+    var slice = rows.slice(start, start + PAGE_SIZE);
+
+    document.getElementById('dataTableBody').innerHTML = slice.map(function(r) {
+      var d   = new Date(r.time);
+      var ts  = d.toLocaleDateString('en-MY') + ' ' + d.toLocaleTimeString();
+      var conf = r.confidence != null ? (parseFloat(r.confidence)*100).toFixed(0) + '%' : '—';
+      var post = r.posture_score != null && r.posture_score > 0 ? (parseFloat(r.posture_score)*100).toFixed(0) + '%' : '—';
+      var speed = r.inference_speed_ms != null && r.inference_speed_ms > 0 ? parseFloat(r.inference_speed_ms).toFixed(0) : '—';
+      return (
+        '<tr>' +
+          '<td class="muted">' + ts + '</td>' +
+          '<td>' + (r.device_id || '—') + '</td>' +
+          '<td><span class="emo-pill">' + (r.emotion || '—') + '</span></td>' +
+          '<td>' + conf + '</td>' +
+          '<td>' + (r.posture_label || '—') + '</td>' +
+          '<td>' + post + '</td>' +
+          '<td>' + speed + '</td>' +
+        '</tr>'
+      );
+    }).join('');
+
+    var totalPages = Math.ceil(rows.length / PAGE_SIZE);
+    var pag = document.getElementById('pagination');
+    if (totalPages <= 1) { pag.innerHTML = ''; return; }
+    var html = '';
+    html += '<button class="page-btn" onclick="renderPageGlobal(' + (page-1) + ')"' + (page===1?' disabled':'') + '>&laquo; Prev</button>';
+    var start_p = Math.max(1, page - 2);
+    var end_p   = Math.min(totalPages, start_p + 4);
+    for (var i = start_p; i <= end_p; i++) {
+      html += '<button class="page-btn' + (i===page?' active':'') + '" onclick="renderPageGlobal(' + i + ')">' + i + '</button>';
+    }
+    html += '<button class="page-btn" onclick="renderPageGlobal(' + (page+1) + ')"' + (page===totalPages?' disabled':'') + '>Next &raquo;</button>';
+    html += '<span class="page-info">Page ' + page + ' of ' + totalPages + ' (' + rows.length + ' records)</span>';
+    pag.innerHTML = html;
+  }
+
+  function renderTable(rows) {
+    renderPage(1, rows.slice());
+  }
+
+  function loadHistory() {
+    var deviceId = document.getElementById('deviceSelect').value;
+    var hours    = document.getElementById('hoursSelect').value;
+
+    document.getElementById('recordCount').textContent = 'Loading…';
+    document.getElementById('dataTableBody').innerHTML =
+      '<tr><td colspan="7"><div class="spinner-wrap"><div class="spinner"></div><div class="spinner-text">Fetching emotion detection data…</div></div></td></tr>';
+
+    var url = '/api/emotion/history?hours=' + hours + (deviceId ? '&device=' + encodeURIComponent(deviceId) : '');
+
+    fetch(url)
+      .then(function(r) { return r.json(); })
+      .then(function(rows) {
+        if (!rows || !rows.length) {
+          document.getElementById('recordCount').textContent = 'No data found';
+          document.getElementById('dataTableBody').innerHTML =
+            '<tr><td colspan="7" class="no-data">No detection records found for this device and time range.</td></tr>';
+          resetStats();
+          [distChart, trendChart, speedChart].forEach(function(c) { if (c) c.destroy(); });
+          return;
+        }
+
+        window._lastRows = rows;
+        document.getElementById('recordCount').textContent = rows.length + ' records';
+        document.getElementById('tableCount').textContent  = rows.length + ' records';
+        document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+
+        var deviceLabel = deviceId || 'All Devices';
+        var hoursLabel  = document.getElementById('hoursSelect').options[document.getElementById('hoursSelect').selectedIndex].text;
+        document.getElementById('chartSubDist').textContent  = deviceLabel + ' — ' + hoursLabel;
+        document.getElementById('chartSubTrend').textContent = deviceLabel + ' — ' + hoursLabel;
+        document.getElementById('chartSubSpeed').textContent = deviceLabel + ' — ' + hoursLabel;
+        document.getElementById('statRange').textContent = hoursLabel;
+
+        renderStats(rows);
+        renderDistChart(rows);
+        renderTrendCharts(rows);
+        renderTable(rows);
+      })
+      .catch(function(err) {
+        console.error('Emotion history fetch error:', err);
+        document.getElementById('recordCount').textContent = 'Error loading data';
+        document.getElementById('dataTableBody').innerHTML =
+          '<tr><td colspan="7" class="no-data">Could not load data. Check server connection.</td></tr>';
+      });
+  }
+
+  /* Expose to window — needed for inline onclick="loadHistory()" / "renderPageGlobal()" in the HTML */
+  window.loadHistory = loadHistory;
+  window.renderPageGlobal = function(page) { renderPage(page); };
+
+  /* ---- NOW SAFE TO USE THEM ---- */
+
+  fetch('/api/emotion/devices/known')
+    .then(function(r) { return r.json(); })
+    .then(function(list) {
+      var sel = document.getElementById('deviceSelect');
+      (list || []).forEach(function(id) {
+        var opt = document.createElement('option');
+        opt.value = id; opt.textContent = id;
+        sel.appendChild(opt);
+      });
+      loadHistory();
+    })
+    .catch(function() { loadHistory(); });
+
+  document.getElementById('deviceSelect').addEventListener('change', loadHistory);
+  document.getElementById('hoursSelect').addEventListener('change', loadHistory);
+
+});
+
+function exportCSV() {
+  var rows = window._lastRows;
+  if (!rows || !rows.length) { alert('No data to export. Please load data first.'); return; }
+  var deviceId = document.getElementById('deviceSelect').value || 'all';
+  var hours    = document.getElementById('hoursSelect').value;
+  var header   = 'Timestamp,Device,Emotion,Confidence,PostureLabel,PostureScore,InferenceSpeedMs,ModelVersion';
+  var csv = [header].concat(rows.map(function(r) {
+    var d = new Date(r.time);
+    return [
+      d.toLocaleDateString('en-MY') + ' ' + d.toLocaleTimeString(),
+      r.device_id || '',
+      r.emotion || '',
+      r.confidence != null ? r.confidence : '',
+      r.posture_label || '',
+      r.posture_score != null ? r.posture_score : '',
+      r.inference_speed_ms != null ? r.inference_speed_ms : '',
+      r.model_version || ''
+    ].join(',');
+  })).join('\n');
+  var blob = new Blob([csv], { type: 'text/csv' });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href = url;
+  a.download = 'emotion_history_' + deviceId + '_' + hours + 'h.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function toggleSidebar() {
+  document.querySelector('.sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('active');
+}
+
+if (typeof doLogout === 'undefined') {
+  window.doLogout = function() {
+    try { localStorage.removeItem('emosys_token'); } catch {}
+    window.location.href = 'Login.html';
+  };
+}
+</script>   
+</body>
+</html>
