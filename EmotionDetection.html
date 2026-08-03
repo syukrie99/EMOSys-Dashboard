@@ -74,7 +74,7 @@
       margin-top: 12px;
     }
 
-    /* Posture / inference speed meta rows */
+    /* Posture / habit / inference speed meta rows */
     .ed-live-meta {
       margin-top: 10px;
       display: flex;
@@ -140,8 +140,6 @@
     }
     .ed-card-status.live { color: #059669; }
     .ed-card-status.stale { color: #d97706; }
-
-    
   </style>
 </head>
 <body class="light">
@@ -190,6 +188,11 @@
           <line x1="15" y1="9" x2="15.01" y2="9"/>
         </svg>
         Emotion Detection
+      </a>
+
+      <a class="nav-item" href="EmotionAnalytics.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Emotion Analytics
       </a>
 
       <a class="nav-item" href="EmotionHistory.html">
@@ -276,7 +279,7 @@
       <div class="ed-info-card">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <div>
-          <strong>How this works.</strong> Raspberry Pi devices running an on-device emotion detection model capture frames and push results — including posture and inference speed — to this dashboard automatically. Each device registers itself the first time it sends data — no configuration needed here when a new device is added. Images and results live in memory only, are never written to disk, and are automatically cleared if a device stops reporting for 30 minutes. This is a general expression estimate, not a clinically validated emotion score.
+          <strong>How this works.</strong> Raspberry Pi devices running on-device detection models capture frames and push results — including posture, hand gesture / habit signals, and inference speed — to this dashboard automatically. Each device registers itself the first time it sends data — no configuration needed here when a new device is added. Images and results live in memory only, are never written to disk, and are automatically cleared if a device stops reporting for 30 minutes. This is a general expression estimate, not a clinically validated emotion score.
         </div>
       </div>
 
@@ -351,9 +354,11 @@
       /* Remove the empty-state placeholder once real devices show up */
       if (!renderedDevices.size) grid.innerHTML = '';
 
-      /* Remove cards for devices that disappeared (e.g. went stale / cleared) */
-      const currentIds = new Set(devices.map(d => d.deviceId));
+      /* Remove cards for devices that disappeared (e.g. went stale / cleared).
+         Guarded against any corrupted/undefined entries in the tracking Set. */
+      const currentIds = new Set(devices.map(d => d.deviceId).filter(Boolean));
       renderedDevices.forEach(id => {
+        if (!id) { renderedDevices.delete(id); return; }
         if (!currentIds.has(id)) {
           const cardId = 'ed_card_' + id.replace(/[^a-zA-Z0-9_-]/g, '_');
           const el = document.getElementById(cardId);
@@ -363,6 +368,8 @@
       });
 
       devices.forEach(d => {
+        if (!d || !d.deviceId) return; // skip any malformed entry defensively
+
         const cardId = 'ed_card_' + d.deviceId.replace(/[^a-zA-Z0-9_-]/g, '_');
         let card = document.getElementById(cardId);
 
@@ -384,42 +391,51 @@
               <div class="ed-live-meta"></div>
               <div class="ed-result-timestamp ed-live-time"></div>
             </div>`;
-            grid.appendChild(card);
-            renderedDevices.add(d.device);
+          grid.appendChild(card);
+          renderedDevices.add(d.deviceId); // FIXED — was d.device (undefined), causing the poll crash
         }
-      const secondsSinceUpdate = (Date.now() - new Date(d.time).getTime()) / 1000;
-      const isLive = secondsSinceUpdate < 15; /* within 3 poll cycles = considered live */
 
-      const imgEl    = card.querySelector('.ed-live-img');
-      const textEl   = card.querySelector('.ed-live-text');
-      const metaEl   = card.querySelector('.ed-live-meta');
-      const timeEl   = card.querySelector('.ed-live-time');
-      const statusEl = card.querySelector('.ed-live-status');
+        /* Everything below runs on EVERY poll cycle for EVERY device —
+           both freshly created cards and existing ones get refreshed here. */
 
-      if (statusEl) {
-        statusEl.className = 'ed-card-status ' + (isLive ? 'live' : 'stale');
-        statusEl.innerHTML = `<span class="ed-status-dot ${isLive ? 'live' : 'stale'}"></span>${isLive ? 'Live' : 'Stale'}`;
-      }
+        const secondsSinceUpdate = (Date.now() - new Date(d.time).getTime()) / 1000;
+        const isLive = secondsSinceUpdate < 15; /* within 3 poll cycles = considered live */
 
-      if (imgEl) imgEl.src = `/api/emotion/image?device=${encodeURIComponent(d.deviceId)}&t=${Date.now()}`;
+        const imgEl    = card.querySelector('.ed-live-img');
+        const textEl   = card.querySelector('.ed-live-text');
+        const metaEl   = card.querySelector('.ed-live-meta');
+        const timeEl   = card.querySelector('.ed-live-time');
+        const statusEl = card.querySelector('.ed-live-status');
 
-      if (textEl) textEl.innerHTML =
-        `Detected emotion: <strong>${d.emotion}</strong>
-        ${d.confidence != null ? `(${(d.confidence * 100).toFixed(0)}% confidence)` : ''}`;
+        if (statusEl) {
+          statusEl.className = 'ed-card-status ' + (isLive ? 'live' : 'stale');
+          statusEl.innerHTML = `<span class="ed-status-dot ${isLive ? 'live' : 'stale'}"></span>${isLive ? 'Live' : 'Stale'}`;
+        }
 
-      if (metaEl) metaEl.innerHTML = `
-        <div class="ed-meta-row">
-          <span class="ed-meta-label">Posture</span>
-          <span class="ed-meta-val">${d.postureLabel || '—'}${d.postureScore != null ? ` (${(d.postureScore * 100).toFixed(0)}%)` : ''}</span>
-        </div>
-        <div class="ed-meta-row">
-          <span class="ed-meta-label">Inference speed</span>
-          <span class="ed-meta-val">${d.inferenceSpeedMs != null ? d.inferenceSpeedMs.toFixed(0) + ' ms' : '—'}</span>
-        </div>`;
+        if (imgEl) imgEl.src = `/api/emotion/image?device=${encodeURIComponent(d.deviceId)}&t=${Date.now()}`;
 
-      if (timeEl) timeEl.innerHTML =
-        `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        Updated: ${new Date(d.time).toLocaleString('en-MY')}`;
+        if (textEl) textEl.innerHTML = d.emotion
+          ? `Detected emotion: <strong>${d.emotion}</strong>
+             ${d.confidence != null ? `(${(d.confidence * 100).toFixed(0)}% confidence)` : ''}`
+          : `<span style="color:#94a3b8">No emotion classification from this device</span>`;
+
+        if (metaEl) metaEl.innerHTML = `
+          <div class="ed-meta-row">
+            <span class="ed-meta-label">Posture</span>
+            <span class="ed-meta-val">${d.postureLabel || '—'}${d.postureScore != null ? ` (${(d.postureScore * 100).toFixed(0)}%)` : ''}</span>
+          </div>
+          <div class="ed-meta-row">
+            <span class="ed-meta-label">Habit / Gesture</span>
+            <span class="ed-meta-val">${d.habitLabel || '—'}${d.habitScore != null ? ` (${(d.habitScore * 100).toFixed(0)}%)` : ''}</span>
+          </div>
+          <div class="ed-meta-row">
+            <span class="ed-meta-label">Inference speed</span>
+            <span class="ed-meta-val">${d.inferenceSpeedMs != null ? d.inferenceSpeedMs.toFixed(0) + ' ms' : '—'}</span>
+          </div>`;
+
+        if (timeEl) timeEl.innerHTML =
+          `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+           Updated: ${new Date(d.time).toLocaleString('en-MY')}`;
       });
 
       document.getElementById('lastUpdated').textContent = 'Last checked: ' + new Date().toLocaleTimeString();
