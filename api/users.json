@@ -9,7 +9,7 @@
     "status": "active",
     "avatar": "A",
     "color": "#6366f1",
-    "lastLogin": "29/07/2026, 2:43:04 pm"
+    "lastLogin": "12/08/2026, 7:06:36 am"
   },
   {
     "id": 2,
@@ -18,7 +18,7 @@
     "password": "$2b$10$SFHMOzX6HqPHawS/BGscuuUqpvDbEN85DmD.q5o6TKzKIPf1auFCu",
     "dept": "Engineering",
     "role": "Viewer",
-    "status": "active",
+    "status": "inactive",
     "avatar": "H",
     "color": "#0ea5e9",
     "lastLogin": "22/06/2026, 4:28:05 pm"

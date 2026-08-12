@@ -402,7 +402,10 @@ async function writeEmotionToInflux(e) {
       `,model_version="${escField(e.modelVersion)}"` +
       `,inference_speed_ms=${Number(e.inferenceSpeedMs) || 0}` +
       `,posture_score=${Number(e.postureScore) || 0}` +
-      `,posture_label="${escField(e.postureLabel)}"`;
+      `,posture_label="${escField(e.postureLabel)}"` +
+      `,habit_score=${Number(e.habitScore) || 0}` +
+      `,habit_label="${escField(e.habitLabel)}"`; 
+      
     await client.write(line, INFLUX_DB);
   } catch (err) {
     console.error('[Emotion] InfluxDB write failed:', err.message);
@@ -541,8 +544,8 @@ app.post('/api/emotion/ingest', upload.single('image'), (req, res) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { emotion, confidence, deviceId, modelVersion, inferenceSpeedMs, postureScore, postureLabel } = req.body;
-    if (!emotion) return res.status(400).json({ error: 'emotion is required' });
+    const { emotion, confidence, deviceId, modelVersion, inferenceSpeedMs, postureScore, postureLabel, habitScore, habitLabel } = req.body;
+    if (!emotion && !habitLabel) return res.status(400).json({ error: 'emotion or habitLabel is required' });
     if (!deviceId) return res.status(400).json({ error: 'deviceId is required' });
 
     const entry = {
@@ -554,6 +557,8 @@ app.post('/api/emotion/ingest', upload.single('image'), (req, res) => {
             inferenceSpeedMs: inferenceSpeedMs != null ? parseFloat(inferenceSpeedMs) : null,
             postureScore    : postureScore != null ? parseFloat(postureScore) : null,
             postureLabel    : postureLabel || null,
+            habitScore      : habitScore   || null ? parseFloat(habitScore) : null,
+            habitLabel      : habitLabel   || null,
             time            : new Date().toISOString()
         },
         image      : req.file ? req.file.buffer : (emotionDevices.get(deviceId)?.image || null),
@@ -577,7 +582,8 @@ app.get('/api/emotion/history', async (req, res) => {
         const deviceFilter = device ? `AND device_id = '${device}'` : '';
         const query = `
             SELECT time, device_id, emotion, confidence, model_version,
-                   inference_speed_ms, posture_score, posture_label
+                   inference_speed_ms, posture_score, posture_label,
+                   habit_score, habit_label
             FROM emotion_events
             WHERE time >= now() - INTERVAL '${hours} hours'
             ${deviceFilter}
