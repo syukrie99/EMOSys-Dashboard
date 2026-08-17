@@ -110,7 +110,7 @@
         .status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
         /* ACTION BTNS */
-        .action-btns { display: flex; gap: 6px; }
+        .action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
         .act-btn {
             background: #f1f5f9; border: 1px solid #e2e8f0;
             border-radius: 6px; padding: 5px 10px;
@@ -119,6 +119,7 @@
         }
         .act-btn:hover { background: #e2e8f0; color: #1e293b; }
         .act-btn.danger:hover { background: rgba(239,68,68,0.08); color: #dc2626; border-color: rgba(239,68,68,0.2); }
+        .act-btn.edit:hover { background: rgba(14,165,233,0.08); color: #0284c7; border-color: rgba(14,165,233,0.2); }
 
         /* MODAL */
         .modal-backdrop {
@@ -157,6 +158,9 @@
             letter-spacing: 0.07em; text-transform: uppercase;
             color: #64748b; margin-bottom: 7px;
         }
+        .modal-field-hint {
+            font-size: 0.71rem; color: #94a3b8; margin-top: 5px;
+        }
         .modal-input, .modal-select {
             width: 100%; box-sizing: border-box;
             background: #f8fafc; border: 1px solid #e2e8f0;
@@ -185,6 +189,13 @@
             transition: opacity 0.18s;
         }
         .btn-submit:hover { opacity: 0.85; }
+        .modal-error {
+            display: none; background: rgba(239,68,68,0.08);
+            border: 1px solid rgba(239,68,68,0.25); border-radius: 8px;
+            padding: 10px 14px; font-size: 0.8rem; color: #dc2626;
+            margin-bottom: 16px;
+        }
+        .modal-error.show { display: block; }
 
         /* TOAST (Pop up notification) */
         .toast {
@@ -211,6 +222,7 @@
 </head>
 <body class="light">
     
+    <!-- SIDEBAR -->
     <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="sidebar-logo">
@@ -358,7 +370,7 @@
             <div class="info-card">
                 <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 <div>
-                    <strong>Role-based access control.</strong> Administrator have full system access including alert configuration and threshold editing. Viewers have read-only access to the dashboard and history.
+                    <strong>Role-based access control.</strong> Administrator have full system access including alert configuration and threshold editing. Operator can view all data and acknowledge alerts. Viewers have read-only access to the dashboard and history.
                 </div>
             </div>
 
@@ -408,6 +420,7 @@
                 </button>
             </div>
             <div class="modal-body">
+                <div class="modal-error" id="addModalError"></div>
                 <div class="modal-field">
                     <label>Full Name</label>
                     <input class="modal-input" type="text" id="newName" placeholder="e.g. Jane Doe"/>
@@ -439,6 +452,50 @@
         </div>
      </div>
 
+    <!-- EDIT USER MODAL -->
+     <div class="modal-backdrop" id="editModalBackdrop">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h4>Edit User</h4>
+                <button class="modal-close" onclick="closeEditModal()">
+                    <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-error" id="editModalError"></div>
+                <input type="hidden" id="editUserId"/>
+                <div class="modal-field">
+                    <label>Full Name</label>
+                    <input class="modal-input" type="text" id="editName" placeholder="e.g. Jane Doe"/>
+                </div>
+                <div class="modal-field">
+                    <label>Email Address</label>
+                    <input class="modal-input" type="email" id="editEmail" placeholder="e.g. janeDoe@smd.com"/>
+                </div>
+                <div class="modal-field">
+                    <label>Department</label>
+                    <input class="modal-input" type="text" id="editDept" placeholder="e.g. Engineering"/>
+                </div>
+                <div class="modal-field">
+                    <label>Role</label>
+                    <select class="modal-select" id="editRole">
+                        <option value="Viewer">Viewer</option>
+                        <option value="Administrator">Administrator</option>
+                    </select>
+                </div>
+                <div class="modal-field">
+                    <label>Reset Password</label>
+                    <input class="modal-input" type="password" id="editPassword" placeholder="Leave blank to keep current password" minlength="6"/>
+                    <div class="modal-field-hint">Only fill this in if you want to set a new password. Min. 6 characters.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+                <button class="btn-submit" onclick="saveEditUser()">Save Changes</button>
+            </div>
+        </div>
+     </div>
+
      <!-- TOAST -->
       <div class="toast" id="toast">
         <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
@@ -458,9 +515,13 @@
         const API_BASE = '/api';
         let users = [];
 
+        function authHeaders(extra) {
+            return Object.assign({ 'Authorization': 'Bearer ' + getToken() }, extra || {});
+        }
+
         async function loadUsers() {
             try {
-                const res = await fetch(`${API_BASE}/users`);
+                const res = await fetch(`${API_BASE}/users`, { headers: authHeaders() });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 users = await res.json();
                 renderTable();
@@ -474,8 +535,7 @@
         /* RENDER TABLE */
         function renderTable() {
             const body = document.getElementById('userTableBody');
-            const currentUser = JSON.parse(sessionStorage.getItem('emosi_user') || '{}');
-            const isAdmin = currentUser.role === 'Administrator';
+            const isAdmin = currentUser && currentUser.role === 'Administrator';
 
             body.innerHTML = users.map(u => `
                 <tr>
@@ -503,6 +563,7 @@
                     <td>
                         <div class="action-btns">
                             ${isAdmin ? `
+                            <button class="act-btn edit" onclick="openEditModal(${u.id})">Edit</button>
                             <button class="act-btn" onclick="toggleStatus(${u.id})">${u.status === 'active' ? 'Deactivate' : 'Activate'}</button>
                             <button class="act-btn danger" onclick="deleteUser(${u.id})">Remove</button>
                             ` : `<span style="color:#94a3b8;font-size:0.75rem">View only</span>`}
@@ -516,9 +577,18 @@
                     document.getElementById('statAdmins').textContent = users.filter(u => u.role === 'Administrator').length;
         }
 
-        /* MODAL */
-        function openModal() { document.getElementById('modalBackdrop').classList.add('open'); }
+        /* ADD MODAL */
+        function openModal() {
+            document.getElementById('addModalError').classList.remove('show');
+            document.getElementById('modalBackdrop').classList.add('open');
+        }
         function closeModal() { document.getElementById('modalBackdrop').classList.remove('open'); }
+
+        function showAddError(msg) {
+            const el = document.getElementById('addModalError');
+            el.textContent = msg;
+            el.classList.add('show');
+        }
 
         /* ADD USER */
         async function addUser() {
@@ -528,13 +598,13 @@
             const password = document.getElementById('newPassword').value.trim();
             const role = document.getElementById('newRole').value;
 
-            if (!name || !email) { alert('Please enter name and email.'); return; }
-            if (!password || password.length < 6) { alert('Password must be at least 6 characters.'); return; }
+            if (!name || !email) { showAddError('Please enter name and email.'); return; }
+            if (!password || password.length < 6) { showAddError('Password must be at least 6 characters.'); return; }
 
             try {
                 const res = await fetch(`${API_BASE}/users`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ name, email, dept, role, password })
                 });
                 const data = await res.json();
@@ -546,9 +616,62 @@
                 document.getElementById('newDept').value = '';
                 document.getElementById('newPassword').value = '';
                 await loadUsers();
-                showToast('User "' + name + '"added successfully.');
+                showToast('User "' + name + '" added successfully.');
             } catch (e) {
-                alert('Failed to add user: ' + e.message);
+                showAddError('Failed to add user: ' + e.message);
+            }
+        }
+
+        /* EDIT MODAL */
+        function openEditModal(id) {
+            const u = users.find(u => u.id === id);
+            if (!u) return;
+            document.getElementById('editModalError').classList.remove('show');
+            document.getElementById('editUserId').value = u.id;
+            document.getElementById('editName').value = u.name;
+            document.getElementById('editEmail').value = u.email;
+            document.getElementById('editDept').value = u.dept;
+            document.getElementById('editRole').value = u.role;
+            document.getElementById('editPassword').value = '';
+            document.getElementById('editModalBackdrop').classList.add('open');
+        }
+        function closeEditModal() { document.getElementById('editModalBackdrop').classList.remove('open'); }
+
+        function showEditError(msg) {
+            const el = document.getElementById('editModalError');
+            el.textContent = msg;
+            el.classList.add('show');
+        }
+
+        /* SAVE EDITED USER */
+        async function saveEditUser() {
+            const id = parseInt(document.getElementById('editUserId').value);
+            const name = document.getElementById('editName').value.trim();
+            const email = document.getElementById('editEmail').value.trim();
+            const dept = document.getElementById('editDept').value.trim();
+            const role = document.getElementById('editRole').value;
+            const password = document.getElementById('editPassword').value.trim();
+
+            if (!name || !email) { showEditError('Name and email cannot be empty.'); return; }
+            if (password && password.length < 6) { showEditError('New password must be at least 6 characters.'); return; }
+
+            const body = { name, email, dept, role };
+            if (password) body.password = password;
+
+            try {
+                const res = await fetch(`${API_BASE}/users/${id}`, {
+                    method: 'PATCH',
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+                closeEditModal();
+                await loadUsers();
+                showToast('User "' + name + '" updated successfully.');
+            } catch (e) {
+                showEditError('Failed to update user: ' + e.message);
             }
         }
 
@@ -561,14 +684,14 @@
             try {
                 const res = await fetch(`${API_BASE}/users/${id}`, {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ status: newStatus })
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
                 
                 await loadUsers();
-                showToast('User "' + '" ' + (newStatus === 'active' ? 'activated.' : 'deactivated.'));
+                showToast('User "' + u.name + '" ' + (newStatus === 'active' ? 'activated.' : 'deactivated.'));
             } catch (e) {
                 alert('Failed to update user: ' + e.message);
             }
@@ -581,7 +704,7 @@
             if (!confirm('Remove user "' + u.name + '"?')) return;
 
             try {
-                const res = await fetch(`${API_BASE}/users/${id}`, { method: 'DELETE' });
+                const res = await fetch(`${API_BASE}/users/${id}`, { method: 'DELETE', headers: authHeaders() });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
@@ -615,8 +738,7 @@
 
         /* INIT */
         (function() {
-            const currentUser = JSON.parse(sessionStorage.getItem('emosi_user') || '{}');
-            if (currentUser.role !== 'Administrator') {
+            if (!currentUser || currentUser.role !== 'Administrator') {
                 const addBtn = document.querySelector('.btn-add-user');
                 if (addBtn) addBtn.style.display = 'none';
             }

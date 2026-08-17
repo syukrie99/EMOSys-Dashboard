@@ -492,7 +492,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var url = '/api/emotion/history?hours=' + hours + (deviceId ? '&device=' + encodeURIComponent(deviceId) : '');
 
-    fetch(url)
+    fetch(url, {
+      headers: { 'Authorization': 'Bearer ' + getToken() }
+    })
       .then(function(r) { return r.json(); })
       .then(function(rows) {
         if (!rows || !rows.length) {
@@ -535,7 +537,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
   /* ---- NOW SAFE TO USE THEM ---- */
 
-  fetch('/api/emotion/devices/known')
+  fetch('/api/emotion/devices/known', {
+    headers: { 'Authorization': 'Bearer ' + getToken() }
+  })
     .then(function(r) { return r.json(); })
     .then(function(list) {
       var sel = document.getElementById('deviceSelect');
@@ -586,12 +590,6 @@ function toggleSidebar() {
   document.getElementById('sidebarOverlay').classList.toggle('active');
 }
 
-if (typeof doLogout === 'undefined') {
-  window.doLogout = function() {
-    try { localStorage.removeItem('emosys_token'); } catch {}
-    window.location.href = 'Login.html';
-  };
-}
 </script>   
 </body>
 </html>

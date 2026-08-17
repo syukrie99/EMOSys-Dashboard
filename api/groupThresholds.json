@@ -1,112 +1,112 @@
 {
   "mainoffice": {
     "temp": {
-      "warn": 28,
-      "danger": 35
+      "warn": 25.75,
+      "danger": 26.91
     },
     "hum": {
-      "warn": 80,
+      "warn": 83.83,
       "danger": 90
     },
     "pm25": {
-      "warn": 15,
-      "danger": 30
+      "warn": 90.98,
+      "danger": 114.08
     },
     "co2": {
-      "warn": 800,
-      "danger": 1200
+      "warn": 611.92,
+      "danger": 672.31
     },
     "voc": {
-      "warn": 300,
-      "danger": 600
+      "warn": 396.01,
+      "danger": 496.52
     }
   },
   "management": {
     "temp": {
-      "warn": 26,
-      "danger": 32
+      "warn": 29.21,
+      "danger": 31.05
     },
     "hum": {
-      "warn": 80,
-      "danger": 90
+      "warn": 75.33,
+      "danger": 80.15
     },
     "pm25": {
-      "warn": 12,
-      "danger": 25
+      "warn": 66.48,
+      "danger": 88.17
     },
     "co2": {
-      "warn": 700,
-      "danger": 1000
+      "warn": 540.09,
+      "danger": 579.16
     },
     "voc": {
-      "warn": 250,
-      "danger": 500
+      "warn": 493.47,
+      "danger": 619.54
     }
   },
   "hall": {
     "temp": {
-      "warn": 28,
-      "danger": 35
+      "warn": 26.78,
+      "danger": 28.42
     },
     "hum": {
-      "warn": 80,
-      "danger": 90
+      "warn": 82.03,
+      "danger": 87.53
     },
     "pm25": {
-      "warn": 15,
-      "danger": 30
+      "warn": 64.92,
+      "danger": 81.94
     },
     "co2": {
-      "warn": 800,
-      "danger": 1200
+      "warn": 851.25,
+      "danger": 1016.08
     },
     "voc": {
-      "warn": 300,
-      "danger": 600
+      "warn": 693.72,
+      "danger": 960.41
     }
   },
   "lab": {
     "temp": {
-      "warn": 25,
-      "danger": 30
+      "warn": 27.18,
+      "danger": 29.46
     },
     "hum": {
-      "warn": 80,
-      "danger": 90
+      "warn": 81.35,
+      "danger": 87.68
     },
     "pm25": {
-      "warn": 10,
-      "danger": 20
+      "warn": 78.21,
+      "danger": 99.6
     },
     "co2": {
-      "warn": 900,
-      "danger": 1000
+      "warn": 610.9,
+      "danger": 669.26
     },
     "voc": {
-      "warn": 200,
-      "danger": 400
+      "warn": 485.13,
+      "danger": 603.18
     }
   },
   "training": {
     "temp": {
-      "warn": 28,
+      "warn": 28.38,
       "danger": 35
     },
     "hum": {
-      "warn": 80,
-      "danger": 90
+      "warn": 86.69,
+      "danger": 95.01
     },
     "pm25": {
-      "warn": 15,
-      "danger": 30
+      "warn": 67.14,
+      "danger": 85.83
     },
     "co2": {
-      "warn": 900,
-      "danger": 1400
+      "warn": 589.05,
+      "danger": 638.11
     },
     "voc": {
-      "warn": 300,
-      "danger": 600
+      "warn": 468.12,
+      "danger": 595.79
     }
   },
   "meeting": {
@@ -133,24 +133,24 @@
   },
   "murud": {
     "temp": {
-      "warn": 28,
-      "danger": 35
+      "warn": 26.56,
+      "danger": 28.02
     },
     "hum": {
-      "warn": 80,
-      "danger": 90
+      "warn": 70.16,
+      "danger": 74.53
     },
     "pm25": {
-      "warn": 15,
-      "danger": 30
+      "warn": 66.46,
+      "danger": 83.91
     },
     "co2": {
-      "warn": 800,
-      "danger": 1200
+      "warn": 654.76,
+      "danger": 726.79
     },
     "voc": {
-      "warn": 300,
-      "danger": 600
+      "warn": 1461.77,
+      "danger": 1969.67
     }
   }
 }

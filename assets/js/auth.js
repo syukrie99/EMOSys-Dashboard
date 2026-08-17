@@ -24,6 +24,14 @@ function requireAuth() {
 }
 
 function doLogout() {
+    var token = getToken();
+    if (token) {
+        fetch('/api/logout', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token },
+            keepalive: true
+        }).catch(function(e) { console.warn('[Auth] Logout call failed:', e.message); });
+    }
     try { sessionStorage.removeItem('emosi_user'); } catch(e) {}
     try { sessionStorage.removeItem('emosi_token'); } catch(e) {}
     window.location.replace('Login.html');

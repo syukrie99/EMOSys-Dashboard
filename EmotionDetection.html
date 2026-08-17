@@ -11,17 +11,17 @@
   <link rel="stylesheet" href="assets/css/dashboard.css"/>
 
   <style>
-    /* Dynamic grid — wraps automatically for any number of devices,
-       and stays compact-sized instead of stretching one card full-width */
     .ed-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 360px));
+      grid-template-columns: minmax(320px, 460px) 1fr;
       gap: 20px;
       margin-bottom: 28px;
-      justify-content: start;
+    }
+    @media (max-width: 900px) {
+      .ed-grid { grid-template-columns: 1fr; }
     }
 
-    .ed-snapshot-card {
+    .ed-snapshot-card, .ed-result-card {
       background: #fff;
       border: 1px solid #e2e8f0;
       border-radius: 14px;
@@ -39,8 +39,41 @@
       letter-spacing: 0.04em; text-transform: uppercase; margin: 0;
     }
 
-    .ed-snapshot-body { padding: 16px; }
+    .ed-status-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .ed-status-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+    .ed-status-badge.live  { background: rgba(16,185,129,0.1);  color: #059669; }
+    .ed-status-badge.stale { background: rgba(245,158,11,0.1);  color: #d97706; }
+    .ed-status-badge.none  { background: rgba(100,116,139,0.1); color: #64748b; }
 
+    .ed-device-row {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      margin-bottom: 20px; background: #fff; border: 1px solid #e2e8f0;
+      border-radius: 10px; padding: 12px 16px;
+    }
+    .ed-device-row label {
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+      color: #64748b;
+    }
+    .ed-device-select {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 8px 12px; font-size: 0.85rem; font-family: 'Barlow', sans-serif;
+      color: #1e293b; min-width: 220px; outline: none; cursor: pointer;
+    }
+    .ed-device-select:focus { border-color: #0ea5e9; }
+    .btn-refresh-now {
+      background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 8px 16px; font-size: 0.82rem; font-weight: 600; color: #475569;
+      cursor: pointer; font-family: 'Barlow', sans-serif; display: inline-flex;
+      align-items: center; gap: 6px; transition: all 0.15s;
+    }
+    .btn-refresh-now:hover { background: #e2e8f0; color: #1e293b; }
+    .btn-refresh-now svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+    .ed-snapshot-body { padding: 16px; }
     .ed-snapshot-img-wrap {
       width: 100%;
       background: #f1f5f9;
@@ -48,60 +81,73 @@
       border-radius: 10px;
       overflow: hidden;
       display: flex; align-items: center; justify-content: center;
-      height: 200px;
+      min-height: 260px;
       position: relative;
     }
     .ed-snapshot-img-wrap img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      display: block;
-      transition: opacity 0.15s ease;
+      width: 100%; height: auto; display: block;
     }
+    .ed-snapshot-placeholder {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 10px; color: #94a3b8; font-size: 0.82rem; padding: 40px 20px; text-align: center;
+    }
+    .ed-snapshot-placeholder svg { width: 32px; height: 32px; stroke: #cbd5e1; fill: none; stroke-width: 1.5; }
+    .ed-snapshot-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 10px; font-size: 0.75rem; color: #64748b;
+    }
+    .ed-refresh-note {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .ed-pulse-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #10b981; flex-shrink: 0;
+      animation: edBlink 1.6s ease-in-out infinite;
+    }
+    @keyframes edBlink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
+    .ed-result-body { padding: 18px 20px; min-height: 260px; }
     .ed-result-empty {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      min-height: 200px;
+      height: 100%; min-height: 220px;
       color: #94a3b8; font-size: 0.85rem; text-align: center; line-height: 1.7;
       gap: 10px;
     }
     .ed-result-empty svg { width: 34px; height: 34px; stroke: #cbd5e1; fill: none; stroke-width: 1.5; }
 
-    .ed-result-text {
-      background: #f8fafc; border: 1px solid #e2e8f0;
+    .ed-metric-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px; margin-bottom: 16px;
+    }
+    .ed-metric-box {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+      padding: 13px 15px; border-top: 3px solid #e2e8f0;
+    }
+    .ed-metric-box.m-emotion  { border-top-color: #6366f1; }
+    .ed-metric-box.m-conf     { border-top-color: #0ea5e9; }
+    .ed-metric-box.m-posture  { border-top-color: #10b981; }
+    .ed-metric-box.m-speed    { border-top-color: #f59e0b; }
+    .ed-metric-label {
+      font-size: 0.63rem; font-weight: 700; color: #94a3b8;
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px;
+    }
+    .ed-metric-val {
+      font-family: 'Barlow Condensed', sans-serif; font-size: 1.35rem; font-weight: 800;
+      color: #1e293b; line-height: 1; text-transform: capitalize;
+    }
+    .ed-metric-sub { font-size: 0.68rem; color: #94a3b8; margin-top: 4px; }
+
+    .ed-result-meta-row {
+      display: flex; flex-wrap: wrap; gap: 16px;
+      padding: 12px 15px; background: #f8fafc; border: 1px solid #e2e8f0;
+      border-radius: 10px; font-size: 0.78rem; color: #64748b;
+    }
+    .ed-result-meta-row strong { color: #1e293b; font-weight: 600; }
+
+    .ed-error-box {
+      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);
       border-radius: 10px; padding: 14px 16px;
-      font-size: 0.88rem; color: #1e293b; line-height: 1.6;
-      margin-top: 12px;
-    }
-
-    /* Posture / habit / inference speed meta rows */
-    .ed-live-meta {
-      margin-top: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      background: #f8fafc; border: 1px solid #e2e8f0;
-      border-radius: 10px; padding: 10px 14px;
-    }
-    .ed-meta-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 0.8rem;
-    }
-    .ed-meta-label {
-      color: #64748b;
-      font-weight: 600;
-    }
-    .ed-meta-val {
-      color: #1e293b;
-      font-family: 'Barlow Condensed', sans-serif;
-      font-weight: 700;
-    }
-
-    .ed-result-timestamp {
-      margin-top: 10px; font-size: 0.72rem; color: #94a3b8;
-      display: flex; align-items: center; gap: 6px;
+      font-size: 0.85rem; color: #dc2626; line-height: 1.6;
     }
 
     .ed-info-card {
@@ -111,35 +157,6 @@
       margin-bottom: 28px; font-size: 0.81rem; color: #1e40af; line-height: 1.55;
     }
     .ed-info-card svg { width: 16px; height: 16px; stroke: #3b82f6; fill: none; stroke-width: 2; flex-shrink: 0; margin-top: 1px; }
-
-    .ed-device-count-badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25);
-      color: #059669; font-size: 0.72rem; font-weight: 700;
-      padding: 3px 10px; border-radius: 20px;
-    }
-
-    .ed-status-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      display: inline-block; flex-shrink: 0;
-    }
-
-    .ed-status-dot.live {
-      background: #10b981;
-      animation: edStatusPulse 1.6s ease-in-out infinite;
-    }
-
-    .ed-status-dot.stale {
-      background: #f59e0b;
-    }
-    @keyframes edStatusPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
-
-    .ed-card-status {
-      display: flex; align-items: center; gap: 6px;
-      font-size: 0.72rem; font-weight: 600;
-    }
-    .ed-card-status.live { color: #059669; }
-    .ed-card-status.stale { color: #d97706; }
   </style>
 </head>
 <body class="light">
@@ -191,12 +208,16 @@
       </a>
 
       <a class="nav-item" href="EmotionAnalytics.html">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
         Emotion Analytics
       </a>
 
       <a class="nav-item" href="EmotionHistory.html">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
         Emotion History
       </a>
 
@@ -260,9 +281,9 @@
         <span class="breadcrumb-current">Emotion Detection</span>
       </div>
       <div class="topbar-right">
-        <div class="status-pill">
+        <div class="status-pill" id="topbarStatusPill">
           <div class="pulse-dot"></div>
-          Live Feed Active
+          On-Device Pipeline
         </div>
         <span style="font-size:0.75rem;color:rgba(255,255,255,0.4)" id="currentDate"></span>
       </div>
@@ -272,27 +293,75 @@
     <div class="page">
 
       <div class="page-title-bar">
-        <h1><span>Live Detection</span>Emotion Detection</h1>
+        <h1><span>On-Device AI</span>Emotion Detection — Live View</h1>
         <div class="last-updated" id="lastUpdated">Last checked: —</div>
       </div>
 
       <div class="ed-info-card">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <div>
-          <strong>How this works.</strong> Raspberry Pi devices running on-device detection models capture frames and push results — including posture, hand gesture / habit signals, and inference speed — to this dashboard automatically. Each device registers itself the first time it sends data — no configuration needed here when a new device is added. Images and results live in memory only, are never written to disk, and are automatically cleared if a device stops reporting for 30 minutes. This is a general expression estimate, not a clinically validated emotion score.
+          <strong>Privacy by design.</strong> Emotion and posture inference runs entirely on-device on the Raspberry Pi 4. Only the result — emotion, confidence, posture score, and a single frame — is pushed to this dashboard. Frames are held in memory only, are never written to disk, and are never sent to any cloud AI service.
         </div>
       </div>
 
-      <div class="section-head">
-        <h3>Live Emotion Detection — All Devices</h3>
-        <span class="ed-device-count-badge" id="edDeviceCount">0 devices reporting</span>
+      <!-- DEVICE SELECTOR -->
+      <div class="ed-device-row">
+        <label for="edDeviceSelect">Device</label>
+        <select class="ed-device-select" id="edDeviceSelect">
+          <option value="">Loading devices…</option>
+        </select>
+        <button class="btn-refresh-now" onclick="manualRefresh()">
+          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Refresh Now
+        </button>
+        <span style="margin-left:auto;font-size:0.75rem;color:#94a3b8" id="edDeviceCount">—</span>
       </div>
 
-      <div class="ed-grid" id="edDeviceGrid">
-        <div class="ed-result-empty" style="grid-column:1/-1">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/></svg>
-          Waiting for devices to report in…
+      <div id="edNoDevices" style="display:none">
+        <div class="ed-result-empty" style="padding:48px 20px">
+          <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+          No emotion detection devices have reported yet.
         </div>
+      </div>
+
+      <div class="ed-grid" id="edMainGrid" style="display:none">
+
+        <!-- SNAPSHOT CARD -->
+        <div class="ed-snapshot-card">
+          <div class="ed-card-header">
+            <h4>Latest Frame</h4>
+            <span class="ed-status-badge none" id="edStatusBadge"><span class="dot"></span>—</span>
+          </div>
+          <div class="ed-snapshot-body">
+            <div class="ed-snapshot-img-wrap" id="edSnapshotWrap">
+              <div class="ed-snapshot-placeholder">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                No frame received yet
+              </div>
+            </div>
+            <div class="ed-snapshot-meta">
+              <div class="ed-refresh-note">
+                <div class="ed-pulse-dot"></div>
+                <span>Polling every 5s</span>
+              </div>
+              <span id="edSnapshotTime">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RESULT CARD -->
+        <div class="ed-result-card">
+          <div class="ed-card-header">
+            <h4>Latest Detection Result</h4>
+          </div>
+          <div class="ed-result-body" id="edResultBody">
+            <div class="ed-result-empty">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/></svg>
+              Waiting for the first result from this device…
+            </div>
+          </div>
+        </div>
+
       </div>
 
     </div><!-- end .page -->
@@ -316,7 +385,14 @@
     document.getElementById('userAvatar').textContent = (currentUser.name || 'A')[0].toUpperCase();
   }
 
-  const REFRESH_MS = 5000; /* matches Pi push interval */
+  const DEVICE_POLL_MS   = 30000; /* how often we re-check which devices exist */
+  const RESULT_POLL_MS   = 5000;  /* how often we re-fetch the selected device's latest result */
+  const STALE_AFTER_SEC  = 30;    /* if last push is older than this, mark as stale */
+
+  let knownDevices  = [];
+  let selectedDevice = null;
+  let resultTimer = null;
+  let deviceTimer = null;
 
   /* DATES */
   function setDates() {
@@ -326,123 +402,139 @@
   }
   setDates();
 
-  /* Track which device cards already exist in the DOM so repeat polls
-     only update content in place instead of rebuilding everything —
-     rebuilding the whole grid every 5s was causing the page to flicker. */
-  const renderedDevices = new Set();
+  const fmt    = (v, d=2) => (v == null || isNaN(v)) ? '—' : Number(v).toFixed(d);
+  const fmtPct = v        => (v == null || isNaN(v)) ? '—' : (v * 100).toFixed(0) + '%';
 
-  async function pollLiveEmotion() {
-    const grid = document.getElementById('edDeviceGrid');
+  /* LOAD DEVICE LIST */
+  async function loadDevices() {
     try {
-      const res = await fetch('/api/emotion/devices');
-      const devices = await res.json();
+      const res = await fetch('/api/emotion/devices', {
+        headers: { 'Authorization': 'Bearer ' + getToken() }
+      });
+      const list = await res.json();
+      knownDevices = Array.isArray(list) ? list : [];
+
+      const sel = document.getElementById('edDeviceSelect');
+      const noDevices = document.getElementById('edNoDevices');
+      const mainGrid  = document.getElementById('edMainGrid');
 
       document.getElementById('edDeviceCount').textContent =
-        devices.length + (devices.length === 1 ? ' device reporting' : ' devices reporting');
+        knownDevices.length + (knownDevices.length === 1 ? ' device reporting' : ' devices reporting');
 
-      if (!devices.length) {
-        grid.innerHTML = `
-          <div class="ed-result-empty" style="grid-column:1/-1">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/></svg>
-            Waiting for devices to report in…
-          </div>`;
-        renderedDevices.clear();
-        document.getElementById('lastUpdated').textContent = 'Last checked: ' + new Date().toLocaleTimeString();
+      if (!knownDevices.length) {
+        sel.innerHTML = '<option value="">No devices yet</option>';
+        noDevices.style.display = 'block';
+        mainGrid.style.display  = 'none';
         return;
       }
 
-      /* Remove the empty-state placeholder once real devices show up */
-      if (!renderedDevices.size) grid.innerHTML = '';
+      noDevices.style.display = 'none';
+      mainGrid.style.display  = 'grid';
 
-      /* Remove cards for devices that disappeared (e.g. went stale / cleared).
-         Guarded against any corrupted/undefined entries in the tracking Set. */
-      const currentIds = new Set(devices.map(d => d.deviceId).filter(Boolean));
-      renderedDevices.forEach(id => {
-        if (!id) { renderedDevices.delete(id); return; }
-        if (!currentIds.has(id)) {
-          const cardId = 'ed_card_' + id.replace(/[^a-zA-Z0-9_-]/g, '_');
-          const el = document.getElementById(cardId);
-          if (el) el.remove();
-          renderedDevices.delete(id);
-        }
-      });
+      /* Preserve current selection if it still exists, else default to first */
+      const stillExists = knownDevices.some(d => d.deviceId === selectedDevice);
+      if (!selectedDevice || !stillExists) selectedDevice = knownDevices[0].deviceId;
 
-      devices.forEach(d => {
-        if (!d || !d.deviceId) return; // skip any malformed entry defensively
+      sel.innerHTML = knownDevices.map(d =>
+        `<option value="${d.deviceId}" ${d.deviceId === selectedDevice ? 'selected' : ''}>${d.deviceId}</option>`
+      ).join('');
 
-        const cardId = 'ed_card_' + d.deviceId.replace(/[^a-zA-Z0-9_-]/g, '_');
-        let card = document.getElementById(cardId);
-
-        if (!card) {
-          /* First time seeing this device — create its card once */
-          card = document.createElement('div');
-          card.className = 'ed-snapshot-card';
-          card.id = cardId;
-          card.innerHTML = `
-            <div class="ed-card-header">
-              <h4>${d.deviceId}</h4>
-              <div class="ed-card-status ed-live-status"></div>
-            </div>
-            <div class="ed-snapshot-body">
-              <div class="ed-snapshot-img-wrap">
-                <img class="ed-live-img" alt="Snapshot from ${d.deviceId}"/>
-              </div>
-              <div class="ed-result-text ed-live-text"></div>
-              <div class="ed-live-meta"></div>
-              <div class="ed-result-timestamp ed-live-time"></div>
-            </div>`;
-          grid.appendChild(card);
-          renderedDevices.add(d.deviceId); // FIXED — was d.device (undefined), causing the poll crash
-        }
-
-        /* Everything below runs on EVERY poll cycle for EVERY device —
-           both freshly created cards and existing ones get refreshed here. */
-
-        const secondsSinceUpdate = (Date.now() - new Date(d.time).getTime()) / 1000;
-        const isLive = secondsSinceUpdate < 15; /* within 3 poll cycles = considered live */
-
-        const imgEl    = card.querySelector('.ed-live-img');
-        const textEl   = card.querySelector('.ed-live-text');
-        const metaEl   = card.querySelector('.ed-live-meta');
-        const timeEl   = card.querySelector('.ed-live-time');
-        const statusEl = card.querySelector('.ed-live-status');
-
-        if (statusEl) {
-          statusEl.className = 'ed-card-status ' + (isLive ? 'live' : 'stale');
-          statusEl.innerHTML = `<span class="ed-status-dot ${isLive ? 'live' : 'stale'}"></span>${isLive ? 'Live' : 'Stale'}`;
-        }
-
-        if (imgEl) imgEl.src = `/api/emotion/image?device=${encodeURIComponent(d.deviceId)}&t=${Date.now()}`;
-
-        if (textEl) textEl.innerHTML = d.emotion
-          ? `Detected emotion: <strong>${d.emotion}</strong>
-             ${d.confidence != null ? `(${(d.confidence * 100).toFixed(0)}% confidence)` : ''}`
-          : `<span style="color:#94a3b8">No emotion classification from this device</span>`;
-
-        if (metaEl) metaEl.innerHTML = `
-          <div class="ed-meta-row">
-            <span class="ed-meta-label">Posture</span>
-            <span class="ed-meta-val">${d.postureLabel || '—'}${d.postureScore != null ? ` (${(d.postureScore * 100).toFixed(0)}%)` : ''}</span>
-          </div>
-          <div class="ed-meta-row">
-            <span class="ed-meta-label">Habit / Gesture</span>
-            <span class="ed-meta-val">${d.habitLabel || '—'}${d.habitScore != null ? ` (${(d.habitScore * 100).toFixed(0)}%)` : ''}</span>
-          </div>
-          <div class="ed-meta-row">
-            <span class="ed-meta-label">Inference speed</span>
-            <span class="ed-meta-val">${d.inferenceSpeedMs != null ? d.inferenceSpeedMs.toFixed(0) + ' ms' : '—'}</span>
-          </div>`;
-
-        if (timeEl) timeEl.innerHTML =
-          `<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-           Updated: ${new Date(d.time).toLocaleString('en-MY')}`;
-      });
-
-      document.getElementById('lastUpdated').textContent = 'Last checked: ' + new Date().toLocaleTimeString();
+      loadResult(selectedDevice);
     } catch (e) {
-      console.warn('Live emotion poll failed:', e.message);
+      console.error('[Emotion] Failed to load device list:', e.message);
     }
   }
+
+  /* LOAD LATEST RESULT + FRAME FOR SELECTED DEVICE */
+  async function loadResult(deviceId) {
+    if (!deviceId) return;
+    document.getElementById('lastUpdated').textContent = 'Last checked: ' + new Date().toLocaleTimeString();
+
+    try {
+      const res = await fetch('/api/emotion/latest?device=' + encodeURIComponent(deviceId), {
+        headers: { 'Authorization': 'Bearer ' + getToken() }
+      });
+      const data = await res.json();
+
+      const badge = document.getElementById('edStatusBadge');
+      const body  = document.getElementById('edResultBody');
+
+      if (!data || !data.emotion) {
+        badge.className = 'ed-status-badge none';
+        badge.innerHTML = '<span class="dot"></span>No data';
+        body.innerHTML = `
+          <div class="ed-result-empty">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/></svg>
+            Waiting for the first result from this device…
+          </div>`;
+        return;
+      }
+
+      const secondsAgo = (Date.now() - new Date(data.time).getTime()) / 1000;
+      const isLive = secondsAgo <= STALE_AFTER_SEC;
+
+      badge.className = 'ed-status-badge ' + (isLive ? 'live' : 'stale');
+      badge.innerHTML = `<span class="dot"></span>${isLive ? 'Live' : 'Stale'}`;
+
+      body.innerHTML = `
+        <div class="ed-metric-grid">
+          <div class="ed-metric-box m-emotion">
+            <div class="ed-metric-label">Emotion</div>
+            <div class="ed-metric-val">${data.emotion}</div>
+          </div>
+          <div class="ed-metric-box m-conf">
+            <div class="ed-metric-label">Confidence</div>
+            <div class="ed-metric-val">${fmtPct(data.confidence)}</div>
+          </div>
+          <div class="ed-metric-box m-posture">
+            <div class="ed-metric-label">Posture</div>
+            <div class="ed-metric-val">${fmtPct(data.postureScore)}</div>
+            <div class="ed-metric-sub">${data.postureLabel || '—'}</div>
+          </div>
+          <div class="ed-metric-box m-speed">
+            <div class="ed-metric-label">Inference Speed</div>
+            <div class="ed-metric-val">${fmt(data.inferenceSpeedMs, 0)}<span style="font-size:0.9rem"> ms</span></div>
+          </div>
+        </div>
+        <div class="ed-result-meta-row">
+          <span>Model: <strong>${data.modelVersion || 'unknown'}</strong></span>
+          <span>Device: <strong>${data.deviceId}</strong></span>
+          <span>Last push: <strong>${new Date(data.time).toLocaleTimeString()}</strong> (${Math.round(secondsAgo)}s ago)</span>
+        </div>`;
+
+      /* Refresh frame — <img src> can't send auth headers, so fetch as a blob instead */
+      const wrap = document.getElementById('edSnapshotWrap');
+      fetch('/api/emotion/image?device=' + encodeURIComponent(deviceId), {
+        headers: { 'Authorization': 'Bearer ' + getToken() }
+      })
+        .then(r => r.ok ? r.blob() : Promise.reject())
+        .then(blob => {
+          wrap.innerHTML = `<img src="${URL.createObjectURL(blob)}" alt="Latest frame from ${deviceId}"/>`;
+        })
+        .catch(() => {
+          wrap.innerHTML = `
+            <div class="ed-snapshot-placeholder">
+              <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              No frame received yet
+            </div>`;
+        });
+
+      document.getElementById('edSnapshotTime').textContent = 'Checked: ' + new Date().toLocaleTimeString();
+
+    } catch (e) {
+      document.getElementById('edResultBody').innerHTML =
+        `<div class="ed-error-box">Could not reach the server: ${e.message}</div>`;
+    }
+  }
+
+  function manualRefresh() {
+    loadDevices();
+  }
+
+  document.getElementById('edDeviceSelect').addEventListener('change', function() {
+    selectedDevice = this.value;
+    loadResult(selectedDevice);
+  });
 
   /* SIDEBAR TOGGLE */
   function toggleSidebar() {
@@ -458,8 +550,9 @@
   }
 
   /* INIT */
-  pollLiveEmotion();
-  setInterval(pollLiveEmotion, REFRESH_MS);
+  loadDevices();
+  deviceTimer = setInterval(loadDevices, DEVICE_POLL_MS);
+  resultTimer = setInterval(() => { if (selectedDevice) loadResult(selectedDevice); }, RESULT_POLL_MS);
   </script>
 </body>
 </html>

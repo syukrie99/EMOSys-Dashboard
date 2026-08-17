@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function () {
   
 
   /* ── FETCH DEVICE LIST then populate dropdown */
-  fetch('/api/devices')
+  fetch('/api/devices', { headers: { 'Authorization': 'Bearer ' + getToken() }})
     .then(function(res) { return res.json(); })
     .then(function(list) {
       devices = list;
@@ -321,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* ── LOAD 24H HISTORY from InfluxDB on startup/device switch */
   function loadHistory24h(callback) {
-    fetch('/api/history?device=' + activeDevice + '&hours=24')
+    fetch('/api/history?device=' + activeDevice + '&hours=24', { headers: { 'Authorization': 'Bearer ' + getToken() } })
       .then(function(res) { return res.json(); })
       .then(function(rows) {
         if (!Array.isArray(rows) || rows.length === 0) {
@@ -355,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function () {
   /* ── FETCH LIVE DATA — passes device ID as query param */
   function fetchData() {
 
-    fetch('/api/ha/latest?device=' + activeDevice)
+    fetch('/api/ha/latest?device=' + activeDevice, { headers: { 'Authorization': 'Bearer ' + getToken() }})
       .then(function(res) { return res.json(); })
       .then(function(live) {
 
@@ -401,7 +401,7 @@ document.addEventListener('DOMContentLoaded', function () {
       });
 
     /* Device status pill */
-    fetch('/api/ha/status?device=' + activeDevice)
+    fetch('/api/ha/status?device=' + activeDevice, { headers: { 'Authorization': 'Bearer ' + getToken() } })
       .then(function(res) { return res.json(); })
       .then(function(status) {
         var pill = document.querySelector('.status-pill');
@@ -488,16 +488,16 @@ document.addEventListener('DOMContentLoaded', function () {
   window.renderOverviewPage = renderOverviewPage;
 
 function loadOverviewTable() {
-    fetch('/api/devices')
+    fetch('/api/devices', { headers: { 'Authorization': 'Bearer ' + getToken() } })
       .then(function(res) { return res.json(); })
       .then(function(list) {
         /* Fetch both sensor data AND online status for each device */
         var promises = list.map(function(d) {
-          var dataPromise = fetch('/api/ha/latest?device=' + d.id)
+          var dataPromise = fetch('/api/ha/latest?device=' + d.id, { headers: { 'Authorization': 'Bearer ' + getToken() } })
             .then(function(res) { return res.json(); })
             .catch(function() { return null; });
 
-          var statusPromise = fetch('/api/ha/status?device=' + d.id)
+          var statusPromise = fetch('/api/ha/status?device=' + d.id, { headers: { 'Authorization': 'Bearer ' + getToken() } })
             .then(function(res) { return res.json(); })
             .catch(function() { return { online: false }; });
 

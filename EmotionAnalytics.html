@@ -324,52 +324,54 @@
     function fmtPct(v) { return (v == null || isNaN(v)) ? '—' : (v * 100).toFixed(0) + '%'; }
     function fmtNum(v, d) { return (v == null || isNaN(v)) ? '—' : Number(v).toFixed(d != null ? d : 0); }
 
-    function loadAnalytics() {
-      var hours = document.getElementById('hoursSelect').value;
-      document.getElementById('recordCount').textContent = 'Loading…';
+function loadAnalytics() {
+  var hours = document.getElementById('hoursSelect').value;
+  document.getElementById('recordCount').textContent = 'Loading…';
+  document.getElementById('deviceTableBody').innerHTML =
+    '<tr><td colspan="7" class="no-data">Loading…</td></tr>';
+
+  var authHeaders = { headers: { 'Authorization': 'Bearer ' + getToken() } };
+
+  Promise.all([
+    fetch('/api/emotion/history?hours=' + hours, authHeaders).then(function(r) { return r.json(); }),
+    fetch('/api/emotion/devices', authHeaders).then(function(r) { return r.json(); })
+  ]).then(function(results) {
+    var rows = results[0] || [];
+    var liveDevices = results[1] || [];
+    var liveIds = new Set(liveDevices.map(function(d) { return d.deviceId; }));
+
+    var hoursLabel = document.getElementById('hoursSelect').options[document.getElementById('hoursSelect').selectedIndex].text;
+    document.getElementById('statRange').textContent = hoursLabel;
+    document.getElementById('chartSubEmo').textContent = hoursLabel;
+    document.getElementById('chartSubPosture').textContent = hoursLabel;
+    document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+
+    document.getElementById('statLive').textContent = liveDevices.length;
+    document.getElementById('statLiveSub').textContent = liveDevices.length === 1 ? 'device reporting' : 'devices reporting';
+
+    if (!rows.length) {
+      document.getElementById('recordCount').textContent = 'No data found';
       document.getElementById('deviceTableBody').innerHTML =
-        '<tr><td colspan="7" class="no-data">Loading…</td></tr>';
-
-      Promise.all([
-        fetch('/api/emotion/history?hours=' + hours).then(function(r) { return r.json(); }),
-        fetch('/api/emotion/devices').then(function(r) { return r.json(); })
-      ]).then(function(results) {
-        var rows = results[0] || [];
-        var liveDevices = results[1] || [];
-        var liveIds = new Set(liveDevices.map(function(d) { return d.deviceId; }));
-
-        var hoursLabel = document.getElementById('hoursSelect').options[document.getElementById('hoursSelect').selectedIndex].text;
-        document.getElementById('statRange').textContent = hoursLabel;
-        document.getElementById('chartSubEmo').textContent = hoursLabel;
-        document.getElementById('chartSubPosture').textContent = hoursLabel;
-        document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
-
-        document.getElementById('statLive').textContent = liveDevices.length;
-        document.getElementById('statLiveSub').textContent = liveDevices.length === 1 ? 'device reporting' : 'devices reporting';
-
-        if (!rows.length) {
-          document.getElementById('recordCount').textContent = 'No data found';
-          document.getElementById('deviceTableBody').innerHTML =
-            '<tr><td colspan="7" class="no-data">No detection records found for this time range.</td></tr>';
-          resetStats();
-          [emoChart, postureChart].forEach(function(c) { if (c) c.destroy(); });
-          document.getElementById('insightRow').innerHTML =
-            '<div class="insight-card"><div class="insight-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div><div class="insight-title">No data yet</div><div class="insight-body">Insights will appear once devices report detections.</div></div></div>';
-          return;
-        }
-
-        document.getElementById('recordCount').textContent = rows.length + ' records';
-        renderStats(rows);
-        renderCharts(rows);
-        renderDeviceTable(rows, liveIds);
-        renderInsights(rows, liveIds);
-      }).catch(function(err) {
-        console.error('Analytics load failed:', err);
-        document.getElementById('recordCount').textContent = 'Error loading data';
-        document.getElementById('deviceTableBody').innerHTML =
-          '<tr><td colspan="7" class="no-data">Could not load data. Check server connection.</td></tr>';
-      });
+        '<tr><td colspan="7" class="no-data">No detection records found for this time range.</td></tr>';
+      resetStats();
+      [emoChart, postureChart].forEach(function(c) { if (c) c.destroy(); });
+      document.getElementById('insightRow').innerHTML =
+        '<div class="insight-card"><div class="insight-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div><div class="insight-title">No data yet</div><div class="insight-body">Insights will appear once devices report detections.</div></div></div>';
+      return;
     }
+
+    document.getElementById('recordCount').textContent = rows.length + ' records';
+    renderStats(rows);
+    renderCharts(rows);
+    renderDeviceTable(rows, liveIds);
+    renderInsights(rows, liveIds);
+  }).catch(function(err) {
+    console.error('Analytics load failed:', err);
+    document.getElementById('recordCount').textContent = 'Error loading data';
+    document.getElementById('deviceTableBody').innerHTML =
+      '<tr><td colspan="7" class="no-data">Could not load data. Check server connection.</td></tr>';
+  });
+}
 
     function resetStats() {
       ['statTotal','statTopEmotion','statTopEmotionPct','statAvgConf','statAvgPosture','statTopPosture','statAvgSpeed']

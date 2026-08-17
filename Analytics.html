@@ -935,7 +935,14 @@
   /* ── API ─────────────────────────────── */
   async function apiGet(url, ms = 6000) {
     const c = new AbortController(), t = setTimeout(() => c.abort(), ms);
-    try { const r = await fetch(url, { signal: c.signal }); clearTimeout(t); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }
+    try { 
+      const r = await fetch(url, { 
+        signal: c.signal, 
+        headers: { 'Authorization': 'Bearer ' + getToken() }
+       }); 
+      clearTimeout(t); 
+      if (!r.ok) throw new Error(`HTTP ${r.status}`); 
+      return r.json(); }
     catch (e) { clearTimeout(t); throw e; }
   }
 
@@ -1021,7 +1028,7 @@ async function fetchSensors(id) {
   /* ── LOAD ALL ───────────────────────── */
   async function loadAll() {
     try {
-      const gr = await fetch('/api/groups').then(r => r.json());
+      const gr = await fetch('/api/groups', { headers: { 'Authorization': 'Bearer ' + getToken() } }).then(r => r.json());
       if (Array.isArray(gr)) groupsData = gr;
     } catch (e) { console.warn('Could not fetch groupus: ', e.message); }
     allDevices = await fetchDeviceList();
@@ -1478,7 +1485,14 @@ Give concise, actionable advice. Reference specific device names. Use bullet poi
     if (!msg) return;
     inp.value=''; appendBubble('user',msg); aiConversation.push({role:'user',content:msg}); setAiLoading(true);
     try {
-      const res=await fetch(AI_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:AI_MODEL,max_tokens:1000,system:buildCtx(devicesData.length?devicesData:FALLBACK),messages:aiConversation.slice(-12)})});
+      const res=await fetch(AI_API,{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization': 'Bearer ' + getToken()
+        },
+        body:JSON.stringify({ model:AI_MODEL, max_tokens:1000, system: buildCtx(devicesData.length?devicesData:FALLBACK), messages: aiConversation.slice(-12)})
+      });
       if (!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||`HTTP ${res.status}`);}
       const data=await res.json(), reply=data.content?.find(b=>b.type==='text')?.text||'No response.';
       aiConversation.push({role:'assistant',content:reply}); setAiLoading(false); appendBubble('assistant',reply);

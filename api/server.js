@@ -6,6 +6,7 @@ const emailAlerts = require('./emailAlerts');
 const adaptiveThresholds = require('./adaptiveThresholds');
 const bcrypt = require('bcrypt');
 const multer = require('multer');
+const crypto = require('crypto');
 const upload = multer({ storage: multer.memoryStorage(), limits: { filesize: 5 * 1024 * 1024} });
 
 const app = express();
@@ -360,6 +361,55 @@ function saveUsers() {
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
 }
 
+// In-memory session store: token -> { userId, name, email, role, expiresAt }
+const sessions = new Map();
+const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 Hours
+
+function createSession(user) {
+    const token = crypto.randomBytes(32).toString('hex');
+    sessions.set(token, {
+        userId: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        expiresAt: Date.now() + SESSION_TTL_MS
+    });
+    return token;
+}
+
+function requireAuth(req, res, next) {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    const session = sessions.get(token);
+    if (!session) return res.status(401).json({ error: 'Invalid or expired session' });
+    if (Date.now() > session.expiresAt) {
+        sessions.delete(token);
+        return res.status(401).json({ error: 'Session expired' });
+    }
+
+    req.user = session;
+    next();
+}
+
+function requireAdmin(req, res, next) {
+    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+    if (req.user.role !== 'Administrator') {
+        return res.status(403).json({ error: 'Administrator access required' });
+    }
+    next();
+}
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [token, s] of sessions.entries()) {
+        if (now > s.expiresAt) sessions.delete(token);
+    }
+}, 60 * 1000);
+
+
+
 // HELPER: get group ID for a device
 function getDeviceGroup(deviceId) {
     for (const [gid, group] of Object.entries(GROUPS)) {
@@ -435,7 +485,7 @@ function calcAQI(pm25) {
 }
 
 // ── GET /api/devices ─────────────────────────────────────────
-app.get('/api/devices', (req, res) => {
+app.get('/api/devices', requireAuth, (req, res) => {
     const list = Object.entries(DEVICES).map(([id, d]) => ({
         id,
         label   : d.label,
@@ -445,12 +495,12 @@ app.get('/api/devices', (req, res) => {
 });
 
 // ── GET /api/ha/latest?device=sams_workstation ───────────────
-app.get('/api/ha/latest', async (req, res) => {
+app.get('/api/ha/latest', requireAuth, async (req, res) => {
     const deviceId = req.query.device || 'sams_workstation';
     const device   = DEVICES[deviceId];
 
     if (!device) {
-        return res.status(400).json({ error: `Unknown device: ${deviceId}` });
+        return res.status(400).json({ error: `Unkcn device: ${deviceId}` });
     }
 
     try {
@@ -506,7 +556,7 @@ app.get('/api/ha/latest', async (req, res) => {
 });
 
 // ── GET /api/ha/status?device=sams_workstation ───────────────
-app.get('/api/ha/status', async (req, res) => {
+app.get('/api/ha/status', requireAuth, async (req, res) => {
     const deviceId = req.query.device || 'sams_workstation';
     const device   = DEVICES[deviceId];
 
@@ -575,7 +625,7 @@ app.post('/api/emotion/ingest', upload.single('image'), (req, res) => {
 
 
 // with its latest result (no image payload, keeps this endpoint light)
-app.get('/api/emotion/history', async (req, res) => {
+app.get('/api/emotion/history', requireAuth, async (req, res) => {
     const hours  = parseInt(req.query.hours) || 24;
     const device = req.query.device;
     try {
@@ -601,7 +651,7 @@ app.get('/api/emotion/history', async (req, res) => {
 
 // GET /api/emotion/devices/known — distinct device IDs seen in the last 30 days,
 // used to populate the history page's device filter (includes offline devices)
-app.get('/api/emotion/devices/known', async (req, res) => {
+app.get('/api/emotion/devices/known', requireAuth, async (req, res) => {
     try {
         const query = `
             SELECT DISTINCT device_id
@@ -619,13 +669,13 @@ app.get('/api/emotion/devices/known', async (req, res) => {
 });
 
 // GET /api/emotion/latest?device=pi4_emotion_cam_1
-app.get('/api/emotion/latest', (req, res) => {
+app.get('/api/emotion/latest', requireAuth, (req, res) => {
     const entry = emotionDevices.get(req.query.device);
     res.json(entry ? entry.latest : { emotion: null });
 });
 
 // GET /api/emotion/devices - list every device that has ever pushed
-app.get('/api/emotion/devices', (req, res) => {
+app.get('/api/emotion/devices', requireAuth, (req, res) => {
     const list = Array.from(emotionDevices.entries()).map(([id, entry]) => ({
         deviceId: id,
         ...entry.latest
@@ -634,7 +684,7 @@ app.get('/api/emotion/devices', (req, res) => {
 });
 
 // GET /api/emotion/image?device=pi4_emotion_cam_1
-app.get('/api/emotion/image', (req, res) => {
+app.get('/api/emotion/image', requireAuth, (req, res) => {
     const entry = emotionDevices.get(req.query.device);
     if (!entry || !entry.image) return res.status(404).json({ error: 'No image yet' });
     res.set('Content-Type', 'image/jpeg');
@@ -643,7 +693,7 @@ app.get('/api/emotion/image', (req, res) => {
 });
 
 // ── InfluxDB endpoints ───────────────────────────────────────
-app.get('/api/latest', async (req, res) => {
+app.get('/api/latest', requireAuth, async (req, res) => {
     try {
         const query = `
         SELECT temperature, humidity, aqi, co2, voc, location, time
@@ -662,7 +712,7 @@ app.get('/api/latest', async (req, res) => {
     }
 });
 
-app.get('/api/history', async (req, res) => {
+app.get('/api/history', requireAuth, async (req, res) => {
     try {
         const deviceId = req.query.device || 'sams_workstation';
         const hours    = parseInt(req.query.hours) || 24;
@@ -683,33 +733,12 @@ app.get('/api/history', async (req, res) => {
     }
 });
 
-// GET /api/emotion/history?hours=24
-app.get('/api/emotion/history', async (req, res) => {
-    const hours = parseInt(req.query.hours) || 24;
-    try {
-        const query = `
-            SELECT time, device_id, emotion, confidence, model_version,
-                   inference_speed_ms, posture_score, posture_label
-            FROM emotion_events
-            WHERE time >= now() - INTERVAL '${hours} hours'
-            ORDER BY time DESC
-        `;
-        const rows = [];
-        const result = await client.query(query, INFLUX_DB);
-        for await (const row of result) { rows.push(row); }
-        res.json(rows);
-    } catch (err) {
-        console.error('[Emotion] History query failed:', err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
-
 // GET /api/thresholds/suggested?groupId=lab&days=14
 // Computes statistical baseline thresholds for a group, pooling all its
 // devices' history together. Returns current thresholds alongside the
 // suggested ones so the UI can show them side by side. Suggestion-only
 // does not modify groupThresholds.json
-app.get('/api/thresholds/suggested', async (req, res) => {
+app.get('/api/thresholds/suggested', requireAuth, async (req, res) => {
     const groupId = req.query.groupId;
     const days = Math.min(parseInt(req.query.days) || 14, 30);
     const group = GROUPS[groupId];
@@ -764,8 +793,9 @@ app.post('/api/login', async (req, res) => {
         user.lastLogin = new Date().toLocaleString('en-MY');
         saveUsers();
 
+        const token = createSession(user);
         res.json({
-            token: 'emosys-session-token',
+            token,
             user : { id: user.id, name: user.name, role: user.role, email: user.email }
         });
     } catch (e) {
@@ -774,8 +804,14 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+app.post('/api/logout', requireAuth, (req, res) => {
+    const token = req.headers.authorization.slice(7);
+    sessions.delete(token);
+    res.json({ ok: true });
+});
+
 // // ── POST /api/ai/chat ─────────────────────────────────────────
-app.post('/api/ai/chat', async (req, res) => {
+app.post('/api/ai/chat', requireAuth, async (req, res) => {
     const { messages, system } = req.body;
 
     const geminiMessages = messages.map(m => ({
@@ -856,7 +892,7 @@ app.post('/api/ai/chat', async (req, res) => {
     }
 });
 
-app.get('/api/alerts/active', async (req, res) => {
+app.get('/api/alerts/active', requireAuth, async (req, res) => {
     try {
         const query = `
             SELECT time, device_id, device_name, sensor, severity,
@@ -901,7 +937,7 @@ app.get('/api/alerts/active', async (req, res) => {
     }
 });
 
-app.get('/api/alerts/history', async (req, res) => {
+app.get('/api/alerts/history', requireAuth, async (req, res) => {
     const hours = parseInt(req.query.hours) || 72;
     try {
         const query = `
@@ -941,11 +977,11 @@ app.get('/api/alerts/history', async (req, res) => {
     }
 });
 
-app.get('/api/alerts/config', (req, res) => {
+app.get('/api/alerts/config', requireAuth, (req, res) => {
     res.json(emailAlerts.getConfig());
 });
 
-app.post('/api/alerts/config', (req, res) => {
+app.post('/api/alerts/config', requireAuth, requireAdmin, (req, res) => {
     try {
         emailAlerts.updateConfig(req.body);
         res.json({ ok: true, message: 'Config updated' });
@@ -954,7 +990,7 @@ app.post('/api/alerts/config', (req, res) => {
     }
 });
 
-app.post('/api/alerts/thresholds', (req, res) => {
+app.post('/api/alerts/thresholds', requireAuth, requireAdmin, (req, res) => {
     try {
         emailAlerts.updateThresholds(req.body);
         res.json({ ok: true, message: 'Thresholds updated' });
@@ -963,7 +999,7 @@ app.post('/api/alerts/thresholds', (req, res) => {
     }
 });
 
-app.post('/api/alerts/test', async (req, res) => {
+app.post('/api/alerts/test', requireAuth, requireAdmin, async (req, res) => {
     try{
         const to = req.body.to;
         if (!to || !to.length) return res.status(400).json({ error: 'No recipient provided' });
@@ -977,7 +1013,7 @@ app.post('/api/alerts/test', async (req, res) => {
 // ── GET /api/groups ──────────────────────────────────────────
 // Returns all group definitions with their current thresholds.
 // Used by Analytics, Alerts, and Dashboard pages.
-app.get('/api/groups', (req, res) => {
+app.get('/api/groups', requireAuth, (req, res) => {
   const result = Object.entries(GROUPS).map(([id, g]) => ({
     id,
     label       : g.label,
@@ -990,7 +1026,7 @@ app.get('/api/groups', (req, res) => {
 
 // ── GET /api/groups/:id ──────────────────────────────────────
 // Returns a single group with thresholds.
-app.get('/api/groups/:id', (req, res) => {
+app.get('/api/groups/:id', requireAuth, (req, res) => {
   const gid = req.params.id;
   const g   = GROUPS[gid];
   if (!g) return res.status(404).json({ error: `Unknown group: ${gid}` });
@@ -1007,7 +1043,7 @@ app.get('/api/groups/:id', (req, res) => {
 // Saves updated thresholds for one or more groups.
 // Body: { workstations: { temp: { warn: 28, danger: 35 }, ... }, ... }
 // Persists to groupThresholds.json so changes survive restarts.
-app.post('/api/groups/thresholds', (req, res) => {
+app.post('/api/groups/thresholds', requireAuth, requireAdmin, (req, res) => {
   try {
     const updates = req.body;
     if (!updates || typeof updates !== 'object') {
@@ -1036,13 +1072,13 @@ app.post('/api/groups/thresholds', (req, res) => {
 // ── GET /api/groups/thresholds/defaults ─────────────────────
 // Returns the factory default thresholds for all groups.
 // Used by the Alerts UI reset button.
-app.get('/api/groups/thresholds/defaults', (req, res) => {
+app.get('/api/groups/thresholds/defaults', requireAuth, (req, res) => {
   res.json(DEFAULT_GROUP_THRESHOLDS);
 });
 
  //GET api/users
  //Returns the full list of registered users.
-app.get('/api/users', (req, res) => {
+app.get('/api/users', requireAuth, (req, res) => {
     const safeUsers = users.map(({ password, ...rest }) => rest);
     res.json(safeUsers);
 });
@@ -1051,7 +1087,7 @@ app.get('/api/users', (req, res) => {
 // Aggregates history + alerts for one group over a period
 // Used by Reports.html to build a pdf summary
 
-app.get('/api/reports/group', async (req, res) => {
+app.get('/api/reports/group', requireAuth, async (req, res) => {
     const groupId = req.query.groupId;
     const hours   = Math.min(parseInt(req.query.hours) || 24, 48);
     const group   = GROUPS[groupId];
@@ -1135,7 +1171,7 @@ app.get('/api/reports/group', async (req, res) => {
 
 // POST /api/users
 // Adds a new user. Body: { name, email, dept, role }
-app.post('/api/users', async (req, res) => {
+app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {
     try {
         const { name, email, dept, role, password } = req.body;
         if (!name || !email || !password) {
@@ -1177,19 +1213,58 @@ app.post('/api/users', async (req, res) => {
 });
 
 // PATCH /api/users/:id
-// Update a user's status or role. Body: { status } or { role }
-app.patch('/api/users/:id', (req, res) => {
+// Update a user's profile and also optionally resets their password
+// Block demoting/deactivating the last Administrator
+
+app.patch('/api/users/:id', requireAuth, requireAdmin, async (req, res) => {
     try {
         const id = parseInt(req.params.id);
         const user = users.find(u => u.id == id);
         if (!user) return res.status(404).json({ error: 'User not found' });
 
-        const { status, role } = req.body;
+        const { name, email, dept, role, status, password } = req.body;
+
+        /* Block removing Administrator role from the last admin */
+        if (role !== undefined && role !== 'Administrator' && user.role === 'Administrator') {
+            const adminCount = users.filter(u => u.role === 'Administrator').length;
+            if (adminCount === 1) {
+                return res.status(400).json({ error: 'Cannot change role — this is the last Administrator' });
+            }
+        }
+
+        /* Block deactivating the last active Administrator */
+        if (status !== undefined && status !== 'active' && user.role === 'Administrator') {
+            const activeAdminCount = users.filter(u => u.role === 'Administrator' && u.status === 'active').length;
+            if (activeAdminCount === 1) {
+                return res.status(400).json({ error: 'Cannot deactivate — this is the last active Administrator' });
+            }
+        }
+
+        /* Email uniqueness check, excluding self */
+        if (email !== undefined && email.trim() && email.toLowerCase() !== user.email.toLowerCase()) {
+            const exists = users.find(u => u.id !== id && u.email.toLowerCase() === email.toLowerCase());
+            if (exists) return res.status(400).json({ error: 'A user with this email already exists' });
+            user.email = email.trim();
+        }
+
+        if (name !== undefined && name.trim()) {
+            user.name = name.trim();
+            user.avatar = name.trim()[0].toUpperCase();
+        }
+        if (dept   !== undefined) user.dept   = dept;
+        if (role   !== undefined) user.role   = role;
         if (status !== undefined) user.status = status;
-        if (role !== undefined) user.role = role;
+
+        if (password) {
+            if (password.length < 6) {
+                return res.status(400).json({ error: 'Password must be at least 6 characters' });
+            }
+            user.password = await bcrypt.hash(password, 10);
+        }
 
         saveUsers();
-        res.json({ ok: true, user});
+        const { password: _, ...safeUser } = user;
+        res.json({ ok: true, user: safeUser });
     } catch (e) {
         console.error('[EMOSys] Failed to update user:', e.message);
         res.status(500).json({ error: e.message });
@@ -1198,7 +1273,7 @@ app.patch('/api/users/:id', (req, res) => {
 
 // DELETE /api/users/:id
 // Removes a user. Blocks removal of the last Administrator
-app.delete('/api/users/:id', (req, res) => {
+app.delete('/api/users/:id', requireAuth, requireAdmin, (req, res) => {
     try {
         const id = parseInt(req.params.id);
         const user = users.find(u => u.id === id);

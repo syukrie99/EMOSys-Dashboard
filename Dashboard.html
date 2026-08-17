@@ -606,7 +606,7 @@
     async function fetchAllDevices(deviceList) {
       var results = await Promise.allSettled(
         deviceList.map(function(dev) {
-          return fetch('/api/ha/latest?device=' + dev.id, { signal: AbortSignal.timeout(5000) })
+          return fetch('/api/ha/latest?device=' + dev.id, { signal: AbortSignal.timeout(5000), headers: { 'Authorization': 'Bearer ' + getToken() } })
             .then(function(r) { return r.ok ? r.json() : null; })
             .catch(function() { return null; });
         })
@@ -690,8 +690,8 @@
       try {
         /* Fetch groups and device list in parallel */
         var results = await Promise.allSettled([
-          fetch('/api/groups').then(function(r) { return r.json(); }),
-          fetch('/api/devices').then(function(r) { return r.json(); })
+          fetch('/api/groups', { headers: { 'Authorization': 'Bearer ' + getToken() } }).then(function(r) { return r.json(); }),
+          fetch('/api/devices', { headers: { 'Authorization': 'Bearer ' + getToken() } }).then(function(r) { return r.json(); })
         ]);
 
         var groups  = results[0].status === 'fulfilled' ? results[0].value : [];

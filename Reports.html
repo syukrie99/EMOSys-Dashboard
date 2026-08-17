@@ -360,7 +360,7 @@
   /* LOAD GROUPS INTO SELECTOR */
   async function loadGroups() {
     try {
-      const groups = await fetch('/api/groups').then(r => r.json());
+      const groups = await fetch('/api/groups', { headers: { 'Authorization': 'Bearer ' + getToken() } }).then(r => r.json());
       const sel = document.getElementById('reportGroup');
       sel.innerHTML = groups.map(g =>
         `<option value="${g.id}">${g.label}</option>`
@@ -382,8 +382,9 @@
     document.getElementById('reportPreview').classList.remove('visible');
 
     try {
-      const data = await fetch(`/api/reports/group?groupId=${groupId}&hours=${hours}`)
-        .then(r => r.json());
+      const data = await fetch(`/api/reports/group?groupId=${groupId}&hours=${hours}`, {
+         headers: { 'Authorization': 'Bearer ' + getToken() }
+      }).then(r => r.json());
 
       if (data.error) throw new Error(data.error);
       reportData = data;

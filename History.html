@@ -476,7 +476,7 @@
     var tickColor  = function() { return isDark() ? '#6b7a8d' : '#9ca3af'; };
 
     /* Load device list */
-    fetch('/api/devices')
+    fetch('/api/devices', { headers: { 'Authorization': 'Bearer ' + getToken() } })
       .then(function(r) { return r.json(); })
       .then(function(list) {
         var sel = document.getElementById('deviceSelect');
@@ -500,7 +500,7 @@
       document.getElementById('dataTableBody').innerHTML =
         '<tr><td colspan="7"><div class="spinner-wrap"><div class="spinner"></div><div class="spinner-text">Fetching sensor data…</div></div></td></tr>';
 
-      fetch('/api/history?device=' + deviceId + '&hours=' + hours)
+      fetch('/api/history?device=' + deviceId + '&hours=' + hours, { headers: { 'Authorization': 'Bearer ' + getToken() } } )
         .then(function(r) { return r.json(); })
         .then(function(rows) {
           if (!rows.length) {
