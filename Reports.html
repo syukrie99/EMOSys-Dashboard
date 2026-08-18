@@ -9,6 +9,32 @@
   <link rel="stylesheet" href="assets/css/main.css"/>
   <link rel="stylesheet" href="assets/css/dashboard.css"/>
   <style>
+    .report-type-row {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 18px;
+    }
+    .report-type-label {
+      font-size: 0.78rem; font-weight: 600; color: #64748b;
+      text-transform: uppercase; letter-spacing: 0.07em;
+    }
+    .report-type-tabs {
+      display: inline-flex; gap: 3px;
+      background: #f1f5f9; border: 1px solid #e2e8f0;
+      border-radius: 8px; padding: 3px;
+    }
+    .report-type-tab {
+      padding: 6px 20px; border-radius: 6px;
+      font-size: 0.8rem; font-weight: 600;
+      color: #64748b; cursor: pointer;
+      transition: all 0.18s; border: none;
+      background: transparent; font-family: 'Barlow', sans-serif;
+    }
+    .report-type-tab.active {
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      color: #fff;
+    }
+    .report-type-tab:hover:not(.active) { color: #1e293b; }
+
     .report-config-card {
       background: #fff; border: 1px solid #e2e8f0;
       border-radius: 14px; overflow: hidden; margin-bottom: 26px;
@@ -129,6 +155,15 @@
     .rp-val.warn   { color: #d97706; }
     .rp-val.danger { color: #dc2626; }
 
+    /* DEVICE META ROW */
+    .rp-meta-row {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 12px 16px; margin-bottom: 20px;
+      display: flex; gap: 24px; flex-wrap: wrap;
+    }
+    .rp-meta-item .rp-meta-lbl { font-size: 0.65rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; }
+    .rp-meta-item .rp-meta-val { font-weight: 700; color: #1e293b; }
+
     /* ALERT SUMMARY */
     .rp-alert-row {
       display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
@@ -165,7 +200,7 @@
 <body class="light">
 
   <!-- SIDEBAR -->
-  <aside class="sidebar">
+ <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="logo-wrap">
         <img src="assets/images/smd-logo.jpg" alt="SMD Semiconductor"
@@ -260,7 +295,16 @@
     <div class="page">
       <div class="page-title-bar">
         <h1><span>Environmental Reports</span>Generate PDF Summary</h1>
-        <div class="last-updated" id="lastUpdated">Select a group and time range to begin</div>
+        <div class="last-updated" id="lastUpdated">Select a group or device and time range to begin</div>
+      </div>
+
+      <!-- REPORT TYPE TOGGLE -->
+      <div class="report-type-row">
+        <span class="report-type-label">Report Scope:</span>
+        <div class="report-type-tabs">
+          <button class="report-type-tab active" id="tabGroup" onclick="setReportType('group')">By Group</button>
+          <button class="report-type-tab" id="tabDevice" onclick="setReportType('device')">By Device</button>
+        </div>
       </div>
 
       <!-- CONFIG CARD -->
@@ -270,16 +314,22 @@
             <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           </div>
           <div>
-            <div class="report-config-title">Report Configuration</div>
-            <div class="report-config-sub">Choose a group and time range · max 48 hours</div>
+            <div class="report-config-title" id="configTitle">Report Configuration</div>
+            <div class="report-config-sub" id="configSub">Choose a group and time range · max 48 hours</div>
           </div>
         </div>
         <div class="report-config-body">
           <div class="report-config-grid">
-            <div class="report-field">
+            <div class="report-field" id="groupFieldWrap">
               <label>Room Group</label>
               <select class="report-select" id="reportGroup">
                 <option value="">Loading groups…</option>
+              </select>
+            </div>
+            <div class="report-field" id="deviceFieldWrap" style="display:none">
+              <label>Device</label>
+              <select class="report-select" id="reportDevice">
+                <option value="">Loading devices…</option>
               </select>
             </div>
             <div class="report-field">
@@ -338,6 +388,10 @@
     document.getElementById('userAvatar').textContent  = (currentUser.name || 'A')[0].toUpperCase();
   }
 
+  function authHeaders(extra) {
+    return Object.assign({ 'Authorization': 'Bearer ' + getToken() }, extra || {});
+  }
+
   /* DATES */
   const ds = new Date().toLocaleDateString('en-MY', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
   document.getElementById('currentDate').textContent = ds;
@@ -345,6 +399,7 @@
 
   /* STATE */
   let reportData = null;
+  let reportType = 'group'; /* 'group' | 'device' */
 
   /* FORMAT HELPERS */
   const fmt    = (v, d=1) => (v == null || isNaN(v)) ? '—' : Number(v).toFixed(d);
@@ -357,10 +412,31 @@
     return 'good';
   }
 
+  /* REPORT TYPE TOGGLE */
+  function setReportType(type) {
+    reportType = type;
+    document.getElementById('tabGroup').classList.toggle('active', type === 'group');
+    document.getElementById('tabDevice').classList.toggle('active', type === 'device');
+    document.getElementById('groupFieldWrap').style.display  = type === 'group'  ? '' : 'none';
+    document.getElementById('deviceFieldWrap').style.display = type === 'device' ? '' : 'none';
+
+    if (type === 'group') {
+      document.getElementById('configTitle').textContent = 'Report Configuration';
+      document.getElementById('configSub').textContent   = 'Choose a group and time range · max 48 hours';
+    } else {
+      document.getElementById('configTitle').textContent = 'Report Configuration';
+      document.getElementById('configSub').textContent   = 'Choose a single device and time range · max 48 hours';
+    }
+
+    /* Reset preview when switching modes so stale data isn't shown */
+    reportData = null;
+    document.getElementById('reportPreview').classList.remove('visible');
+  }
+
   /* LOAD GROUPS INTO SELECTOR */
   async function loadGroups() {
     try {
-      const groups = await fetch('/api/groups', { headers: { 'Authorization': 'Bearer ' + getToken() } }).then(r => r.json());
+      const groups = await fetch('/api/groups', { headers: authHeaders() }).then(r => r.json());
       const sel = document.getElementById('reportGroup');
       sel.innerHTML = groups.map(g =>
         `<option value="${g.id}">${g.label}</option>`
@@ -370,25 +446,45 @@
     }
   }
 
+  /* LOAD DEVICES INTO SELECTOR */
+  async function loadDevices() {
+    try {
+      const devices = await fetch('/api/devices', { headers: authHeaders() }).then(r => r.json());
+      const sel = document.getElementById('reportDevice');
+      sel.innerHTML = devices.map(d =>
+        `<option value="${d.id}">${d.label}</option>`
+      ).join('');
+    } catch (e) {
+      console.error('Could not load devices:', e.message);
+    }
+  }
+
   /* GENERATE REPORT */
   async function generateReport() {
-    const groupId = document.getElementById('reportGroup').value;
-    const hours   = document.getElementById('reportHours').value;
-    if (!groupId) { alert('Please select a group.'); return; }
+    const hours = document.getElementById('reportHours').value;
 
-    /* Show loading */
+    let url, missingMsg;
+    if (reportType === 'group') {
+      const groupId = document.getElementById('reportGroup').value;
+      if (!groupId) { alert('Please select a group.'); return; }
+      url = `/api/reports/group?groupId=${groupId}&hours=${hours}`;
+    } else {
+      const deviceId = document.getElementById('reportDevice').value;
+      if (!deviceId) { alert('Please select a device.'); return; }
+      url = `/api/reports/device?deviceId=${deviceId}&hours=${hours}`;
+    }
+
     document.getElementById('generateBtn').disabled = true;
     document.getElementById('reportLoading').classList.add('visible');
     document.getElementById('reportPreview').classList.remove('visible');
 
     try {
-      const data = await fetch(`/api/reports/group?groupId=${groupId}&hours=${hours}`, {
-         headers: { 'Authorization': 'Bearer ' + getToken() }
-      }).then(r => r.json());
-
+      const data = await fetch(url, { headers: authHeaders() }).then(r => r.json());
       if (data.error) throw new Error(data.error);
+      data._type = reportType;
       reportData = data;
-      renderPreview(data);
+      if (reportType === 'group') renderGroupPreview(data);
+      else renderDevicePreview(data);
     } catch (e) {
       alert('Failed to generate report: ' + e.message);
     } finally {
@@ -397,15 +493,14 @@
     }
   }
 
-  /* RENDER PREVIEW */
-  function renderPreview(data) {
+  /* RENDER GROUP PREVIEW (unchanged behaviour from before) */
+  function renderGroupPreview(data) {
     const thr = data.threshold || {};
     const hoursLabel = document.getElementById('reportHours').options[document.getElementById('reportHours').selectedIndex].text;
 
     document.getElementById('previewTitle').textContent =
       data.groupLabel + ' — ' + hoursLabel + ' Report';
 
-    /* Fleet averages across all devices in group */
     const avg = key => {
       const vals = data.devices.map(d => d[key]?.avg).filter(v => v != null);
       return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
@@ -415,16 +510,14 @@
 
     document.getElementById('reportPreviewBody').innerHTML = `
 
-      <!-- REPORT HEADER INFO -->
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:20px;display:flex;gap:24px;flex-wrap:wrap">
-        <div><div style="font-size:0.65rem;font-weight:700;color:#94a3b8;text-transform:uppercase">Group</div><div style="font-weight:700;color:#1e293b">${data.groupLabel}</div></div>
-        <div><div style="font-size:0.65rem;font-weight:700;color:#94a3b8;text-transform:uppercase">Period</div><div style="font-weight:700;color:#1e293b">${hoursLabel}</div></div>
-        <div><div style="font-size:0.65rem;font-weight:700;color:#94a3b8;text-transform:uppercase">Devices</div><div style="font-weight:700;color:#1e293b">${data.devices.length}</div></div>
-        <div><div style="font-size:0.65rem;font-weight:700;color:#94a3b8;text-transform:uppercase">Data Points</div><div style="font-weight:700;color:#1e293b">${totalRecords.toLocaleString()}</div></div>
-        <div><div style="font-size:0.65rem;font-weight:700;color:#94a3b8;text-transform:uppercase">Generated</div><div style="font-weight:700;color:#1e293b">${new Date().toLocaleString('en-MY')}</div></div>
+      <div class="rp-meta-row">
+        <div class="rp-meta-item"><div class="rp-meta-lbl">Group</div><div class="rp-meta-val">${data.groupLabel}</div></div>
+        <div class="rp-meta-item"><div class="rp-meta-lbl">Period</div><div class="rp-meta-val">${hoursLabel}</div></div>
+        <div class="rp-meta-item"><div class="rp-meta-lbl">Devices</div><div class="rp-meta-val">${data.devices.length}</div></div>
+        <div class="rp-meta-item"><div class="rp-meta-lbl">Data Points</div><div class="rp-meta-val">${totalRecords.toLocaleString()}</div></div>
+        <div class="rp-meta-item"><div class="rp-meta-lbl">Generated</div><div class="rp-meta-val">${new Date().toLocaleString('en-MY')}</div></div>
       </div>
 
-      <!-- ALERT SUMMARY -->
       <div class="rp-section-title">Alert Summary</div>
       <div class="rp-alert-row">
         <div class="rp-alert-box critical">
@@ -441,56 +534,34 @@
         </div>
       </div>
 
-      <!-- GROUP AVERAGES -->
       <div class="rp-section-title">Group Averages — ${hoursLabel}</div>
       <div class="rp-stat-grid">
         <div class="rp-stat-box s-temp">
           <div class="rp-stat-label">Temperature (°C)</div>
-          <div class="rp-stat-vals">
-            <div class="rp-stat-item"><div class="sv-lbl">Avg</div><div class="sv-val">${fmt(avg('temp'))}</div></div>
-          </div>
+          <div class="rp-stat-vals"><div class="rp-stat-item"><div class="sv-lbl">Avg</div><div class="sv-val">${fmt(avg('temp'))}</div></div></div>
         </div>
         <div class="rp-stat-box s-hum">
           <div class="rp-stat-label">Humidity (%RH)</div>
-          <div class="rp-stat-vals">
-            <div class="rp-stat-item"><div class="sv-lbl">Avg</div><div class="sv-val">${fmt(avg('hum'))}</div></div>
-          </div>
+          <div class="rp-stat-vals"><div class="rp-stat-item"><div class="sv-lbl">Avg</div><div class="sv-val">${fmt(avg('hum'))}</div></div></div>
         </div>
         <div class="rp-stat-box s-pm25">
           <div class="rp-stat-label">PM2.5</div>
-          <div class="rp-stat-vals">
-            <div class="rp-stat-item"><div class="sv-lbl">Avg</div><div class="sv-val">${fmt(avg('pm25'))}</div></div>
-          </div>
+          <div class="rp-stat-vals"><div class="rp-stat-item"><div class="sv-lbl">Avg</div><div class="sv-val">${fmt(avg('pm25'))}</div></div></div>
         </div>
         <div class="rp-stat-box s-co2">
           <div class="rp-stat-label">CO₂ (ppm)</div>
-          <div class="rp-stat-vals">
-            <div class="rp-stat-item"><div class="sv-lbl">Avg</div><div class="sv-val">${fmtInt(avg('co2'))}</div></div>
-          </div>
+          <div class="rp-stat-vals"><div class="rp-stat-item"><div class="sv-lbl">Avg</div><div class="sv-val">${fmtInt(avg('co2'))}</div></div></div>
         </div>
         <div class="rp-stat-box s-voc">
           <div class="rp-stat-label">VOC (ppb)</div>
-          <div class="rp-stat-vals">
-            <div class="rp-stat-item"><div class="sv-lbl">Avg</div><div class="sv-val">${fmtInt(avg('voc'))}</div></div>
-          </div>
+          <div class="rp-stat-vals"><div class="rp-stat-item"><div class="sv-lbl">Avg</div><div class="sv-val">${fmtInt(avg('voc'))}</div></div></div>
         </div>
       </div>
 
-      <!-- PER DEVICE BREAKDOWN -->
       <div class="rp-section-title">Per Device Breakdown</div>
       <div style="overflow-x:auto">
         <table class="rp-table">
-          <thead>
-            <tr>
-              <th>Device</th>
-              <th>Records</th>
-              <th>Avg Temp (°C)</th>
-              <th>Avg Hum (%)</th>
-              <th>Avg PM2.5</th>
-              <th>Avg CO2 (ppm)</th>
-              <th>Avg VOC (ppb)</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Device</th><th>Records</th><th>Avg Temp (°C)</th><th>Avg Hum (%)</th><th>Avg PM2.5</th><th>Avg CO2 (ppm)</th><th>Avg VOC (ppb)</th></tr></thead>
           <tbody>
             ${data.devices.map(d => {
               const st = s => valStatus(s, d[s]?.avg, thr);
@@ -508,19 +579,10 @@
         </table>
       </div>
 
-      <!-- MIN MAX TABLE -->
       <div class="rp-section-title">Min / Max Range per Device</div>
       <div style="overflow-x:auto">
         <table class="rp-table">
-          <thead>
-            <tr>
-              <th>Device</th>
-              <th>Temp Min</th><th>Temp Max</th>
-              <th>Hum Min</th><th>Hum Max</th>
-              <th>CO2 Min</th><th>CO2 Max</th>
-              <th>VOC Min</th><th>VOC Max</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Device</th><th>Temp Min</th><th>Temp Max</th><th>Hum Min</th><th>Hum Max</th><th>CO2 Min</th><th>CO2 Max</th><th>VOC Min</th><th>VOC Max</th></tr></thead>
           <tbody>
             ${data.devices.map(d => `<tr>
               <td style="font-weight:600;color:#1e293b">${d.label}</td>
@@ -533,13 +595,10 @@
         </table>
       </div>
 
-      <!-- THRESHOLDS REFERENCE -->
       <div class="rp-section-title">Group Threshold Reference</div>
       <div style="overflow-x:auto">
         <table class="rp-table">
-          <thead>
-            <tr><th>Sensor</th><th>Warning Level</th><th>Critical Level</th></tr>
-          </thead>
+          <thead><tr><th>Sensor</th><th>Warning Level</th><th>Critical Level</th></tr></thead>
           <tbody>
             ${Object.entries(thr).map(([k, v]) => `<tr>
               <td style="font-weight:600;color:#1e293b;text-transform:uppercase">${k}</td>
@@ -555,61 +614,202 @@
     document.getElementById('lastUpdated').textContent = 'Report generated: ' + new Date().toLocaleTimeString();
   }
 
-  /* DOWNLOAD PDF */
+  /* RENDER DEVICE PREVIEW — single-device shape, no per-device breakdown table needed */
+  function renderDevicePreview(data) {
+    const thr = data.threshold || {};
+    const hasThr = Object.keys(thr).length > 0;
+    const hoursLabel = document.getElementById('reportHours').options[document.getElementById('reportHours').selectedIndex].text;
+
+    document.getElementById('previewTitle').textContent =
+      data.deviceLabel + ' — ' + hoursLabel + ' Report';
+
+    const sensors = [
+      { key: 'temp', label: 'Temperature (°C)', cls: 's-temp' },
+      { key: 'hum',  label: 'Humidity (%RH)',   cls: 's-hum'  },
+      { key: 'pm25', label: 'PM2.5',            cls: 's-pm25' },
+      { key: 'co2',  label: 'CO₂ (ppm)',        cls: 's-co2'  },
+      { key: 'voc',  label: 'VOC (ppb)',        cls: 's-voc'  }
+    ];
+
+    document.getElementById('reportPreviewBody').innerHTML = `
+
+      <div class="rp-meta-row">
+        <div class="rp-meta-item"><div class="rp-meta-lbl">Device</div><div class="rp-meta-val">${data.deviceLabel}</div></div>
+        <div class="rp-meta-item"><div class="rp-meta-lbl">Location</div><div class="rp-meta-val">${data.location}</div></div>
+        <div class="rp-meta-item"><div class="rp-meta-lbl">Group</div><div class="rp-meta-val">${data.groupLabel || '—'}</div></div>
+        <div class="rp-meta-item"><div class="rp-meta-lbl">Period</div><div class="rp-meta-val">${hoursLabel}</div></div>
+        <div class="rp-meta-item"><div class="rp-meta-lbl">Data Points</div><div class="rp-meta-val">${data.recordCount.toLocaleString()}</div></div>
+        <div class="rp-meta-item"><div class="rp-meta-lbl">Generated</div><div class="rp-meta-val">${new Date().toLocaleString('en-MY')}</div></div>
+      </div>
+
+      <div class="rp-section-title">Alert Summary</div>
+      <div class="rp-alert-row">
+        <div class="rp-alert-box critical">
+          <div class="rp-alert-num critical">${data.alertCounts.critical}</div>
+          <div class="rp-alert-lbl">Critical Alerts</div>
+        </div>
+        <div class="rp-alert-box warning">
+          <div class="rp-alert-num warning">${data.alertCounts.warning}</div>
+          <div class="rp-alert-lbl">Warnings</div>
+        </div>
+        <div class="rp-alert-box ok">
+          <div class="rp-alert-num ok">${data.alertCounts.critical === 0 && data.alertCounts.warning === 0 ? '✓' : '!'}</div>
+          <div class="rp-alert-lbl">${data.alertCounts.critical === 0 && data.alertCounts.warning === 0 ? 'All Clear' : 'Action Needed'}</div>
+        </div>
+      </div>
+
+      <div class="rp-section-title">Sensor Averages — ${hoursLabel}</div>
+      <div class="rp-stat-grid">
+        ${sensors.map(s => `
+          <div class="rp-stat-box ${s.cls}">
+            <div class="rp-stat-label">${s.label}</div>
+            <div class="rp-stat-vals"><div class="rp-stat-item"><div class="sv-lbl">Avg</div><div class="sv-val">${s.key === 'co2' || s.key === 'voc' ? fmtInt(data[s.key]?.avg) : fmt(data[s.key]?.avg)}</div></div></div>
+          </div>`).join('')}
+      </div>
+
+      <div class="rp-section-title">Min / Max Range</div>
+      <div style="overflow-x:auto">
+        <table class="rp-table">
+          <thead><tr><th>Sensor</th><th>Min</th><th>Avg</th><th>Max</th></tr></thead>
+          <tbody>
+            ${sensors.map(s => {
+              const d = data[s.key] || {};
+              const isInt = s.key === 'co2' || s.key === 'voc';
+              const f = isInt ? fmtInt : fmt;
+              const st = valStatus(s.key, d.avg, thr);
+              return `<tr>
+                <td style="font-weight:600;color:#1e293b">${s.label}</td>
+                <td>${f(d.min)}</td>
+                <td><span class="rp-val ${st}">${f(d.avg)}</span></td>
+                <td>${f(d.max)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      ${hasThr ? `
+      <div class="rp-section-title">Group Threshold Reference — ${data.groupLabel}</div>
+      <div style="overflow-x:auto">
+        <table class="rp-table">
+          <thead><tr><th>Sensor</th><th>Warning Level</th><th>Critical Level</th></tr></thead>
+          <tbody>
+            ${Object.entries(thr).map(([k, v]) => `<tr>
+              <td style="font-weight:600;color:#1e293b;text-transform:uppercase">${k}</td>
+              <td style="color:#d97706">≥ ${v.warn}</td>
+              <td style="color:#dc2626">≥ ${v.danger}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>` : `
+      <div class="rp-section-title">Threshold Reference</div>
+      <div style="padding:14px;color:#94a3b8;font-size:0.82rem">This device isn't assigned to a room group, so no thresholds apply.</div>
+      `}
+    `;
+
+    document.getElementById('reportPreview').classList.add('visible');
+    document.getElementById('lastUpdated').textContent = 'Report generated: ' + new Date().toLocaleTimeString();
+  }
+
+  /* DOWNLOAD PDF — branches on reportData._type */
   function downloadPDF() {
     if (!reportData) return;
+    if (reportData._type === 'device') downloadDevicePDF();
+    else downloadGroupPDF();
+  }
+
+  /* Shared PDF helpers */
+  function makePdfDoc() {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    return new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  }
+  const PDF_C = {
+    navy:   [11, 22, 38],
+    blue:   [0, 87, 184],
+    text:   [30, 41, 59],
+    muted:  [100, 116, 139],
+    border: [226, 232, 240],
+    red:    [220, 38, 38],
+    amber:  [217, 119, 6],
+    green:  [5, 150, 105],
+    white:  [255, 255, 255],
+    bgGray: [248, 250, 252]
+  };
+
+  /* Shrinks font size to fit text in maxWidth (down to a floor), then
+     truncates with an ellipsis as a last resort. Prevents long device
+     names from overlapping the next column in the PDF meta grid. */
+  function fitMetaText(doc, text, maxWidth, maxSize, minSize) {
+    let size = maxSize;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(size);
+    while (size > minSize && doc.getTextWidth(text) > maxWidth) {
+      size -= 0.5;
+      doc.setFontSize(size);
+    }
+    let out = text;
+    if (doc.getTextWidth(out) > maxWidth) {
+      while (out.length > 1 && doc.getTextWidth(out + '…') > maxWidth) {
+        out = out.slice(0, -1);
+      }
+      out = out + '…';
+    }
+    return { text: out, size };
+  }
+
+  /* Renders a 3-columns-per-row meta grid, auto-shrinking/truncating any
+     value that doesn't fit its column so overlap is structurally impossible.
+     Returns the y position immediately after the block. */
+  function renderMetaGrid(doc, startY, M, CW, items, C, setFont) {
+    const cols  = 3;
+    const colW  = CW / cols;
+    const rowH  = 16;
+    const rows  = Math.ceil(items.length / cols);
+    const totalH = rows * rowH;
+
+    doc.setFillColor(...C.bgGray);
+    doc.rect(M, startY, CW, totalH, 'F');
+    doc.setDrawColor(...C.border); doc.setLineWidth(0.3);
+    doc.line(M, startY, M + CW, startY);
+    doc.line(M, startY + totalH, M + CW, startY + totalH);
+    for (let r = 1; r < rows; r++) {
+      doc.line(M, startY + r * rowH, M + CW, startY + r * rowH);
+    }
+
+    items.forEach(([lbl, val], i) => {
+      const r = Math.floor(i / cols);
+      const c = i % cols;
+      const mx = M + c * colW + 4;
+      const cy = startY + r * rowH;
+      const availW = colW - 8;
+
+      setFont(6, 'bold', C.muted);
+      doc.text(lbl.toUpperCase(), mx, cy + 5);
+
+      const fitted = fitMetaText(doc, String(val), availW, 9, 6);
+      setFont(fitted.size, 'bold', C.text);
+      doc.text(fitted.text, mx, cy + 12);
+    });
+
+    return startY + totalH;
+  }
+
+  /* GROUP PDF (unchanged logic, factored to its own function) */
+  function downloadGroupPDF() {
+    const doc = makePdfDoc();
     const thr = reportData.threshold || {};
     const hoursLabel = document.getElementById('reportHours').options[document.getElementById('reportHours').selectedIndex].text;
 
-    const W  = 210; /* A4 width mm */
-    const M  = 15;  /* margin */
-    const CW = W - M * 2; /* content width */
+    const W  = 210, M = 15, CW = W - M * 2;
     let y = 20;
+    const C = PDF_C;
 
-    /* ── COLORS ── */
-    const C = {
-      navy:   [11, 22, 38],
-      blue:   [0, 87, 184],
-      text:   [30, 41, 59],
-      muted:  [100, 116, 139],
-      border: [226, 232, 240],
-      red:    [220, 38, 38],
-      amber:  [217, 119, 6],
-      green:  [5, 150, 105],
-      white:  [255, 255, 255],
-      bgGray: [248, 250, 252]
-    };
+    const setFont = (size, style='normal', color=C.text) => { doc.setFontSize(size); doc.setFont('helvetica', style); doc.setTextColor(...color); };
+    const line = (x1, y1, x2, y2, color=C.border, w=0.3) => { doc.setDrawColor(...color); doc.setLineWidth(w); doc.line(x1, y1, x2, y2); };
+    const rect = (x, y, w, h, fill) => { doc.setFillColor(...fill); doc.rect(x, y, w, h, 'F'); };
+    const checkPage = (needed=20) => { if (y + needed > 275) { doc.addPage(); y = 20; } };
+    const sectionTitle = (title) => { checkPage(14); y += 4; rect(M, y, CW, 7, C.blue); setFont(8, 'bold', C.white); doc.text(title.toUpperCase(), M + 4, y + 5); y += 11; };
 
-    /* ── HELPERS ── */
-    const setFont = (size, style='normal', color=C.text) => {
-      doc.setFontSize(size);
-      doc.setFont('helvetica', style);
-      doc.setTextColor(...color);
-    };
-    const line = (x1, y1, x2, y2, color=C.border, w=0.3) => {
-      doc.setDrawColor(...color);
-      doc.setLineWidth(w);
-      doc.line(x1, y1, x2, y2);
-    };
-    const rect = (x, y, w, h, fill) => {
-      doc.setFillColor(...fill);
-      doc.rect(x, y, w, h, 'F');
-    };
-    const checkPage = (needed=20) => {
-      if (y + needed > 275) { doc.addPage(); y = 20; }
-    };
-    const sectionTitle = (title) => {
-      checkPage(14);
-      y += 4;
-      rect(M, y, CW, 7, C.blue);
-      setFont(8, 'bold', C.white);
-      doc.text(title.toUpperCase(), M + 4, y + 5);
-      y += 11;
-    };
-
-    /* ── COVER HEADER ── */
     rect(0, 0, W, 38, C.navy);
     setFont(20, 'bold', C.white);
     doc.text('EMOSys Environmental Report', M, 15);
@@ -620,11 +820,7 @@
     doc.text('SMD Semiconductor (Sarawak Microelectronics Design)', W - M, 30, { align: 'right' });
     y = 46;
 
-    /* ── REPORT META ROW ── */
-    rect(M, y, CW, 16, C.bgGray);
-    line(M, y, M + CW, y, C.border);
-    line(M, y + 16, M + CW, y + 16, C.border);
-    const metas = [
+    const groupMetas = [
       ['Group', reportData.groupLabel],
       ['Period', hoursLabel],
       ['Devices', reportData.devices.length],
@@ -632,17 +828,9 @@
       ['Critical Alerts', reportData.alertCounts.critical],
       ['Warnings', reportData.alertCounts.warning]
     ];
-    const mw = CW / metas.length;
-    metas.forEach(([lbl, val], i) => {
-      const mx = M + i * mw + 4;
-      setFont(6, 'bold', C.muted);
-      doc.text(lbl.toUpperCase(), mx, y + 5);
-      setFont(9, 'bold', C.text);
-      doc.text(String(val), mx, y + 12);
-    });
-    y += 22;
+    y = renderMetaGrid(doc, y, M, CW, groupMetas, C, setFont);
+    y += 6;
 
-    /* ── ALERT SUMMARY ── */
     sectionTitle('Alert Summary');
     const aboxW = CW / 3 - 3;
     const aboxes = [
@@ -653,54 +841,37 @@
     aboxes.forEach((b, i) => {
       const bx = M + i * (aboxW + 4.5);
       rect(bx, y, aboxW, 18, C.bgGray);
-      doc.setDrawColor(...C.border); doc.setLineWidth(0.3);
-      doc.rect(bx, y, aboxW, 18);
-      doc.setFillColor(...b.color);
-      doc.rect(bx, y, aboxW, 2, 'F');
-      setFont(14, 'bold', b.color);
-      doc.text(String(b.val), bx + aboxW / 2, y + 11, { align: 'center' });
-      setFont(6.5, 'normal', C.muted);
-      doc.text(b.label, bx + aboxW / 2, y + 16, { align: 'center' });
+      doc.setDrawColor(...C.border); doc.setLineWidth(0.3); doc.rect(bx, y, aboxW, 18);
+      doc.setFillColor(...b.color); doc.rect(bx, y, aboxW, 2, 'F');
+      setFont(14, 'bold', b.color); doc.text(String(b.val), bx + aboxW / 2, y + 11, { align: 'center' });
+      setFont(6.5, 'normal', C.muted); doc.text(b.label, bx + aboxW / 2, y + 16, { align: 'center' });
     });
     y += 24;
 
-    /* ── AVG TABLE ── */
     sectionTitle('Average Sensor Readings per Device');
     const avgCols = ['Device','Records','Temp (°C)','Hum (%)','PM2.5','CO2 (ppm)','VOC (ppb)'];
     const avgWs   = [45, 18, 22, 20, 18, 24, 22];
     let cx = M;
     rect(M, y, CW, 8, C.navy);
-    avgCols.forEach((col, i) => {
-      setFont(6.5, 'bold', C.white);
-      doc.text(col, cx + 2, y + 5.5);
-      cx += avgWs[i];
-    });
+    avgCols.forEach((col, i) => { setFont(6.5, 'bold', C.white); doc.text(col, cx + 2, y + 5.5); cx += avgWs[i]; });
     y += 8;
     reportData.devices.forEach((d, ri) => {
       checkPage(9);
       if (ri % 2 === 0) rect(M, y, CW, 8, C.bgGray);
-      const row = [
-        d.label,
-        String(d.recordCount),
-        fmt(d.temp?.avg),
-        fmt(d.hum?.avg),
-        fmt(d.pm25?.avg),
-        fmtInt(d.co2?.avg),
-        fmtInt(d.voc?.avg)
-      ];
+      const row = [d.label, String(d.recordCount), fmt(d.temp?.avg), fmt(d.hum?.avg), fmt(d.pm25?.avg), fmtInt(d.co2?.avg), fmtInt(d.voc?.avg)];
       cx = M;
       row.forEach((val, i) => {
         let color = C.text;
         if (i >= 2) {
-          const keys  = ['temp','hum','pm25','co2','voc'];
-          const sKey  = keys[i - 2];
-          const numV  = parseFloat(val);
+          const keys = ['temp','hum','pm25','co2','voc'];
+          const sKey = keys[i - 2];
+          const numV = parseFloat(val);
           if (thr[sKey] && !isNaN(numV)) {
             if (numV >= thr[sKey].danger) color = C.red;
             else if (numV >= thr[sKey].warn) color = [217, 119, 6];
           }
         }
-        setFont(i === 0 ? 7 : 7, i === 0 ? 'bold' : 'normal', color);
+        setFont(7, i === 0 ? 'bold' : 'normal', color);
         doc.text(val, cx + 2, y + 5.5);
         cx += avgWs[i];
       });
@@ -709,52 +880,32 @@
     });
     y += 4;
 
-    /* MIN MAX TABLE */
     checkPage(30);
     sectionTitle('Min / Max Range per Device');
     const mmCols = ['Device','Temp Min','Temp Max','Hum Min','Hum Max','CO2 Min','CO2 Max','VOC Min','VOC Max'];
     const mmWs   = [40, 18, 18, 18, 18, 18, 18, 18, 14];
     cx = M;
     rect(M, y, CW, 8, C.navy);
-    mmCols.forEach((col, i) => {
-      setFont(6, 'bold', C.white);
-      doc.text(col, cx + 2, y + 5.5);
-      cx += mmWs[i];
-    });
+    mmCols.forEach((col, i) => { setFont(6, 'bold', C.white); doc.text(col, cx + 2, y + 5.5); cx += mmWs[i]; });
     y += 8;
     reportData.devices.forEach((d, ri) => {
       checkPage(9);
       if (ri % 2 === 0) rect(M, y, CW, 8, C.bgGray);
-      const row = [
-        d.label,
-        fmt(d.temp?.min), fmt(d.temp?.max),
-        fmt(d.hum?.min),  fmt(d.hum?.max),
-        fmtInt(d.co2?.min), fmtInt(d.co2?.max),
-        fmtInt(d.voc?.min), fmtInt(d.voc?.max)
-      ];
+      const row = [d.label, fmt(d.temp?.min), fmt(d.temp?.max), fmt(d.hum?.min), fmt(d.hum?.max), fmtInt(d.co2?.min), fmtInt(d.co2?.max), fmtInt(d.voc?.min), fmtInt(d.voc?.max)];
       cx = M;
-      row.forEach((val, i) => {
-        setFont(6.5, i === 0 ? 'bold' : 'normal', C.text);
-        doc.text(val, cx + 2, y + 5.5);
-        cx += mmWs[i];
-      });
+      row.forEach((val, i) => { setFont(6.5, i === 0 ? 'bold' : 'normal', C.text); doc.text(val, cx + 2, y + 5.5); cx += mmWs[i]; });
       line(M, y + 8, M + CW, y + 8, C.border, 0.2);
       y += 8;
     });
     y += 4;
 
-    /* ── THRESHOLDS ── */
     checkPage(40);
     sectionTitle('Group Threshold Reference');
     const thrCols = ['Sensor','Warning Level','Critical Level'];
     const thrWs   = [60, 60, 60];
     cx = M;
     rect(M, y, CW, 8, C.navy);
-    thrCols.forEach((col, i) => {
-      setFont(6.5, 'bold', C.white);
-      doc.text(col, cx + 2, y + 5.5);
-      cx += thrWs[i];
-    });
+    thrCols.forEach((col, i) => { setFont(6.5, 'bold', C.white); doc.text(col, cx + 2, y + 5.5); cx += thrWs[i]; });
     y += 8;
     Object.entries(thr).forEach(([k, v], ri) => {
       if (ri % 2 === 0) rect(M, y, CW, 8, C.bgGray);
@@ -770,18 +921,207 @@
       y += 8;
     });
 
-    /* ── FOOTER ── */
+    finishPdf(doc, `EMOSys_${reportData.groupLabel.replace(/\s+/g, '_')}_${hoursLabel.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`);
+  }
+
+  /* DEVICE PDF — single-device layout, no per-device table needed */
+  function downloadDevicePDF() {
+    const doc = makePdfDoc();
+    const thr = reportData.threshold || {};
+    const hasThr = Object.keys(thr).length > 0;
+    const hoursLabel = document.getElementById('reportHours').options[document.getElementById('reportHours').selectedIndex].text;
+
+    const W = 210, M = 15, CW = W - M * 2;
+    let y = 20;
+    const C = PDF_C;
+
+    const setFont = (size, style='normal', color=C.text) => { doc.setFontSize(size); doc.setFont('helvetica', style); doc.setTextColor(...color); };
+    const line = (x1, y1, x2, y2, color=C.border, w=0.3) => { doc.setDrawColor(...color); doc.setLineWidth(w); doc.line(x1, y1, x2, y2); };
+    const rect = (x, y, w, h, fill) => { doc.setFillColor(...fill); doc.rect(x, y, w, h, 'F'); };
+    const checkPage = (needed=20) => { if (y + needed > 275) { doc.addPage(); y = 20; } };
+    const sectionTitle = (title) => { checkPage(14); y += 4; rect(M, y, CW, 7, C.blue); setFont(8, 'bold', C.white); doc.text(title.toUpperCase(), M + 4, y + 5); y += 11; };
+
+    rect(0, 0, W, 38, C.navy);
+    setFont(20, 'bold', C.white);
+    doc.text('EMOSys Environmental Report', M, 15);
+    setFont(10, 'normal', [148, 163, 184]);
+    doc.text(`${reportData.deviceLabel}  ·  ${hoursLabel}`, M, 23);
+    doc.text(`Generated: ${new Date().toLocaleString('en-MY')}`, M, 30);
+    setFont(8, 'normal', [100, 116, 139]);
+    doc.text('SMD Semiconductor (Sarawak Microelectronics Design)', W - M, 30, { align: 'right' });
+    y = 46;
+
+    const deviceMetas = [
+      ['Device', reportData.deviceLabel],
+      ['Location', reportData.location],
+      ['Group', reportData.groupLabel || '—'],
+      ['Period', hoursLabel],
+      ['Data Points', reportData.recordCount.toLocaleString()],
+      ['Critical / Warn', reportData.alertCounts.critical + ' / ' + reportData.alertCounts.warning]
+    ];
+    y = renderMetaGrid(doc, y, M, CW, deviceMetas, C, setFont);
+    y += 6;
+
+    sectionTitle('Alert Summary');
+    const aboxW = CW / 3 - 3;
+    const aboxes = [
+      { label: 'Critical Alerts', val: reportData.alertCounts.critical, color: C.red },
+      { label: 'Warnings',        val: reportData.alertCounts.warning,  color: [217, 119, 6] },
+      { label: 'Status',          val: reportData.alertCounts.critical === 0 && reportData.alertCounts.warning === 0 ? 'All Clear' : 'Review Needed', color: C.green }
+    ];
+    aboxes.forEach((b, i) => {
+      const bx = M + i * (aboxW + 4.5);
+      rect(bx, y, aboxW, 18, C.bgGray);
+      doc.setDrawColor(...C.border); doc.setLineWidth(0.3); doc.rect(bx, y, aboxW, 18);
+      doc.setFillColor(...b.color); doc.rect(bx, y, aboxW, 2, 'F');
+      setFont(14, 'bold', b.color); doc.text(String(b.val), bx + aboxW / 2, y + 11, { align: 'center' });
+      setFont(6.5, 'normal', C.muted); doc.text(b.label, bx + aboxW / 2, y + 16, { align: 'center' });
+    });
+    y += 24;
+
+    sectionTitle('Sensor Averages');
+    const sensors = [
+      { key: 'temp', label: 'Temp (°C)' },
+      { key: 'hum',  label: 'Hum (%)'   },
+      { key: 'pm25', label: 'PM2.5'     },
+      { key: 'co2',  label: 'CO2 (ppm)' },
+      { key: 'voc',  label: 'VOC (ppb)' }
+    ];
+    const sboxW = CW / sensors.length - 3;
+    sensors.forEach((s, i) => {
+      const bx = M + i * (sboxW + 3.75);
+      const isInt = s.key === 'co2' || s.key === 'voc';
+      const val = isInt ? fmtInt(reportData[s.key]?.avg) : fmt(reportData[s.key]?.avg);
+      const numV = parseFloat(reportData[s.key]?.avg);
+      let color = C.text;
+      if (thr[s.key] && !isNaN(numV)) {
+        if (numV >= thr[s.key].danger) color = C.red;
+        else if (numV >= thr[s.key].warn) color = [217, 119, 6];
+      }
+      rect(bx, y, sboxW, 18, C.bgGray);
+      doc.setDrawColor(...C.border); doc.setLineWidth(0.3); doc.rect(bx, y, sboxW, 18);
+      setFont(13, 'bold', color); doc.text(val, bx + sboxW / 2, y + 10, { align: 'center' });
+      setFont(6, 'normal', C.muted); doc.text(s.label, bx + sboxW / 2, y + 16, { align: 'center' });
+    });
+    y += 24;
+
+    sectionTitle('Min / Max Range');
+    const mmCols = ['Sensor','Min','Avg','Max'];
+    const mmWs   = [50, 40, 40, 40];
+    let cx = M;
+    rect(M, y, CW, 8, C.navy);
+    mmCols.forEach((col, i) => { setFont(7, 'bold', C.white); doc.text(col, cx + 2, y + 5.5); cx += mmWs[i]; });
+    y += 8;
+    sensors.forEach((s, ri) => {
+      checkPage(9);
+      const d = reportData[s.key] || {};
+      const isInt = s.key === 'co2' || s.key === 'voc';
+      const f = isInt ? fmtInt : fmt;
+      if (ri % 2 === 0) rect(M, y, CW, 8, C.bgGray);
+      cx = M;
+      const row = [s.label, f(d.min), f(d.avg), f(d.max)];
+      row.forEach((val, i) => { setFont(7.5, i === 0 ? 'bold' : 'normal', C.text); doc.text(val, cx + 2, y + 5.5); cx += mmWs[i]; });
+      line(M, y + 8, M + CW, y + 8, C.border, 0.2);
+      y += 8;
+    });
+    y += 4;
+
+    if (hasThr) {
+      checkPage(40);
+      sectionTitle('Group Threshold Reference — ' + reportData.groupLabel);
+      const thrCols = ['Sensor','Warning Level','Critical Level'];
+      const thrWs   = [60, 60, 60];
+      cx = M;
+      rect(M, y, CW, 8, C.navy);
+      thrCols.forEach((col, i) => { setFont(6.5, 'bold', C.white); doc.text(col, cx + 2, y + 5.5); cx += thrWs[i]; });
+      y += 8;
+      Object.entries(thr).forEach(([k, v], ri) => {
+        if (ri % 2 === 0) rect(M, y, CW, 8, C.bgGray);
+        cx = M;
+        const thrRow = [k.toUpperCase(), `>= ${v.warn}`, `>=  ${v.danger}`];
+        thrRow.forEach((val, i) => {
+          const col = i === 1 ? [217, 119, 6] : i === 2 ? C.red : C.text;
+          setFont(7, i === 0 ? 'bold' : 'normal', col);
+          doc.text(val, cx + 2, y + 5.5);
+          cx += thrWs[i];
+        });
+        line(M, y + 8, M + CW, y + 8, C.border, 0.2);
+        y += 8;
+      });
+    }
+
+    finishPdf(doc, `EMOSys_${reportData.deviceLabel.replace(/\s+/g, '_')}_${hoursLabel.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`);
+  }
+
+  /* Shrinks font size until text fits maxWidth, down to a floor, for one line */
+  function fitFontSize(doc, text, maxWidth, maxSize, minSize) {
+    let size = maxSize;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(size);
+    while (size > minSize && doc.getTextWidth(text) > maxWidth) {
+      size -= 0.5;
+      doc.setFontSize(size);
+    }
+    return size;
+  }
+
+  /* Truncates with an ellipsis if text still doesn't fit even at the font floor */
+  function truncateToWidth(doc, text, maxWidth) {
+    if (doc.getTextWidth(text) <= maxWidth) return text;
+    let t = text;
+    while (t.length > 1 && doc.getTextWidth(t + '…') > maxWidth) {
+      t = t.slice(0, -1);
+    }
+    return t + '…';
+  }
+
+  /* Draws a label/value meta grid that never lets long values collide —
+     used for the header info row on both report types. Returns the new y. */
+  function drawMetaGrid(doc, metas, y, M, CW, cols, C) {
+    const rows  = Math.ceil(metas.length / cols);
+    const mw    = CW / cols;
+    const rowH  = 16;
+    const totalH = rowH * rows;
+
+    doc.setFillColor(...C.bgGray);
+    doc.rect(M, y, CW, totalH, 'F');
+    doc.setDrawColor(...C.border);
+    doc.setLineWidth(0.3);
+    for (let r = 0; r <= rows; r++) doc.line(M, y + r * rowH, M + CW, y + r * rowH);
+    for (let c = 1; c < cols; c++) doc.line(M + c * mw, y, M + c * mw, y + totalH);
+
+    metas.forEach(([lbl, val], i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const mx  = M + col * mw + 4;
+      const my  = y + row * rowH;
+      const maxW = mw - 8;
+
+      doc.setFontSize(6); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.muted);
+      doc.text(String(lbl).toUpperCase(), mx, my + 5);
+
+      const valStr   = String(val);
+      const fitSize  = fitFontSize(doc, valStr, maxW, 9, 6.5);
+      const finalTxt = doc.getTextWidth(valStr) > maxW ? truncateToWidth(doc, valStr, maxW) : valStr;
+      doc.setFontSize(fitSize); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.text);
+      doc.text(finalTxt, mx, my + 12);
+    });
+
+    return y + totalH;
+  }
+
+  /* Shared footer + save */
+  function finishPdf(doc, fname) {
+    const C = PDF_C;
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
-      rect(0, 287, W, 10, C.navy);
-      setFont(6.5, 'normal', [148, 163, 184]);
-      doc.text('EMOSys Environmental Monitoring System · SMD Semiconductor (Sarawak Microelectronics Design) · Confidential', M, 293);
-      doc.text(`Page ${i} of ${pageCount}`, W - M, 293, { align: 'right' });
+      doc.setFillColor(...C.navy);
+      doc.rect(0, 287, 210, 10, 'F');
+      doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(148, 163, 184);
+      doc.text('EMOSys Environmental Monitoring System · SMD Semiconductor (Sarawak Microelectronics Design) · Confidential', 15, 293);
+      doc.text(`Page ${i} of ${pageCount}`, 210 - 15, 293, { align: 'right' });
     }
-
-    /* ── SAVE ── */
-    const fname = `EMOSys_${reportData.groupLabel.replace(/\s+/g, '_')}_${hoursLabel.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
     doc.save(fname);
   }
 
@@ -793,6 +1133,7 @@
 
   /* INIT */
   loadGroups();
+  loadDevices();
   </script>
 </body>
 </html>

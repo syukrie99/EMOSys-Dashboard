@@ -15,6 +15,7 @@ app.use(express.json());
 
 const path = require('path');
 const fs = require('fs');
+const { isBigInt64Array } = require('util/types');
 app.use(express.static(path.join(__dirname, '..')));
 
 // ── InfluxDB config ─────────────────────────────────────────
@@ -1083,88 +1084,83 @@ app.get('/api/users', requireAuth, (req, res) => {
     res.json(safeUsers);
 });
 
-//GET /api/reports/group?groupId=X&hours=168
-// Aggregates history + alerts for one group over a period
-// Used by Reports.html to build a pdf summary
+// GET /api/reports/device?deviceId=X&hours=24
+// Aggregates history + alerts for a single device over a period.
+// Used by Reports.html to build a per-device PDF summary.
+app.get('/api/reports/device', requireAuth, async (req, res) => {
+    const deviceId = req.query.deviceId;
+    const hours    = Math.min(parseInt(req.query.hours) || 24, 48);
+    const device   = DEVICES[deviceId];
 
-app.get('/api/reports/group', requireAuth, async (req, res) => {
-    const groupId = req.query.groupId;
-    const hours   = Math.min(parseInt(req.query.hours) || 24, 48);
-    const group   = GROUPS[groupId];
-
-    if (!group) {
-        return res.status(400).json({ error: `Unknown group: ${groupId}` });
+    if (!device) {
+        return res.status(400).json({ error: `Unknown device: ${deviceId}` });
     }
 
     try {
-        const deviceSummaries = await Promise.all(group.devices.map(async (deviceId) => {
-            const device = DEVICES[deviceId];
-            const query = `
-                SELECT temperature, humidity, co2, voc, pm25, time
-                FROM sensors
-                WHERE device_id = '${deviceId}'
-                AND time >= now() - INTERVAL '${hours} hours'
-                ORDER BY time DESC
-                LIMIT 500
-            `;
-            const rows = [];
-            try {
-                const result = await client.query(query, INFLUX_DB);
-                for await (const row of result) { rows.push(row); }
-            } catch (e) {
-                console.warn(`[Reports] No data for ${deviceId}:`, e.message);
-            }
+        const query = `
+            SELECT temperature, humidity, co2, voc, pm25, time
+            FROM sensors
+            WHERE device_id = '${deviceId}'
+            AND time >= now() - INTERVAL '${hours} hours'
+            ORDER BY time DESC
+            LIMIT 1000
+        `;
+        const rows = [];
+        try {
+            const result = await client.query(query, INFLUX_DB);
+            for await (const row of result) { rows.push(row); }
+        } catch (e) {
+            console.warn(`[Reports] No data for ${deviceId}:`, e.message);
+        }
 
-            const stat = key => {
-                const vals = rows.map(r => parseFloat(r[key])).filter(v => !isNaN(v));
-                if (!vals.length) return { min:null, max:null, avg: null };
-                return {
-                    min: Math.min(...vals),
-                    max: Math.max(...vals),
-                    avg: vals.reduce((a, b) => a + b, 0) / vals.length
-                };
-            };
-
+        const stat = key => {
+            const vals = rows.map(r => parseFloat(r[key])).filter(v => !isNaN(v));
+            if (!vals.length) return { min: null, max: null, avg: null };
             return {
-                id: deviceId,
-                label: device ? device.label : deviceId,
-                recordCount: rows.length,
-                temp : stat('temperature'),
-                hum : stat('humidity'),
-                co2 : stat('co2'),
-                voc : stat('voc'),
-                pm25 : stat('pm25')
+                min: Math.min(...vals),
+                max: Math.max(...vals),
+                avg: vals.reduce((a, b) => a + b, 0) / vals.length
             };
-        }));
+        };
+
+        const groupId = getDeviceGroup(deviceId);
 
         let alertCounts = { critical: 0, warning: 0 };
         try {
             const alertQuery = `
                 SELECT severity
                 FROM alerts
-                WHERE group_id = '${groupId}'
+                WHERE device_id = '${deviceId}'
                 AND time >= now() - INTERVAL '${hours} hours'
-                `;
-                const result = await client.query(alertQuery, INFLUX_DB);
-                for await (const row of result) {
-                    if(row.severity === 'critical') alertCounts.critical++;
-                    else if (row.severity === 'warning') alertCounts.warning++;
-                }
+            `;
+            const result = await client.query(alertQuery, INFLUX_DB);
+            for await (const row of result) {
+                if (row.severity === 'critical') alertCounts.critical++;
+                else if (row.severity === 'warning') alertCounts.warning++;
+            }
         } catch (e) {
-            console.warn('[Reports] Alert count query failed:', e.message);
+            console.warn('[Reports] Device alert count query failed:', e.message);
         }
 
         res.json({
+            deviceId,
+            deviceLabel : device.label,
+            location    : device.location,
             groupId,
-            groupLabel : group.label,
+            groupLabel  : groupId ? GROUPS[groupId].label : null,
             hours,
-            threshold: groupThresholds[groupId] || DEFAULT_GROUP_THRESHOLDS[groupId],
-            devices : deviceSummaries,
+            threshold   : groupId ? (groupThresholds[groupId] || DEFAULT_GROUP_THRESHOLDS[groupId]) : null,
+            recordCount : rows.length,
+            temp : stat('temperature'),
+            hum  : stat('humidity'),
+            co2  : stat('co2'),
+            voc  : stat('voc'),
+            pm25 : stat('pm25'),
             alertCounts,
             generatedAt: new Date().toISOString()
         });
     } catch (err) {
-        console.error('[Reports] Group report failed:', err.message);
+        console.error('[Reports] Device report failed:', err.message);
         res.status(500).json({ error: err.message });
     }
 });
