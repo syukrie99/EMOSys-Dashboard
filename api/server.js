@@ -376,7 +376,7 @@ function loadSessions() {
             for (const [token, session] of Object.entries(saved)) {
                 //Skip anything that already expired while the server was down
                 if (session.expiresAt > now) {
-                    session.set(token, session);
+                    sessions.set(token, session);
                     restored++;
                 }
             }
@@ -439,6 +439,7 @@ function requireAdmin(req, res, next) {
 
 setInterval(() => {
     const now = Date.now();
+    let changed = false;
     for (const [token, s] of sessions.entries()) {
         if (now > s.expiresAt) {
              sessions.delete(token);

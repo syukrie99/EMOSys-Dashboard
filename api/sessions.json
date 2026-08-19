@@ -1,0 +1,9 @@
+{
+  "863bd687ae229b71cc6779ba560f9b6e0b66d54ae33f3c934de1b1e68111f57d": {
+    "userId": 1,
+    "name": "Admin",
+    "email": "admin@company.com",
+    "role": "Administrator",
+    "expiresAt": 1787150850999
+  }
+}
