@@ -857,7 +857,7 @@
     </div>
 
     <div class="page-footer">
-      <span>&copy; 2026 SMD Semiconductor (Sarawak Mircroelectronics Design) · EMOSys Environmental Monitoring System</span>
+      <span>&copy; 2026 SMD Semiconductor (Sarawak Microelectronics Design) · EMOSys Environmental Monitoring System</span>
       <span id="footerDate"></span>
     </div>
   </main>
@@ -921,13 +921,21 @@
   /* ── STATUS ─────────────────────────── */
   function getStatus(sensor, value) {
     if (value == null || isNaN(value)) return 'unknown';
-    const t = THR[sensor]; if (!t) return 'good';
+
+    const t = THR[sensor]; 
+    if (!t) return 'good';
+
     if (value >= t.danger) return 'danger';
     if (value >= t.warn)   return 'warn';
     return 'good';
   }
   function overallStatus(d) {
-    const c = [getStatus('temp',d.temp), getStatus('pm25',d.pm25), getStatus('co2',d.co2), getStatus('voc',d.voc)];
+    const c = [
+      getStatus('temp',d.temp), 
+      getStatus('pm25',d.pm25), 
+      getStatus('co2',d.co2), 
+      getStatus('voc',d.voc)
+    ];
     return c.includes('danger') ? 'danger' : c.includes('warn') ? 'warn' : 'good';
   }
   const SL = { good: 'Normal', warn: 'Elevated', danger: 'Critical', unknown: 'N/A' };
@@ -1030,11 +1038,14 @@ async function fetchSensors(id) {
     try {
       const gr = await fetch('/api/groups', { headers: { 'Authorization': 'Bearer ' + getToken() } }).then(r => r.json());
       if (Array.isArray(gr)) groupsData = gr;
-    } catch (e) { console.warn('Could not fetch groupus: ', e.message); }
+    } catch (e) { 
+      console.warn('Could not fetch groupus: ', e.message); 
+    }
     allDevices = await fetchDeviceList();
     const n = allDevices.length;
     ['statTotal','aiDeviceCount','exportDevCount','totalCount'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.textContent = n;
+      const el = document.getElementById(id); 
+      if (el) el.textContent = n;
     });
 
     const results = await Promise.allSettled(allDevices.map(async dev => {
@@ -1193,7 +1204,10 @@ async function fetchSensors(id) {
     }).join('');
   }
   function changePage(dir) {
-    currentPage = Math.max(0, Math.min(Math.ceil(devicesData.length/PAGE_SIZE)-1, currentPage+dir));
+    currentPage = Math.max(0, 
+    Math.min(Math.ceil(devicesData.length/PAGE_SIZE)-1, 
+    currentPage+dir)
+  );
     renderTable(devicesData);
   }
 
@@ -1221,18 +1235,53 @@ async function fetchSensors(id) {
     const labs = devices.map(d=>(d.name));
     const col  = (k,def,w,d) => getStatus(k,d[k])==='danger'?`rgba(239,68,68,${w})`:getStatus(k,d[k])==='warn'?`rgba(245,158,11,${w})`:`rgba(${def},${w})`;
 
-    charts.temp = new Chart(document.getElementById('chartTemp'),{type:'bar',data:{labels:labs,datasets:[{data:devices.map(d=>d.temp??0),backgroundColor:devices.map(d=>col('temp','56,189,248',0.7,d)),borderColor:devices.map(d=>col('temp','56,189,248',1,d)),borderWidth:1,borderRadius:4}]},options:bOpts(true)});
-    charts.co2  = new Chart(document.getElementById('chartCo2'), {type:'bar',data:{labels:labs,datasets:[{data:devices.map(d=>d.co2??0), backgroundColor:devices.map(d=>col('co2','16,185,129',0.7,d)),borderColor:devices.map(d=>col('co2','16,185,129',1,d)),borderWidth:1,borderRadius:4}]},options:bOpts(true)});
-    charts.aqi  = new Chart(document.getElementById('chartAqi'), {type:'bar',data:{labels:labs,datasets:[{data:devices.map(d=>d.pm25??0),backgroundColor:devices.map(d=>col('pm25','168,85,247',0.7,d)),borderColor:devices.map(d=>col('pm25','168,85,247',1,d)),borderWidth:1,borderRadius:4}]},options:bOptsV()});
-    charts.voc  = new Chart(document.getElementById('chartVoc'), {type:'bar',data:{labels:labs,datasets:[{data:devices.map(d=>d.voc??0), backgroundColor:devices.map(d=>col('voc','245,158,11',0.65,d)),borderColor:devices.map(d=>col('voc','245,158,11',1,d)),borderWidth:1,borderRadius:4}]},options:bOptsV()});
+    charts.temp = new Chart(
+      document.getElementById('chartTemp'),{
+        type:'bar',data:{labels:labs,datasets:[{data:devices.map(d=>d.temp??0),
+        backgroundColor:devices.map(d=>col('temp','56,189,248',0.7,d)),
+        borderColor:devices.map(d=>col('temp','56,189,248',1,d)),
+        borderWidth:1,borderRadius:4}]},
+        options:bOpts(true)
+      });
+    charts.co2  = new Chart(
+      document.getElementById('chartCo2'),{
+        type:'bar',data:{labels:labs,datasets:[{data:devices.map(d=>d.co2??0), 
+        backgroundColor:devices.map(d=>col('co2','16,185,129',0.7,d)),
+        borderColor:devices.map(d=>col('co2','16,185,129',1,d)),
+        borderWidth:1,borderRadius:4}]},
+        options:bOpts(true)
+      });
+    charts.aqi  = new Chart(
+      document.getElementById('chartAqi'),{
+      type:'bar',data:{labels:labs,datasets:[{data:devices.map(d=>d.pm25??0),
+      backgroundColor:devices.map(d=>col('pm25','168,85,247',0.7,d)),
+      borderColor:devices.map(d=>col('pm25','168,85,247',1,d)),
+      borderWidth:1,borderRadius:4}]},
+      options:bOptsV()
+    });
+    charts.voc  = new Chart(
+      document.getElementById('chartVoc'),{
+      type:'bar',data:{labels:labs,datasets:[{data:devices.map(d=>d.voc??0),
+      backgroundColor:devices.map(d=>col('voc','245,158,11',0.65,d)),
+      borderColor:devices.map(d=>col('voc','245,158,11',1,d)),
+      borderWidth:1,borderRadius:4}]},
+      options:bOptsV()
+    });
   }
 
   /* ── FLOOR PLAN ──────────────────────── */
   function heatColor(n) {
     n=Math.max(0,Math.min(1,n));
-    if (n<0.5){ const t=n*2; return `rgb(${Math.round(16+229*t)},${Math.round(185-27*t)},${Math.round(129-118*t)})`; }
+    if (n<0.5){ 
+    const t=n*2; 
+    return `rgb(${Math.round(16+229*t)},
+    ${Math.round(185-27*t)},
+    ${Math.round(129-118*t)})`; 
+  }
     const t=(n-0.5)*2;
-    return `rgb(${Math.round(245-6*t)},${Math.round(158-90*t)},${Math.round(11+57*t)})`;
+    return `rgb(${Math.round(245-6*t)},
+    ${Math.round(158-90*t)},
+    ${Math.round(11+57*t)})`;
   }
 
   /* Room definitions — pos: [left%, top%, width%, height%] inside each office box
@@ -1269,7 +1318,11 @@ async function fetchSensors(id) {
       const vals = members.map(d=>d[key]).filter(v=>v!=null&&!isNaN(v));
       return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
     };
-    const aT=avg('temp'),aH=avg('hum'),aC=avg('co2'),aP=avg('pm25'),aV=avg('voc');
+    const aT=avg('temp'),
+          aH=avg('hum'),
+          aC=avg('co2'),
+          aP=avg('pm25'),
+          aV=avg('voc');
     const thr = customThr || THR;
     function scoreSensor(val, warn, danger) {
       if (val == null || isNaN(val)) return null;
@@ -1286,7 +1339,17 @@ async function fetchSensors(id) {
     if(aH!=null) scores.push(s(aH, thr.hum.warn, thr.hum.danger));
     if(!scores.length) return { bg:'#e2e8f0', norm:null, avg:{} };
     const worst=Math.max(...scores);
-    return { bg:heatColor(worst), norm:worst, avg:{temp:aT,hum:aH,co2:aC,pm25:aP,voc:aV} };
+    return { 
+      bg:heatColor(worst), 
+      norm:worst, 
+      avg:{
+        temp:aT,
+        hum:aH,
+        co2:aC,
+        pm25:aP,
+        voc:aV
+      } 
+    };
   }
 
   function buildFloorPlanHTML(containerId, rooms, dataSource, isGroupMode) {
@@ -1806,11 +1869,11 @@ function setView(view, btn) {
   function exportJSON(){dl(JSON.stringify({exported:new Date().toISOString(),period:currentPeriod,deviceCount:devicesData.length,devices:devicesData.map(d=>({...d,status:SL[overallStatus(d)]}))},null,2),`emosys_analytics_${new Date().toISOString().slice(0,10)}.json`,'application/json');}
   function dl(c,n,t){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([c],{type:t}));a.download=n;a.click();URL.revokeObjectURL(a.href);}
 
-  /* ── AUTH ────────────────────────────── */
-  if(typeof doLogout==='undefined')window.doLogout=()=>{try{localStorage.removeItem('emosys_token');}catch{}window.location.href='Login.html';};
 
   /* ── INIT ────────────────────────────── */
-  const dateStr = new Date().toLocaleDateString('en-MY',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  const dateStr = new Date().toLocaleDateString(
+    'en-MY',{weekday:'short',day:'numeric',month:'short',year:'numeric'}
+  );
   document.getElementById('currentDate').textContent = dateStr;
   document.getElementById('footerDate').textContent  = dateStr;
 

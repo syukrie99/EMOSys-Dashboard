@@ -362,8 +362,41 @@ function saveUsers() {
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
 }
 
+const SESSIONS_FILE = path.join(__dirname, 'sessions.json');
+
 // In-memory session store: token -> { userId, name, email, role, expiresAt }
 const sessions = new Map();
+
+function loadSessions() {
+    try {
+        if (fs.existsSync(SESSIONS_FILE)) {
+            const saved = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'));
+            const now = Date.now();
+            let restored = 0;
+            for (const [token, session] of Object.entries(saved)) {
+                //Skip anything that already expired while the server was down
+                if (session.expiresAt > now) {
+                    session.set(token, session);
+                    restored++;
+                }
+            }
+            console.log(`[EMOSys] Restored ${restored} active session(s) from sessions.json`);
+        }
+    } catch (e) {
+        console.warn('[EMOSys] Could not load sessions.json, starting fresh:', e.message);
+    }
+}
+loadSessions();
+
+function saveSessions() {
+    try {
+        const obj = Object.fromEntries(sessions);
+        fs.writeFileSync(SESSIONS_FILE, JSON.stringify(obj, null, 2));
+    } catch (e) {
+        console.warn('[EMOSys] Could not save sessions.json:', e.message);
+    }
+}
+
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 Hours
 
 function createSession(user) {
@@ -375,6 +408,7 @@ function createSession(user) {
         role: user.role,
         expiresAt: Date.now() + SESSION_TTL_MS
     });
+    saveSessions();
     return token;
 }
 
@@ -387,6 +421,7 @@ function requireAuth(req, res, next) {
     if (!session) return res.status(401).json({ error: 'Invalid or expired session' });
     if (Date.now() > session.expiresAt) {
         sessions.delete(token);
+        saveSessions();
         return res.status(401).json({ error: 'Session expired' });
     }
 
@@ -405,8 +440,12 @@ function requireAdmin(req, res, next) {
 setInterval(() => {
     const now = Date.now();
     for (const [token, s] of sessions.entries()) {
-        if (now > s.expiresAt) sessions.delete(token);
+        if (now > s.expiresAt) {
+             sessions.delete(token);
+            changed= true;
+        }
     }
+    if (changed) saveSessions(); // only write if something actually changed
 }, 60 * 1000);
 
 
@@ -808,6 +847,7 @@ app.post('/api/login', async (req, res) => {
 app.post('/api/logout', requireAuth, (req, res) => {
     const token = req.headers.authorization.slice(7);
     sessions.delete(token);
+    saveSessions();
     res.json({ ok: true });
 });
 
@@ -1165,6 +1205,97 @@ app.get('/api/reports/device', requireAuth, async (req, res) => {
     }
 });
 
+// GET /api/reports/group?groupId=X&hours=24
+// Used by Reports.html when Report Scope = "By Group"
+app.get('/api/reports/group', requireAuth, async (req, res) => {
+    const groupId = req.query.groupId;
+    const hours   = Math.min(parseInt(req.query.hours) || 24, 48);
+    const group   = GROUPS[groupId];
+
+    if (!group) {
+        return res.status(400).json({ error: `Unknown group: ${groupId}` });
+    }
+
+    // Same min/max/avg helper as the device report, parameterised on rows
+    const computeStats = (rows) => (key) => {
+        const vals = rows.map(r => parseFloat(r[key])).filter(v => !isNaN(v));
+        if (!vals.length) return { min: null, max: null, avg: null };
+        return {
+            min: Math.min(...vals),
+            max: Math.max(...vals),
+            avg: vals.reduce((a, b) => a + b, 0) / vals.length
+        };
+    };
+
+    try {
+        const alertCounts = { critical: 0, warning: 0 };
+
+        const devices = await Promise.all(group.devices.map(async (deviceId) => {
+            const device = DEVICES[deviceId];
+            if (!device) return null; // skip unknown/misconfigured device IDs
+
+            const query = `
+                SELECT temperature, humidity, co2, voc, pm25, time
+                FROM sensors
+                WHERE device_id = '${deviceId}'
+                AND time >= now() - INTERVAL '${hours} hours'
+                ORDER BY time DESC
+                LIMIT 1000
+            `;
+            const rows = [];
+            try {
+                const result = await client.query(query, INFLUX_DB);
+                for await (const row of result) { rows.push(row); }
+            } catch (e) {
+                console.warn(`[Reports] No sensor data for ${deviceId}:`, e.message);
+            }
+
+            const stat = computeStats(rows);
+
+            // Per-device alert count, added into the group-wide total
+            try {
+                const alertQuery = `
+                    SELECT severity
+                    FROM alerts
+                    WHERE device_id = '${deviceId}'
+                    AND time >= now() - INTERVAL '${hours} hours'
+                `;
+                const result = await client.query(alertQuery, INFLUX_DB);
+                for await (const row of result) {
+                    if (row.severity === 'critical') alertCounts.critical++;
+                    else if (row.severity === 'warning') alertCounts.warning++;
+                }
+            } catch (e) {
+                console.warn(`[Reports] Alert count query failed for ${deviceId}:`, e.message);
+            }
+
+            return {
+                deviceId,
+                label       : device.label,
+                location    : device.location,
+                recordCount : rows.length,
+                temp : stat('temperature'),
+                hum  : stat('humidity'),
+                co2  : stat('co2'),
+                voc  : stat('voc'),
+                pm25 : stat('pm25')
+            };
+        }));
+
+        res.json({
+            groupId,
+            groupLabel  : group.label,
+            hours,
+            threshold   : groupThresholds[groupId] || DEFAULT_GROUP_THRESHOLDS[groupId],
+            devices     : devices.filter(Boolean),
+            alertCounts,
+            generatedAt : new Date().toISOString()
+        });
+    } catch (err) {
+        console.error('[Reports] Group report failed:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
 // POST /api/users
 // Adds a new user. Body: { name, email, dept, role }
 app.post('/api/users', requireAuth, requireAdmin, async (req, res) => {

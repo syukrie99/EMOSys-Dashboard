@@ -367,7 +367,7 @@
     </div><!-- end .page -->
 
     <div class="page-footer">
-      <span>&copy; 2026 SMD Semiconductor (Sarawak Mircroelectronics Design) · EMOSys Environmental Monitoring System</span>
+      <span>&copy; 2026 SMD Semiconductor (Sarawak Microelectronics Design) · EMOSys Environmental Monitoring System</span>
       <span id="footerDate"></span>
     </div>
 
@@ -541,14 +541,7 @@
     document.querySelector('.sidebar').classList.toggle('open');
     document.getElementById('sidebarOverlay').classList.toggle('active');
   }
-
-  if (typeof doLogout === 'undefined') {
-    window.doLogout = function() {
-      try { localStorage.removeItem('emosys_token'); } catch {}
-      window.location.href = 'Login.html';
-    };
-  }
-
+  
   /* INIT */
   loadDevices();
   deviceTimer = setInterval(loadDevices, DEVICE_POLL_MS);
