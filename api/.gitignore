@@ -1,2 +1,4 @@
 .env
-alertHistory.json
+api/users.json
+api/alertHistory.json
+api/sessions.json
