@@ -891,15 +891,20 @@
     document.getElementById('userRole').textContent = currentUser.role || 'User';
     document.getElementById('userAvatar').textContent = (currentUser.name || 'A')[0].toUpperCase();
   }
-  /* ── CONFIG ─────────────────────────── */
+  /* CONFIG */
   const API_BASE   = '/api';
   const AI_API     = '/api/ai/chat';
   const AI_MODEL   = 'gemini-3.1-flash-lite-preview';
   const PAGE_SIZE  = 8;
   const REFRESH_MS = 30000;
 
-  /* ── THRESHOLDS ─────────────────────── */
-  const THR = {
+  /* THRESHOLDS */
+  /* Fallback only - used if a device cant be matched to a group. Real
+     thresholds come from the same per-group source Alerts.html manages
+     (groupsData, fecthed in loadAll()), so a change there is reflected
+     here instead of living as a third separately-hardcoded copy. */
+
+  const DEFAULT_THRESHOLDS = {
     temp: { warn: 29,   danger: 35   },
     hum:  { warn: 70,   danger: 80   },
     pm25: { warn: 15,   danger: 30   },
@@ -907,7 +912,12 @@
     voc:  { warn: 300,  danger: 600 }
   };
 
-  /* ── STATE ──────────────────────────── */
+  function getDeviceThresholds(deviceId) {
+    const group = groupsData.find(g => g.devices && g.devices.includes(deviceId));
+    return (group && group.thresholds) ? group.thresholds : DEFAULT_THRESHOLDS;
+  }
+
+  /* STATE  */
   let allDevices     = [];
   let devicesData    = [];
   let groupsData     = [];
@@ -918,11 +928,11 @@
   let charts         = {};
   let groupCharts    = {};
 
-  /* ── STATUS ─────────────────────────── */
-  function getStatus(sensor, value) {
+  /* STATUS */
+  function getStatus(sensor, value, deviceId) {
     if (value == null || isNaN(value)) return 'unknown';
 
-    const t = THR[sensor]; 
+    const t = (deviceId ? getDeviceThresholds(deviceId) : DEFAULT_THRESHOLDS)[sensor]; 
     if (!t) return 'good';
 
     if (value >= t.danger) return 'danger';
@@ -931,10 +941,10 @@
   }
   function overallStatus(d) {
     const c = [
-      getStatus('temp',d.temp), 
-      getStatus('pm25',d.pm25), 
-      getStatus('co2',d.co2), 
-      getStatus('voc',d.voc)
+      getStatus('temp',d.temp, d.id), 
+      getStatus('pm25',d.pm25, d.id), 
+      getStatus('co2',d.co2, d.id), 
+      getStatus('voc',d.voc, d.id)
     ];
     return c.includes('danger') ? 'danger' : c.includes('warn') ? 'warn' : 'good';
   }
@@ -1102,11 +1112,11 @@ async function fetchSensors(id) {
 
   /* ── SENSOR DEFS ─────────────────────── */
   const SDEFS = [
-    { key:'temp', label:'Temperature', unit:'°C',  color:'#f97316', max:THR.temp.danger },
-    { key:'hum',  label:'Humidity',    unit:'%RH', color:'#06b6d4', max:THR.hum.danger  },
+    { key:'temp', label:'Temperature', unit:'°C',  color:'#f97316', max:DEFAULT_THRESHOLDS.temp.danger },
+    { key:'hum',  label:'Humidity',    unit:'%RH', color:'#06b6d4', max:DEFAULT_THRESHOLDS.hum.danger  },
     { key:'pm25', label:'PM2.5 / AQI', unit:'',    color:'#a855f7', max:150              },
-    { key:'co2',  label:'CO₂',         unit:' ppm',color:'#10b981', max:THR.co2.danger  },
-    { key:'voc',  label:'VOC',         unit:' ppb',color:'#f59e0b', max:THR.voc.danger  }
+    { key:'co2',  label:'CO₂',         unit:' ppm',color:'#10b981', max:DEFAULT_THRESHOLDS.co2.danger  },
+    { key:'voc',  label:'VOC',         unit:' ppb',color:'#f59e0b', max:DEFAULT_THRESHOLDS.voc.danger  }
   ];
   const MEDALS = ['gold','silver','bronze'];
 
@@ -1129,7 +1139,7 @@ async function fetchSensors(id) {
       for (let i=0; i<show; i++) {
         const d   = sorted[i];
         const pct = top>0 ? Math.min(100,(d[s.key]/top)*100) : 0;
-        const st  = getStatus(s.key, d[s.key]);
+        const st  = getStatus(s.key, d[s.key], d.id);
         items += `
           <div class="rank-item ${i===0?'rank-top':''}">
             <div class="rank-num ${MEDALS[i]||'normal'}">${i+1}</div>
@@ -1187,7 +1197,7 @@ async function fetchSensors(id) {
       const isTop = Object.values(topId).filter(id=>id===d.id).length >= 2;
       const os    = overallStatus(d);
       const vc    = sensor => {
-        const v=d[sensor], st=getStatus(sensor,v), top=topId[sensor]===d.id;
+        const v=d[sensor], st=getStatus(sensor,v,d.id), top=topId[sensor]===d.id;
         if (v==null||isNaN(v)) return `<td><span class="cell-val">—</span></td>`;
         const pill = top ? `<span class="top-pill">${CROWN} Top</span>` : '';
         return `<td><span class="cell-val cv-${st}">${fmt(v)}</span>${pill}</td>`;
@@ -1233,7 +1243,7 @@ async function fetchSensors(id) {
     Object.values(charts).forEach(c=>{try{c.destroy();}catch{}});
     charts={};
     const labs = devices.map(d=>(d.name));
-    const col  = (k,def,w,d) => getStatus(k,d[k])==='danger'?`rgba(239,68,68,${w})`:getStatus(k,d[k])==='warn'?`rgba(245,158,11,${w})`:`rgba(${def},${w})`;
+    const col  = (k,def,w,d) => getStatus(k,d[k],d.id)==='danger'?`rgba(239,68,68,${w})`:getStatus(k,d[k],d.id)==='warn'?`rgba(245,158,11,${w})`:`rgba(${def},${w})`;
 
     charts.temp = new Chart(
       document.getElementById('chartTemp'),{
@@ -1323,7 +1333,7 @@ async function fetchSensors(id) {
           aC=avg('co2'),
           aP=avg('pm25'),
           aV=avg('voc');
-    const thr = customThr || THR;
+    const thr = customThr || DEFAULT_THRESHOLDS;
     function scoreSensor(val, warn, danger) {
       if (val == null || isNaN(val)) return null;
       if (val >= danger) return 1.0;
@@ -1496,29 +1506,30 @@ async function fetchSensors(id) {
       drop:`<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>`
     };
 
-    const temps=has('temp');
+    const temps = has('temp');
     if (temps.length) { 
-      const hot=temps.reduce((m,d)=>d.temp>m.temp?d:m); 
-      const st=getStatus('temp',hot.temp); 
-      ins.push({type:st==='good'?'success':st,icon:'therm',title:`Highest temperature: ${hot.name} — ${fmt(hot.temp)}°C`,body:st==='good'?`${hot.location} is within normal range.`:st==='warn'?`${hot.location} is running warm. Check cooling or HVAC.`:`CRITICAL: ${hot.location} exceeds ${THR.temp.danger}°C!`}); 
+      const hot = temps.reduce((m,d)=>d.temp>m.temp?d:m); 
+      const st = getStatus('temp',hot.temp,hot.id);
+      const hotThr = getDeviceThresholds(hot.id).temp; 
+      ins.push({type:st ==='good'?'success':st,icon:'therm',title:`Highest temperature: ${hot.name} — ${fmt(hot.temp)}°C`,body:st==='good'?`${hot.location} is within normal range.`:st==='warn'?`${hot.location} is running warm. Check cooling or HVAC.`:`CRITICAL: ${hot.location} exceeds ${hotThr.temp.danger}°C!`}); 
     }
-    const co2s=has('co2');
+    const co2s = has('co2');
     if (co2s.length) { 
-      const high=co2s.reduce((m,d)=>d.co2>m.co2?d:m); 
-      const wl=co2s.filter(d=>getStatus('co2',d.co2)!=='good'); 
-      const st=getStatus('co2',high.co2); ins.push({type:st==='good'?'info':st,icon:'wind',title:`Highest CO₂: ${high.name} — ${fmtInt(high.co2)} ppm`,body:wl.length===0?'All CO₂ levels acceptable. Ventilation is adequate.':`${wl.length} device(s) above threshold: ${wl.map(d=>d.name.split(' ')[0]).join(', ')}. Improve ventilation.`}); 
+      const high = co2s.reduce((m,d) => d.co2>m.co2?d:m); 
+      const wl = co2s.filter(d=>getStatus('co2',d.co2, d.id)!=='good'); 
+      const st = getStatus('co2',high.co2,high.id); ins.push({type:st==='good'?'info':st,icon:'wind',title:`Highest CO₂: ${high.name} — ${fmtInt(high.co2)} ppm`,body:wl.length===0?'All CO₂ levels acceptable. Ventilation is adequate.':`${wl.length} device(s) above threshold: ${wl.map(d=>d.name.split(' ')[0]).join(', ')}. Improve ventilation.`}); 
     }
-    const pm25s=has('pm25');
+    const pm25s = has('pm25');
     if (pm25s.length) { 
-      const worst=pm25s.reduce((m,d)=>d.pm25>m.pm25?d:m); 
-      const st=getStatus('pm25',worst.pm25); 
+      const worst = pm25s.reduce((m,d)=>d.pm25>m.pm25?d:m); 
+      const st = getStatus('pm25',worst.pm25,worst.id); 
       ins.push({type:st==='good'?'success':st,icon:'air',title:`Worst air quality: ${worst.name} — PM2.5 ${fmt(worst.pm25)}`,body:st==='good'?'Air particulate levels acceptable.':st==='warn'?`Elevated PM2.5 at ${worst.location}. Check HVAC filters.`:`Dangerous PM2.5 at ${worst.location}! Check filtration.`}); 
     }
-    const offline=devices.filter(d=>d.online===false);
+    const offline = devices.filter(d=>d.online===false);
     ins.push(offline.length>0?{type:'danger',icon:'offline',title:`${offline.length} device(s) offline`,body:`Not responding: ${offline.map(d=>d.name).join(', ')}.`}:{type:'success',icon:'online',title:`All ${devices.length} devices online`,body:'All devices reporting. Network is healthy.'});
-    const hums=has('hum');
+    const hums = has('hum');
     if (hums.length>=2) { 
-      const mx=Math.max(...hums.map(d=>d.hum)),mn=Math.min(...hums.map(d=>d.hum)),sp=mx-mn; ins.push({type:sp>25?'warn':'info',icon:'drop',title:`Humidity spread: ${fmt(sp)}%RH across fleet`,body:sp>25?`Wide variation (${fmt(mn)}–${fmt(mx)}%RH). May indicate HVAC imbalance.`:`Consistent humidity (${fmt(mn)}–${fmt(mx)}%RH). HVAC balanced.`}); 
+      const mx = Math.max(...hums.map(d=>d.hum)),mn=Math.min(...hums.map(d=>d.hum)),sp=mx-mn; ins.push({type:sp>25?'warn':'info',icon:'drop',title:`Humidity spread: ${fmt(sp)}%RH across fleet`,body:sp>25?`Wide variation (${fmt(mn)}–${fmt(mx)}%RH). May indicate HVAC imbalance.`:`Consistent humidity (${fmt(mn)}–${fmt(mx)}%RH). HVAC balanced.`}); 
     }
 
     document.getElementById('insightRow').innerHTML=ins.map(i=>`
@@ -1538,7 +1549,7 @@ ${devices.map(d=>{
   return `- ${d.name} (${d.location}): ${v||'no data'} | ${SL[overallStatus(d)]}${d.online===false?' | OFFLINE':''}`;
 }).join('\n')}
 
-THRESHOLDS: Temp warn>28°C crit>35°C | Hum warn>65% crit>80% | PM2.5 warn>35 crit>75 | CO₂ warn>1000 crit>1500ppm | VOC warn>500 crit>1000ppb
+THRESHOLDS: Each room group (Main Office, C-Suite, Hall, Lab, Training, Meeting, Murud Wing) has its own configured warning/critical threshold set by admins - they differ across rooms (e.g. the Lab and C-Suite offices use stricer limits than common areas). The status label after each device above (Normal/Elevated/Critical) has already been evaluated against that device's own room thresholds, so treat is as ground truth rather than assuming one global threshold set.
 
 Give concise, actionable advice. Reference specific device names. Use bullet points where helpful.`;
   }

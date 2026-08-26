@@ -475,16 +475,47 @@
     var gridColor  = function() { return isDark() ? 'rgba(255,255,255,0.06)' : '#f0f2f5'; };
     var tickColor  = function() { return isDark() ? '#6b7a8d' : '#9ca3af'; };
 
-    /* Load device list */
-    fetch('/api/devices', { headers: { 'Authorization': 'Bearer ' + getToken() } })
-      .then(function(r) { return r.json(); })
-      .then(function(list) {
+    /* THRESHOLD - same per-group source Alerts.html manages, sos the colored
+      table cells here match what's actually configured instead of a
+      sepaarately-hardcoded set of numbers. */
+    var groupsCache = [];
+
+    /* Fallback only used if /api/groups can't be reached */
+    var DEFAULT_THRESHOLDS = {
+      temp: { warn: 28, danger : 35 },
+      hum:  { warn: 65, danger : 80 },
+      pm25: { warn: 15, danger : 30 },
+      co2:  { warn: 800, danger : 1200 },
+      voc:  { warn: 300, danger: 600 }
+    }
+
+    function loadGroupsCache() {
+      return fetch('/api/groups', { headers:{ 'Authorization': 'Bearer ' + getToken() } })
+        .then(function(r) { return r.json(); })
+        .then(function(list) { if (Array.isArray(list)) groupsCache = list; })
+        .catch(function(err) { console.warn('[History] Could not load group thresholds, using defaults:', err.message); });
+    }
+    
+    function getThresholds(deviceId) {
+      var group = groupsCache.find(function(g) { return g.devices.indexOf(deviceId) !== -1; });
+      return (group && group.thresholds) ? group.thresholds : DEFAULT_THRESHOLDS;
+    }
+
+    /* Load device list + group thresholds together */
+    Promise.all([
+      fetch('/api/devices', { headers: { 'Authorization': 'Bearer ' + getToken() } }).then(function(r) { return r.json(); }),
+      loadGroupsCache()
+    ]).then(function(results) {
+        var list = results[0];
         var sel = document.getElementById('deviceSelect');
         sel.innerHTML = list.map(function(d) {
           return '<option value="' + d.id + '">' + d.label + '</option>';
         }).join('');
         loadHistory();
       });
+
+    /* Re-check for threshold edits made in Alerts.html every 5 minutes */
+    setInterval(loadGroupsCache, 5 * 60000);
 
     /* Auto-load when device or hours changes */
     document.getElementById('deviceSelect').addEventListener('change', function() { loadHistory(); });
@@ -629,6 +660,7 @@
             var start = (page - 1) * PAGE_SIZE;
             var end   = start + PAGE_SIZE;
             var slice = sortedRows.slice(start, end);
+            var thr = getThresholds(deviceId);        
             document.getElementById('dataTableBody').innerHTML = slice.map(function(r) {
               var d   = new Date(r.time);
               var ts  = d.toLocaleDateString('en-MY') + ' ' + d.toLocaleTimeString();
@@ -641,12 +673,12 @@
               return (
                 '<tr>' +
                   '<td class="muted">' + ts + '</td>' +
-                  '<td class="' + valClass(t, 26, 28)    + '">' + t   + '</td>' +
-                  '<td class="' + valClass(h, 65, 70)    + '">' + h   + '</td>' +
-                  '<td class="' + valClass(p, 35.4, 55.4)+ '">' + p   + '</td>' +
-                  '<td class="' + valClass(aqi, 50, 100) + '">' + aqi + '</td>' +
-                  '<td class="' + valClass(c, 1000, 1500)+ '">' + c   + '</td>' +
-                  '<td class="' + valClass(v, 200, 300)  + '">' + v   + '</td>' +
+                  '<td class="' + valClass(t, thr.temp.warn, thr.temp.danger) + '">' + t   + '</td>' +
+                  '<td class="' + valClass(h, thr.hum.warn, thr.hum.danger)   + '">' + h   + '</td>' +
+                  '<td class="' + valClass(p, thr.pm25.warn, thr.pm25.danger) + '">' + p   + '</td>' +
+                  '<td class="' + valClass(aqi, 50, 100)                      + '">' + aqi + '</td>' +
+                  '<td class="' + valClass(c, thr.co2.warn, thr.co2.danger)   + '">' + c   + '</td>' +
+                  '<td class="' + valClass(v, thr.voc.warn, thr.voc.danger)   + '">' + v   + '</td>' +
                 '</tr>'
               );
             }).join('');

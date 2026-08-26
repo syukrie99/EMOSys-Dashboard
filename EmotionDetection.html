@@ -125,7 +125,7 @@
     }
     .ed-metric-box.m-emotion  { border-top-color: #6366f1; }
     .ed-metric-box.m-conf     { border-top-color: #0ea5e9; }
-    .ed-metric-box.m-posture  { border-top-color: #10b981; }
+    .ed-metric-box.m-gesture  { border-top-color: #10b981; }
     .ed-metric-box.m-speed    { border-top-color: #f59e0b; }
     .ed-metric-label {
       font-size: 0.63rem; font-weight: 700; color: #94a3b8;
@@ -300,7 +300,7 @@
       <div class="ed-info-card">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <div>
-          <strong>Privacy by design.</strong> Emotion and posture inference runs entirely on-device on the Raspberry Pi 4. Only the result — emotion, confidence, posture score, and a single frame — is pushed to this dashboard. Frames are held in memory only, are never written to disk, and are never sent to any cloud AI service.
+          <strong>Privacy by design.</strong> Emotion and gesture inference runs entirely on-device on the Raspberry Pi 4. Only the result — emotion, confidence, gesture score, and a single frame — is pushed to this dashboard. Frames are held in memory only, are never written to disk, and are never sent to any cloud AI service.
         </div>
       </div>
 
@@ -486,10 +486,10 @@
             <div class="ed-metric-label">Confidence</div>
             <div class="ed-metric-val">${fmtPct(data.confidence)}</div>
           </div>
-          <div class="ed-metric-box m-posture">
-            <div class="ed-metric-label">Posture</div>
-            <div class="ed-metric-val">${fmtPct(data.postureScore)}</div>
-            <div class="ed-metric-sub">${data.postureLabel || '—'}</div>
+          <div class="ed-metric-box m-gesture">
+            <div class="ed-metric-label">Gesture</div>
+            <div class="ed-metric-val">${fmtPct(data.gestureScore)}</div>
+            <div class="ed-metric-sub">${data.gestureLabel || '—'}</div>
           </div>
           <div class="ed-metric-box m-speed">
             <div class="ed-metric-label">Inference Speed</div>

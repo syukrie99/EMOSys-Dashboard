@@ -30,6 +30,36 @@ document.addEventListener('DOMContentLoaded', function () {
   /* ── HISTORY DATA */
   var hist = { labels: [], temp: [], hum: [], pm25: [], aqi: [], co2: [], voc: [] };
 
+  /* THRESHOLDS - pulled from the same per-group source Alerts.html manages, 
+     so a threshold change there is reflected here automatically instead of 
+     living as a second, separately-hardcoded copy. */
+  var groupsCache = [];
+
+  /* Fallback only used if /api/groups cant be reached (e.g sever down) */
+  var DEFAULT_THRESHOLDS = {
+    temp: { warn: 29,  danger: 35   },
+    hum:  { warn: 70,  danger: 80   },
+    pm25: { warn: 15,  danger: 30   },
+    co2:  { warn: 800, danger: 1200 },
+    voc:  { warn: 300, danger: 600 }
+  };
+
+  function loadGroupsCache() {
+    return fetch('/api/groups', { headers: { 'Authorization': 'Bearer ' + getToken() } })
+      .then(function(res) { return res.json(); })
+      .then(function(list) {
+        if (Array.isArray(list)) groupsCache = list;
+      })
+      .catch(function(err) {
+        console.warn('[Dashboard] Could not load group thresholds, using defaults:', err.message);
+      });
+  }
+
+  function getThresholds(deviceId) {
+    var group = groupsCache.find(function(g) { return g.devices.indexOf(deviceId) !== -1; });
+    return (group && group.thresholds) ? group.thresholds : DEFAULT_THRESHOLDS;
+  }
+
   /* ── DRAW EMPTY CHARTS FIRST */
   drawAllSparklines(hist);
   drawMainCharts(hist);
@@ -69,12 +99,16 @@ document.addEventListener('DOMContentLoaded', function () {
       select.innerHTML = list.map(function(d) {
         return '<option value="' + d.id + '">' + d.label + '</option>';
       }).join('');
-      /* Load 24h history first, then start live polling */
-      loadHistory24h(function() {
+      /* Load group thresholds first so badges/alerts use real values
+         then load 24h history, then start live polling */
+      loadGroupsCache().then(function() {
+        loadHistory24h(function() {
         fetchData();
         setInterval(fetchData, 30000);
       });
-    })
+    });
+      setInterval(loadGroupsCache, 5 * 60000);
+  })
     .catch(function(err) {
       console.error('Failed to load devices:', err);
     });
@@ -142,19 +176,21 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelector('.sensor-card.co2   .sensor-spark').classList.remove('loading');
     document.querySelector('.sensor-card.voc   .sensor-spark').classList.remove('loading');
 
-    setBadge('tempBadge', t > 35 ? 'crit' : t > 29 ? 'warn' : 'ok');
-    setBadge('humBadge',  h > 80 ? 'crit' : h > 70 ? 'warn' : 'ok');
+    var thr = getThresholds(activeDevice);
+
+    setBadge('tempBadge', t >= thr.temp.danger ? 'crit' : t >= thr.temp.warn ? 'warn' : 'ok');
+    setBadge('humBadge',  h >= thr.hum.danger ? 'crit' : h >= thr.hum.warn  ? 'warn' : 'ok');
 
     var aqiBadge   = document.getElementById('aqiBadge');
     var aqiLabelEl = document.getElementById('aqiLabel');
     var cat = aqiCategory(aqi);
-    aqiBadge.className   = 'status-flag ' + (pm25 > 30 ? 'flag-crit' : pm25 > 15 ? 'flag-warn' : 'flag-ok');
-    aqiBadge.textContent = pm25 > 30 ? 'Unhealthy' : pm25 > 15 ? 'Elevated' : 'Good';
+    aqiBadge.className   = 'status-flag ' + (pm25 >= thr.pm25.danger ? 'flag-crit' : pm25 >= thr.pm25 ? 'flag-warn' : 'flag-ok');
+    aqiBadge.textContent = pm25 >= thr.pm25.danger ? 'Unhealthy' : pm25 >= thr.pm25.warn ? 'Elevated' : 'Good';
     aqiLabelEl.textContent = 'AQI: ' + aqi;
     aqiLabelEl.style.color = cat.color;
 
-    setBadge('co2Badge', co2 > 1500 ? 'crit' : co2 > 1000 ? 'warn' : 'ok');
-    setBadge('vocBadge', voc > 600  ? 'crit' : voc > 300  ? 'warn' : 'ok');
+    setBadge('co2Badge', co2 >= thr.co2.danger ? 'crit' : co2 >= thr.co2.warn ? 'warn' : 'ok');
+    setBadge('vocBadge', voc >= thr.voc.danger  ? 'crit' : voc >= thr.voc.warn  ? 'warn' : 'ok');
 
     document.getElementById('lastUpdated').textContent =
       'Last updated: ' + new Date().toLocaleTimeString();
@@ -186,37 +222,38 @@ document.addEventListener('DOMContentLoaded', function () {
   function updateAlerts(t, h, pm25, aqi, co2, voc) {
     var activeInfo = devices.find(function(d) { return d.id === activeDevice; });
     var devLabel   = activeInfo ? activeInfo.label : 'Unknown Device';
+    var thr        = getThresholds(activeDevice);
     var alerts = [];
 
-    if (co2 > 800) alerts.push({
-      type:  co2 > 1200 ? 'crit' : 'warn',
-      msg:   'CO\u2082 level ' + (co2 > 800 ? 'critical' : 'elevated') + ' \u2014 ' + devLabel,
-      meta:  'Reading: ' + co2 + ' ppm \xb7 Threshold: 800 ppm',
-      label: co2 > 1200 ? 'Critical' : 'Warning',
+    if (co2 >= thr.co2.warn) alerts.push({
+      type:  co2 >= thr.co2.danger ? 'crit' : 'warn',
+      msg:   'CO\u2082 level ' + (co2 >= thr.co2.danger ? 'critical' : 'elevated') + ' \u2014 ' + devLabel,
+      meta:  'Reading: ' + co2 + ' ppm \xb7 Threshold: ' + thr.co2.warn + ' ppm',
+      label: co2 >= thr.co2.danger ? 'Critical' : 'Warning',
       time:  'Just now'
     });
 
-    if (voc > 300) alerts.push({
-      type:  voc > 600 ? 'crit' : 'warn',
-      msg:   'VOC level ' + (voc > 300 ? 'critical' : 'elevated') + ' \u2014 ' + devLabel,
-      meta:  'Reading: ' + voc + ' ppb \xb7 Threshold: 300 ppb',
-      label: voc > 600 ? 'Critical' : 'Warning',
+    if (voc >= thr.voc.warn) alerts.push({
+      type:  voc >= thr.voc.danger ? 'crit' : 'warn',
+      msg:   'VOC level ' + (voc >= thr.voc.danger ? 'critical' : 'elevated') + ' \u2014 ' + devLabel,
+      meta:  'Reading: ' + voc + ' ppb \xb7 Threshold: ' + thr.voc.warn + ' ppb',
+      label: voc >= thr.voc.danger ? 'Critical' : 'Warning',
       time:  'Just now'
     });
 
-    if (pm25 > 15) alerts.push({
-      type:  pm25 > 30 ? 'crit' : 'warn',
-      msg:   'PM2.5 level ' + (pm25 > 15 ? 'unhealthy' : 'moderate') + ' \u2014 ' + devLabel,
-      meta:  'Reading: ' + pm25.toFixed(1) + ' \xb5g/m\xb3 \xb7 Threshold: 15 \sb5g/m\xb3',
-      label: pm25 > 30 ? 'Unhealthy' : 'Moderate',
+    if (pm25 >= thr.pm25.warn) alerts.push({
+      type:  pm25 >= thr.pm25.danger ? 'crit' : 'warn',
+      msg:   'PM2.5 level ' + (pm25 >= thr.pm25.danger ? 'unhealthy' : 'moderate') + ' \u2014 ' + devLabel,
+      meta:  'Reading: ' + pm25.toFixed(1) + ' \xb5g/m\xb3 \xb7 Threshold: ' + thr.pm25.warn + ' \xb5g/m\xb3',
+      label: pm25 >= thr.pm25.danger ? 'Unhealthy' : 'Moderate',
       time:  'Just now'
     });
 
-    if (t > 29) alerts.push({
-      type:  t > 35 ? 'crit' : 'warn',
-      msg:   'Temperature ' + (t > 29 ? 'critical' : 'elevated') + ' \u2014 ' + devLabel,
-      meta:  'Reading: ' + t + '\u00b0C \xb7 Threshold: 29\u00b0C',
-      label: t > 35 ? 'Critical' : 'Warning',
+    if (t >= thr.temp.warn) alerts.push({
+      type:  t >= thr.temp.danger ? 'crit' : 'warn',
+      msg:   'Temperature ' + (t >= thr.temp.danger ? 'critical' : 'elevated') + ' \u2014 ' + devLabel,
+      meta:  'Reading: ' + t + '\u00b0C \xb7 Threshold: ' + thr.temp.warn + '\u00b0C',
+      label: t >= thr.temp.danger ? 'Critical' : 'Warning',
       time:  'Just now'
     });
 

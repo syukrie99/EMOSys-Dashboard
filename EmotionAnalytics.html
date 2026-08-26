@@ -43,7 +43,7 @@
     .stat-card.total::before    { background: #64748b; }
     .stat-card.emotion::before  { background: #6366f1; }
     .stat-card.conf::before     { background: #0ea5e9; }
-    .stat-card.posture::before  { background: #10b981; }
+    .stat-card.gesture::before  { background: #10b981; }
     .stat-card.speed::before    { background: #f59e0b; }
     .stat-label { font-size: 0.66rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
     .stat-val { font-size: 1.3rem; font-weight: 800; font-family: 'Barlow Condensed', sans-serif; color: var(--text); }
@@ -233,10 +233,10 @@
           <div class="stat-val" id="statAvgConf">—</div>
           <div class="stat-sub">fleet-wide</div>
         </div>
-        <div class="stat-card posture">
-          <div class="stat-label">Avg Posture Score</div>
-          <div class="stat-val" id="statAvgPosture">—</div>
-          <div class="stat-sub" id="statTopPosture">—</div>
+        <div class="stat-card gesture">
+          <div class="stat-label">Avg Gesture Score</div>
+          <div class="stat-val" id="statAvgGesture">—</div>
+          <div class="stat-sub" id="statTopGesture">—</div>
         </div>
         <div class="stat-card speed">
           <div class="stat-label">Avg Inference Speed</div>
@@ -254,9 +254,9 @@
           <div class="an-chart-wrap"><canvas id="fleetEmotionChart"></canvas></div>
         </div>
         <div class="an-chart-card">
-          <h4>Posture Distribution</h4>
-          <p id="chartSubPosture">Across all devices</p>
-          <div class="an-chart-wrap"><canvas id="fleetPostureChart"></canvas></div>
+          <h4>Gesture Distribution</h4>
+          <p id="chartSubGesture">Across all devices</p>
+          <div class="an-chart-wrap"><canvas id="fleetGestureChart"></canvas></div>
         </div>
       </div>
 
@@ -281,7 +281,7 @@
             <thead>
               <tr>
                 <th>Device</th><th>Status</th><th>Detections</th><th>Top Emotion</th>
-                <th>Avg Confidence</th><th>Avg Posture</th><th>Avg Inference (ms)</th>
+                <th>Avg Confidence</th><th>Avg Gesture</th><th>Avg Inference (ms)</th>
               </tr>
             </thead>
             <tbody id="deviceTableBody">
@@ -316,7 +316,7 @@
     document.getElementById('currentDate').textContent = now.toLocaleDateString('en-MY', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
     document.getElementById('footerDate').textContent  = 'System time: ' + now.toLocaleTimeString();
 
-    var emoChart = null, postureChart = null;
+    var emoChart = null, gestureChart = null;
     var isDark = function() { return document.body.classList.contains('dark-mode'); };
     var gridColor = function() { return isDark() ? 'rgba(255,255,255,0.06)' : '#f0f2f5'; };
     var tickColor = function() { return isDark() ? '#6b7a8d' : '#9ca3af'; };

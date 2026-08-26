@@ -492,10 +492,8 @@ async function writeEmotionToInflux(e) {
       ` confidence=${Number(e.confidence) || 0}` +
       `,model_version="${escField(e.modelVersion)}"` +
       `,inference_speed_ms=${Number(e.inferenceSpeedMs) || 0}` +
-      `,posture_score=${Number(e.postureScore) || 0}` +
-      `,posture_label="${escField(e.postureLabel)}"` +
-      `,habit_score=${Number(e.habitScore) || 0}` +
-      `,habit_label="${escField(e.habitLabel)}"`; 
+      `,gesture_score=${Number(e.gestureScore) || 0}` +
+      `,gesture_label="${escField(e.gestureLabel)}"`;
       
     await client.write(line, INFLUX_DB);
   } catch (err) {
@@ -635,8 +633,8 @@ app.post('/api/emotion/ingest', upload.single('image'), (req, res) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { emotion, confidence, deviceId, modelVersion, inferenceSpeedMs, postureScore, postureLabel, habitScore, habitLabel } = req.body;
-    if (!emotion && !habitLabel) return res.status(400).json({ error: 'emotion or habitLabel is required' });
+    const { emotion, confidence, deviceId, modelVersion, inferenceSpeedMs, gestureScore, gestureLabel} = req.body;
+    if (!emotion && !gestureLabel) return res.status(400).json({ error: 'emotion or getureLabel is required' });
     if (!deviceId) return res.status(400).json({ error: 'deviceId is required' });
 
     const entry = {
@@ -646,10 +644,8 @@ app.post('/api/emotion/ingest', upload.single('image'), (req, res) => {
             deviceId,
             modelVersion    : modelVersion || 'unknown',
             inferenceSpeedMs: inferenceSpeedMs != null ? parseFloat(inferenceSpeedMs) : null,
-            postureScore    : postureScore != null ? parseFloat(postureScore) : null,
-            postureLabel    : postureLabel || null,
-            habitScore      : habitScore   || null ? parseFloat(habitScore) : null,
-            habitLabel      : habitLabel   || null,
+            gestureScore    : gestureScore != null ? parseFloat(gestureScore) : null,
+            gestureLabel    : gestureLabel || null,
             time            : new Date().toISOString()
         },
         image      : req.file ? req.file.buffer : (emotionDevices.get(deviceId)?.image || null),
@@ -673,8 +669,7 @@ app.get('/api/emotion/history', requireAuth, async (req, res) => {
         const deviceFilter = device ? `AND device_id = '${device}'` : '';
         const query = `
             SELECT time, device_id, emotion, confidence, model_version,
-                   inference_speed_ms, posture_score, posture_label,
-                   habit_score, habit_label
+                   inference_speed_ms, gesture_score, gesture_label
             FROM emotion_events
             WHERE time >= now() - INTERVAL '${hours} hours'
             ${deviceFilter}

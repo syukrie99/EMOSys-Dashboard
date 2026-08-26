@@ -42,7 +42,7 @@
     .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
     .stat-card.emotion::before  { background: #6366f1; }
     .stat-card.conf::before     { background: #0ea5e9; }
-    .stat-card.posture::before  { background: #10b981; }
+    .stat-card.gesture::before  { background: #10b981; }
     .stat-card.speed::before    { background: #f59e0b; }
     .stat-card.records::before  { background: #64748b; }
     .stat-label { font-size: 0.68rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
@@ -242,10 +242,10 @@
           <div class="stat-val" id="statAvgConf">—</div>
           <div class="stat-sub">across all detections</div>
         </div>
-        <div class="stat-card posture">
-          <div class="stat-label">Avg Posture Score</div>
-          <div class="stat-val" id="statAvgPosture">—</div>
-          <div class="stat-sub" id="statTopPosture">—</div>
+        <div class="stat-card gesture">
+          <div class="stat-label">Avg Gesture Score</div>
+          <div class="stat-val" id="statAvgGesture">—</div>
+          <div class="stat-sub" id="statTopGesture">—</div>
         </div>
         <div class="stat-card speed">
           <div class="stat-label">Avg Inference Speed</div>
@@ -263,9 +263,9 @@
           <div class="history-chart-wrap"><canvas id="emotionDistChart"></canvas></div>
         </div>
         <div class="history-chart-card">
-          <h4>Confidence &amp; Posture Score Over Time</h4>
+          <h4>Confidence &amp; Gesture Score Over Time</h4>
           <p id="chartSubTrend">Rolling trend</p>
-          <div class="history-chart-wrap"><canvas id="confPostureChart"></canvas></div>
+          <div class="history-chart-wrap"><canvas id="confGestureChart"></canvas></div>
         </div>
       </div>
       <div class="history-chart-card">
@@ -286,7 +286,7 @@
             <thead>
               <tr>
                 <th>Timestamp</th><th>Device</th><th>Emotion</th><th>Confidence</th>
-                <th>Posture</th><th>Posture Score</th><th>Inference (ms)</th>
+                <th>Gesture</th><th>Gesture Score</th><th>Inference (ms)</th>
               </tr>
             </thead>
             <tbody id="dataTableBody">
@@ -330,7 +330,7 @@ document.addEventListener('DOMContentLoaded', function() {
   /* ---- ALL FUNCTION DEFINITIONS FIRST ---- */
 
   function resetStats() {
-    ['statRecords','statTopEmotion','statTopEmotionPct','statAvgConf','statAvgPosture','statTopPosture','statAvgSpeed']
+    ['statRecords','statTopEmotion','statTopEmotionPct','statAvgConf','statAvgGesture','statTopGesture','statAvgSpeed']
       .forEach(function(id) { document.getElementById(id).textContent = '—'; });
   }
 
@@ -348,14 +348,14 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('statAvgConf').textContent = confVals.length
       ? ((confVals.reduce(function(a,b){return a+b;},0)/confVals.length)*100).toFixed(0) + '%' : '—';
 
-    var postVals = rows.map(function(r) { return parseFloat(r.posture_score); }).filter(function(v){return !isNaN(v)&&v>0;});
-    document.getElementById('statAvgPosture').textContent = postVals.length
+    var postVals = rows.map(function(r) { return parseFloat(r.gesture_score); }).filter(function(v){return !isNaN(v)&&v>0;});
+    document.getElementById('statAvgGesture').textContent = postVals.length
       ? ((postVals.reduce(function(a,b){return a+b;},0)/postVals.length)*100).toFixed(0) + '%' : '—';
 
     var postCounts = {};
-    rows.forEach(function(r) { if (r.posture_label) postCounts[r.posture_label] = (postCounts[r.posture_label]||0) + 1; });
+    rows.forEach(function(r) { if (r.gesture_label) postCounts[r.gesture_label] = (postCounts[r.gesture_label]||0) + 1; });
     var topPost = Object.keys(postCounts).sort(function(a,b) { return postCounts[b]-postCounts[a]; })[0];
-    document.getElementById('statTopPosture').textContent = topPost ? 'most common: ' + topPost : '—';
+    document.getElementById('statTopGesture').textContent = topPost ? 'most common: ' + topPost : '—';
 
     var speedVals = rows.map(function(r) { return parseFloat(r.inference_speed_ms); }).filter(function(v){return !isNaN(v)&&v>0;});
     document.getElementById('statAvgSpeed').textContent = speedVals.length
@@ -394,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0');
     });
     var conf  = thinned.map(function(r) { return (parseFloat(r.confidence)||0) * 100; });
-    var post  = thinned.map(function(r) { return (parseFloat(r.posture_score)||0) * 100; });
+    var post  = thinned.map(function(r) { return (parseFloat(r.gesture_score)||0) * 100; });
     var speed = thinned.map(function(r) { return parseFloat(r.inference_speed_ms) || 0; });
 
     var baseOpts = {
@@ -406,13 +406,13 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     if (trendChart) trendChart.destroy();
-    trendChart = new Chart(document.getElementById('confPostureChart'), {
+    trendChart = new Chart(document.getElementById('confGestureChart'), {
       type: 'line',
       data: {
         labels: labels,
         datasets: [
           { label: 'Confidence (%)', data: conf, borderColor: '#0ea5e9', backgroundColor: 'rgba(14,165,233,0.06)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 },
-          { label: 'Posture Score (%)', data: post, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.05)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 }
+          { label: 'Gesture Score (%)', data: post, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.05)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 }
         ]
       },
       options: Object.assign({}, baseOpts, {
@@ -448,7 +448,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var d   = new Date(r.time);
       var ts  = d.toLocaleDateString('en-MY') + ' ' + d.toLocaleTimeString();
       var conf = r.confidence != null ? (parseFloat(r.confidence)*100).toFixed(0) + '%' : '—';
-      var post = r.posture_score != null && r.posture_score > 0 ? (parseFloat(r.posture_score)*100).toFixed(0) + '%' : '—';
+      var post = r.gesture_score != null && r.gesture_score > 0 ? (parseFloat(r.gesture_score)*100).toFixed(0) + '%' : '—';
       var speed = r.inference_speed_ms != null && r.inference_speed_ms > 0 ? parseFloat(r.inference_speed_ms).toFixed(0) : '—';
       return (
         '<tr>' +
@@ -456,7 +456,7 @@ document.addEventListener('DOMContentLoaded', function() {
           '<td>' + (r.device_id || '—') + '</td>' +
           '<td><span class="emo-pill">' + (r.emotion || '—') + '</span></td>' +
           '<td>' + conf + '</td>' +
-          '<td>' + (r.posture_label || '—') + '</td>' +
+          '<td>' + (r.gesture_label || '—') + '</td>' +
           '<td>' + post + '</td>' +
           '<td>' + speed + '</td>' +
         '</tr>'
@@ -562,7 +562,7 @@ function exportCSV() {
   if (!rows || !rows.length) { alert('No data to export. Please load data first.'); return; }
   var deviceId = document.getElementById('deviceSelect').value || 'all';
   var hours    = document.getElementById('hoursSelect').value;
-  var header   = 'Timestamp,Device,Emotion,Confidence,PostureLabel,PostureScore,InferenceSpeedMs,ModelVersion';
+  var header   = 'Timestamp,Device,Emotion,Confidence,GestureLabel,GestureScore,InferenceSpeedMs,ModelVersion';
   var csv = [header].concat(rows.map(function(r) {
     var d = new Date(r.time);
     return [
@@ -570,8 +570,8 @@ function exportCSV() {
       r.device_id || '',
       r.emotion || '',
       r.confidence != null ? r.confidence : '',
-      r.posture_label || '',
-      r.posture_score != null ? r.posture_score : '',
+      r.gesture_label || '',
+      r.gesture_score != null ? r.gesture_score : '',
       r.inference_speed_ms != null ? r.inference_speed_ms : '',
       r.model_version || ''
     ].join(',');
