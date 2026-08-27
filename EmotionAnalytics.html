@@ -343,7 +343,7 @@ function loadAnalytics() {
     var hoursLabel = document.getElementById('hoursSelect').options[document.getElementById('hoursSelect').selectedIndex].text;
     document.getElementById('statRange').textContent = hoursLabel;
     document.getElementById('chartSubEmo').textContent = hoursLabel;
-    document.getElementById('chartSubPosture').textContent = hoursLabel;
+    document.getElementById('chartSubGesture').textContent = hoursLabel;
     document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
 
     document.getElementById('statLive').textContent = liveDevices.length;
@@ -354,7 +354,7 @@ function loadAnalytics() {
       document.getElementById('deviceTableBody').innerHTML =
         '<tr><td colspan="7" class="no-data">No detection records found for this time range.</td></tr>';
       resetStats();
-      [emoChart, postureChart].forEach(function(c) { if (c) c.destroy(); });
+      [emoChart, gestureChart].forEach(function(c) { if (c) c.destroy(); });
       document.getElementById('insightRow').innerHTML =
         '<div class="insight-card"><div class="insight-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div><div class="insight-title">No data yet</div><div class="insight-body">Insights will appear once devices report detections.</div></div></div>';
       return;
@@ -374,7 +374,7 @@ function loadAnalytics() {
 }
 
     function resetStats() {
-      ['statTotal','statTopEmotion','statTopEmotionPct','statAvgConf','statAvgPosture','statTopPosture','statAvgSpeed']
+      ['statTotal','statTopEmotion','statTopEmotionPct','statAvgConf','statAvgGesture','statTopGesture','statAvgSpeed']
         .forEach(function(id) { document.getElementById(id).textContent = '—'; });
     }
 
@@ -392,14 +392,14 @@ function loadAnalytics() {
       document.getElementById('statAvgConf').textContent = confVals.length
         ? fmtPct(confVals.reduce(function(a,b){return a+b;},0)/confVals.length) : '—';
 
-      var postVals = rows.map(function(r) { return parseFloat(r.posture_score); }).filter(function(v){return !isNaN(v)&&v>0;});
-      document.getElementById('statAvgPosture').textContent = postVals.length
+      var postVals = rows.map(function(r) { return parseFloat(r.gesture_score); }).filter(function(v){return !isNaN(v)&&v>0;});
+      document.getElementById('statAvgGesture').textContent = postVals.length
         ? fmtPct(postVals.reduce(function(a,b){return a+b;},0)/postVals.length) : '—';
 
       var postCounts = {};
-      rows.forEach(function(r) { if (r.posture_label) postCounts[r.posture_label] = (postCounts[r.posture_label]||0) + 1; });
+      rows.forEach(function(r) { if (r.gesture_label) postCounts[r.geture_label] = (postCounts[r.gesture_label]||0) + 1; });
       var topPost = Object.keys(postCounts).sort(function(a,b) { return postCounts[b]-postCounts[a]; })[0];
-      document.getElementById('statTopPosture').textContent = topPost ? 'most common: ' + topPost : '—';
+      document.getElementById('statTopGesture').textContent = topPost ? 'most common: ' + topPost : '—';
 
       var speedVals = rows.map(function(r) { return parseFloat(r.inference_speed_ms); }).filter(function(v){return !isNaN(v)&&v>0;});
       document.getElementById('statAvgSpeed').textContent = speedVals.length
@@ -427,11 +427,11 @@ function loadAnalytics() {
       });
 
       var postCounts = {};
-      rows.forEach(function(r) { if (r.posture_label) postCounts[r.posture_label] = (postCounts[r.posture_label]||0) + 1; });
+      rows.forEach(function(r) { if (r.gesture_label) postCounts[r.gesture_label] = (postCounts[r.gesture_label]||0) + 1; });
       var postLabels = Object.keys(postCounts);
 
-      if (postureChart) postureChart.destroy();
-      postureChart = new Chart(document.getElementById('fleetPostureChart'), {
+      if (gestureChart) gestureChart.destroy();
+      gestureChart = new Chart(document.getElementById('fleetGestureChart'), {
         type: 'bar',
         data: { labels: postLabels.length ? postLabels : ['No data'], datasets: [{ data: postLabels.length ? postLabels.map(function(l){return postCounts[l];}) : [0], backgroundColor: '#10b981', borderRadius: 4 }] },
         options: {
@@ -465,7 +465,7 @@ function loadAnalytics() {
         var confVals = deviceRows.map(function(r) { return parseFloat(r.confidence); }).filter(function(v){return !isNaN(v);});
         var avgConf = confVals.length ? confVals.reduce(function(a,b){return a+b;},0)/confVals.length : null;
 
-        var postVals = deviceRows.map(function(r) { return parseFloat(r.posture_score); }).filter(function(v){return !isNaN(v)&&v>0;});
+        var postVals = deviceRows.map(function(r) { return parseFloat(r.gesture_score); }).filter(function(v){return !isNaN(v)&&v>0;});
         var avgPost = postVals.length ? postVals.reduce(function(a,b){return a+b;},0)/postVals.length : null;
 
         var speedVals = deviceRows.map(function(r) { return parseFloat(r.inference_speed_ms); }).filter(function(v){return !isNaN(v)&&v>0;});
@@ -487,7 +487,7 @@ function loadAnalytics() {
 
     var INSIGHT_SVGS = {
       speed:  '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-      posture:'<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>',
+      gesture:'<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>',
       conf:   '<path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>',
       device: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>'
     };
@@ -503,7 +503,7 @@ function loadAnalytics() {
       var deviceStats = Object.keys(byDevice).map(function(id) {
         var deviceRows = byDevice[id];
         var confVals = deviceRows.map(function(r) { return parseFloat(r.confidence); }).filter(function(v){return !isNaN(v);});
-        var postVals = deviceRows.map(function(r) { return parseFloat(r.posture_score); }).filter(function(v){return !isNaN(v)&&v>0;});
+        var postVals = deviceRows.map(function(r) { return parseFloat(r.gesture_score); }).filter(function(v){return !isNaN(v)&&v>0;});
         var speedVals = deviceRows.map(function(r) { return parseFloat(r.inference_speed_ms); }).filter(function(v){return !isNaN(v)&&v>0;});
         return {
           id: id,
@@ -524,7 +524,7 @@ function loadAnalytics() {
       var withPost = deviceStats.filter(function(d) { return d.avgPost != null; });
       if (withPost.length) {
         var bestPost = withPost.reduce(function(m,d) { return d.avgPost > m.avgPost ? d : m; });
-        ins.push({ icon: 'posture', title: 'Best posture score: ' + bestPost.id, body: 'Averaging ' + (bestPost.avgPost*100).toFixed(0) + '% posture score in this period.' });
+        ins.push({ icon: 'gesture', title: 'Best gesture score: ' + bestPost.id, body: 'Averaging ' + (bestPost.avgPost*100).toFixed(0) + '% gesture score in this period.' });
       }
 
       var withConf = deviceStats.filter(function(d) { return d.avgConf != null; });
