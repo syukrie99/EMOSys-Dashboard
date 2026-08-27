@@ -634,7 +634,7 @@ app.post('/api/emotion/ingest', upload.single('image'), (req, res) => {
     }
 
     const { emotion, confidence, deviceId, modelVersion, inferenceSpeedMs, gestureScore, gestureLabel} = req.body;
-    if (!emotion && !gestureLabel) return res.status(400).json({ error: 'emotion or getureLabel is required' });
+    if (!emotion && !gestureLabel) return res.status(400).json({ error: 'emotion or Label is required' });
     if (!deviceId) return res.status(400).json({ error: 'deviceId is required' });
 
     const entry = {

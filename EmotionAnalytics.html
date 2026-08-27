@@ -397,7 +397,7 @@ function loadAnalytics() {
         ? fmtPct(postVals.reduce(function(a,b){return a+b;},0)/postVals.length) : '—';
 
       var postCounts = {};
-      rows.forEach(function(r) { if (r.gesture_label) postCounts[r.geture_label] = (postCounts[r.gesture_label]||0) + 1; });
+      rows.forEach(function(r) { if (r.gesture_label) postCounts[r.gesture_label] = (postCounts[r.gesture_label]||0) + 1; });
       var topPost = Object.keys(postCounts).sort(function(a,b) { return postCounts[b]-postCounts[a]; })[0];
       document.getElementById('statTopGesture').textContent = topPost ? 'most common: ' + topPost : '—';
 

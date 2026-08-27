@@ -5,5 +5,12 @@
     "email": "admin@company.com",
     "role": "Administrator",
     "expiresAt": 1787813196298
+  },
+  "c1bc3dc6015081d240efce6212156a99301d9817db1b8955f3015c69bd60ba68": {
+    "userId": 1,
+    "name": "Admin",
+    "email": "admin@company.com",
+    "role": "Administrator",
+    "expiresAt": 1787822557591
   }
 }
