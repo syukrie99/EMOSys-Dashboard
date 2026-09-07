@@ -33,7 +33,7 @@
     .filter-divider { width: 1px; height: 28px; background: var(--border, #e5e7eb); }
 
     .stats-row {
-      display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px;
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 24px;
     }
     .stat-card {
       background: var(--card, #fff); border: 1px solid var(--border, #e5e7eb);
@@ -43,6 +43,7 @@
     .stat-card.emotion::before  { background: #6366f1; }
     .stat-card.conf::before     { background: #0ea5e9; }
     .stat-card.gesture::before  { background: #10b981; }
+    .stat-card.gesturelabel::before { background: #14b8a6; }
     .stat-card.speed::before    { background: #f59e0b; }
     .stat-card.records::before  { background: #64748b; }
     .stat-label { font-size: 0.68rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
@@ -245,7 +246,12 @@
         <div class="stat-card gesture">
           <div class="stat-label">Avg Gesture Score</div>
           <div class="stat-val" id="statAvgGesture">—</div>
-          <div class="stat-sub" id="statTopGesture">—</div>
+          <div class="stat-sub">across all detections</div>
+        </div>
+        <div class="stat-card gesturelabel">
+          <div class="stat-label">Most Common Gesture</div>
+          <div class="stat-val" id="statTopGesture2">—</div>
+          <div class="stat-sub" id="statTopGesturePct">—</div>
         </div>
         <div class="stat-card speed">
           <div class="stat-label">Avg Inference Speed</div>
@@ -261,6 +267,11 @@
           <h4>Emotion Distribution</h4>
           <p id="chartSubDist">Count per emotion type</p>
           <div class="history-chart-wrap"><canvas id="emotionDistChart"></canvas></div>
+        </div>
+        <div class="history-chart-card">
+          <h4>Gesture Distribution</h4>
+          <p id="chartSubGestureDist">Count per gesture label</p>
+          <div class="history-chart-wrap"><canvas id="gestureDistChart"></canvas></div>
         </div>
         <div class="history-chart-card">
           <h4>Confidence &amp; Gesture Score Over Time</h4>
@@ -322,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('currentDate').textContent = now.toLocaleDateString('en-MY', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
   document.getElementById('footerDate').textContent  = 'System time: ' + now.toLocaleTimeString();
 
-  var distChart = null, trendChart = null, speedChart = null;
+  var distChart = null, trendChart = null, speedChart = null, gestureDistChart= null;
   var isDark = function() { return document.body.classList.contains('dark-mode'); };
   var gridColor = function() { return isDark() ? 'rgba(255,255,255,0.06)' : '#f0f2f5'; };
   var tickColor = function() { return isDark() ? '#6b7a8d' : '#9ca3af'; };
@@ -330,7 +341,7 @@ document.addEventListener('DOMContentLoaded', function() {
   /* ---- ALL FUNCTION DEFINITIONS FIRST ---- */
 
   function resetStats() {
-    ['statRecords','statTopEmotion','statTopEmotionPct','statAvgConf','statAvgGesture','statTopGesture','statAvgSpeed']
+    ['statRecords','statTopEmotion','statTopEmotionPct','statAvgConf','statAvgGesture','statTopGesture2','statTopGesturePct','statAvgSpeed']
       .forEach(function(id) { document.getElementById(id).textContent = '—'; });
   }
 
@@ -354,8 +365,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var postCounts = {};
     rows.forEach(function(r) { if (r.gesture_label) postCounts[r.gesture_label] = (postCounts[r.gesture_label]||0) + 1; });
+    var gestureLabelRows = rows.filter(function(r) { return r.gesture_label; });
     var topPost = Object.keys(postCounts).sort(function(a,b) { return postCounts[b]-postCounts[a]; })[0];
-    document.getElementById('statTopGesture').textContent = topPost ? 'most common: ' + topPost : '—';
+    document.getElementById('statTopGesture2').textContent = topPost || '—';
+    document.getElementById('statTopGesturePct').textContent = (topPost && gestureLabelRows.length)
+      ? ((postCounts[topPost]/gestureLabelRows.length)*100).toFixed(0) + '% of gesture readings' : '—';
 
     var speedVals = rows.map(function(r) { return parseFloat(r.inference_speed_ms); }).filter(function(v){return !isNaN(v)&&v>0;});
     document.getElementById('statAvgSpeed').textContent = speedVals.length
@@ -371,6 +385,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (distChart) distChart.destroy();
     distChart = new Chart(document.getElementById('emotionDistChart'), {
+      type: 'bar',
+      data: { labels: labels, datasets: [{ data: data, backgroundColor: labels.map(function(_,i){return colors[i%colors.length];}), borderRadius: 4 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: tickColor(), font: { size: 10 } }, grid: { color: gridColor() } },
+          y: { ticks: { color: tickColor(), font: { size: 11 } }, grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  function renderGestureDistChart(rows) {
+    var counts = {};
+    rows.forEach(function(r) { if (r.gesture_label) counts[r.gesture_label] = (counts[r.gesture_label]||0) + 1; });
+    var labels = Object.keys(counts);
+    var data   = labels.map(function(l) { return counts[l]; });
+    var colors = ['#14b8a6','#0ea5e9','#6366f1','#f59e0b','#ef4444','#a855f7','#10b981'];
+
+    if (gestureDistChart) gestureDistChart.destroy();
+    if (!labels.length) return;
+
+    gestureDistChart = new Chart(document.getElementById('gestureDistChart'), {
       type: 'bar',
       data: { labels: labels, datasets: [{ data: data, backgroundColor: labels.map(function(_,i){return colors[i%colors.length];}), borderRadius: 4 }] },
       options: {
@@ -502,7 +540,7 @@ document.addEventListener('DOMContentLoaded', function() {
           document.getElementById('dataTableBody').innerHTML =
             '<tr><td colspan="7" class="no-data">No detection records found for this device and time range.</td></tr>';
           resetStats();
-          [distChart, trendChart, speedChart].forEach(function(c) { if (c) c.destroy(); });
+          [distChart, trendChart, speedChart, gestureDistChart].forEach(function(c) { if (c) c.destroy(); });
           return;
         }
 
@@ -520,6 +558,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         renderStats(rows);
         renderDistChart(rows);
+        renderGestureDistChart(rows);
         renderTrendCharts(rows);
         renderTable(rows);
       })

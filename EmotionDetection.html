@@ -125,7 +125,8 @@
     }
     .ed-metric-box.m-emotion  { border-top-color: #6366f1; }
     .ed-metric-box.m-conf     { border-top-color: #0ea5e9; }
-    .ed-metric-box.m-gesture  { border-top-color: #10b981; }
+    .ed-metric-box.m-gesture-label  { border-top-color: #14b8a6; }
+    .ed-metric-box.m-gesture-score { border-top-color: #10b981; }
     .ed-metric-box.m-speed    { border-top-color: #f59e0b; }
     .ed-metric-label {
       font-size: 0.63rem; font-weight: 700; color: #94a3b8;
@@ -486,10 +487,13 @@
             <div class="ed-metric-label">Confidence</div>
             <div class="ed-metric-val">${fmtPct(data.confidence)}</div>
           </div>
-          <div class="ed-metric-box m-gesture">
-            <div class="ed-metric-label">Gesture</div>
+          <div class="ed-metric-box m-gesture-label">
+            <div class="ed-metric-label">Gesture Label</div>
+            <div class="ed-metric-val">${data.gestureLabel || '—'}</div>
+          </div>
+          <div class="ed-metric-box m-gesture-score">
+            <div class="ed-metric-label">Gesture Score</div>
             <div class="ed-metric-val">${fmtPct(data.gestureScore)}</div>
-            <div class="ed-metric-sub">${data.gestureLabel || '—'}</div>
           </div>
           <div class="ed-metric-box m-speed">
             <div class="ed-metric-label">Inference Speed</div>

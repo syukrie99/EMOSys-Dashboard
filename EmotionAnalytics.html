@@ -281,11 +281,11 @@
             <thead>
               <tr>
                 <th>Device</th><th>Status</th><th>Detections</th><th>Top Emotion</th>
-                <th>Avg Confidence</th><th>Avg Gesture</th><th>Avg Inference (ms)</th>
+                <th>Avg Confidence</th><th>Avg Gesture</th><th>Top Gesture</th><th>Avg Inference (ms)</th>
               </tr>
             </thead>
             <tbody id="deviceTableBody">
-              <tr><td colspan="7" class="no-data">Select a time range and click Apply to load data.</td></tr>
+              <tr><td colspan="8" class="no-data">Select a time range and click Apply to load data.</td></tr>
             </tbody>
           </table>
         </div>
@@ -328,7 +328,7 @@ function loadAnalytics() {
   var hours = document.getElementById('hoursSelect').value;
   document.getElementById('recordCount').textContent = 'Loading…';
   document.getElementById('deviceTableBody').innerHTML =
-    '<tr><td colspan="7" class="no-data">Loading…</td></tr>';
+    '<tr><td colspan="8" class="no-data">Loading…</td></tr>';
 
   var authHeaders = { headers: { 'Authorization': 'Bearer ' + getToken() } };
 
@@ -352,7 +352,7 @@ function loadAnalytics() {
     if (!rows.length) {
       document.getElementById('recordCount').textContent = 'No data found';
       document.getElementById('deviceTableBody').innerHTML =
-        '<tr><td colspan="7" class="no-data">No detection records found for this time range.</td></tr>';
+        '<tr><td colspan="8" class="no-data">No detection records found for this time range.</td></tr>';
       resetStats();
       [emoChart, gestureChart].forEach(function(c) { if (c) c.destroy(); });
       document.getElementById('insightRow').innerHTML =
@@ -369,7 +369,7 @@ function loadAnalytics() {
     console.error('Analytics load failed:', err);
     document.getElementById('recordCount').textContent = 'Error loading data';
     document.getElementById('deviceTableBody').innerHTML =
-      '<tr><td colspan="7" class="no-data">Could not load data. Check server connection.</td></tr>';
+      '<tr><td colspan="8" class="no-data">Could not load data. Check server connection.</td></tr>';
   });
 }
 
@@ -468,6 +468,10 @@ function loadAnalytics() {
         var postVals = deviceRows.map(function(r) { return parseFloat(r.gesture_score); }).filter(function(v){return !isNaN(v)&&v>0;});
         var avgPost = postVals.length ? postVals.reduce(function(a,b){return a+b;},0)/postVals.length : null;
 
+        var gestureCounts = {};
+        deviceRows.forEach(function(r) { if (r.gesture_label) gestureCounts[r.gesture_label] = (gestureCounts[r.gesture_label]||0) + 1; });
+        var topGesture = Object.keys(gestureCounts).sort(function(a,b) { return gestureCounts[b]-gestureCounts[a]; })[0] || '—';
+
         var speedVals = deviceRows.map(function(r) { return parseFloat(r.inference_speed_ms); }).filter(function(v){return !isNaN(v)&&v>0;});
         var avgSpeed = speedVals.length ? speedVals.reduce(function(a,b){return a+b;},0)/speedVals.length : null;
 
@@ -480,6 +484,7 @@ function loadAnalytics() {
           '<td><span class="emo-pill">' + topEmo + '</span></td>' +
           '<td>' + fmtPct(avgConf) + '</td>' +
           '<td>' + fmtPct(avgPost) + '</td>' +
+          '<td><span class="emo-pill" style="background:rgba(20,184,166,0.1);color:#0f766e">' + topGesture + '</span></td>' +
           '<td>' + fmtNum(avgSpeed, 0) + '</td>' +
         '</tr>';
       }).join('');

@@ -1,16 +1,16 @@
 {
-  "f138c33d4212d13531429f7391bdf2f0ece8dfb4cfe3abd4b621157ef881b291": {
+  "d81ec6ee7218894330f3dcb8f0d300fd44c83a84d119a83667d24f2a1d6dd844": {
     "userId": 1,
     "name": "Admin",
     "email": "admin@company.com",
     "role": "Administrator",
-    "expiresAt": 1787813196298
+    "expiresAt": 1788770727578
   },
-  "c1bc3dc6015081d240efce6212156a99301d9817db1b8955f3015c69bd60ba68": {
+  "9b716c1db860db9e28b31864204fd6aeec10ab51ca9ad281b920a339210e5519": {
     "userId": 1,
     "name": "Admin",
     "email": "admin@company.com",
     "role": "Administrator",
-    "expiresAt": 1787822557591
+    "expiresAt": 1788771109317
   }
 }
