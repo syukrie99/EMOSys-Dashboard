@@ -34,6 +34,6 @@ body {
     color: var(--text);
 }
 
-.flag-ok { background: #dcfc37; color: #15803d; }
+.flag-ok { background: #dcfce7; color: #15803d; }
 .flag-warn { background: #fef3c7; color: #924003; }
 .flag-crit { background: #fee2e2; color: #991b1b; }

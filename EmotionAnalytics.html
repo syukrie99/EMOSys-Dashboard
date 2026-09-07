@@ -328,7 +328,7 @@ function loadAnalytics() {
   var hours = document.getElementById('hoursSelect').value;
   document.getElementById('recordCount').textContent = 'Loading…';
   document.getElementById('deviceTableBody').innerHTML =
-    '<tr><td colspan="8" class="no-data">Loading…</td></tr>';
+    '<tr><td colspan="8"><div class="spinner-wrap"><div class="spinner"></div><div class="spinner-text">Loading detection data…</div></div></td></tr>';
 
   var authHeaders = { headers: { 'Authorization': 'Bearer ' + getToken() } };
 

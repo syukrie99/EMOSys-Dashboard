@@ -57,7 +57,18 @@ function getTransporter() {
       auth: {
         user: config.from,
         pass: config.password   // Gmail App Password (16-char, spaces ok)
-      }
+      },
+      /* Throttle outgoing mail so a burst of simultaneous alerts (e.g. all
+          16 devices tripping PM2.5 at once) can't fire dozens of SMTP
+          connections at Gmail in the same instant. Nodemailer queues any
+          sendMail() call beyond the rate limit internally and sends  them
+          a little at a time instead of all at once - this is what stops
+          Gmail from soft-bouncing a batch of them back into your inbox. */
+      pool: true,
+      maxConnections: 1,
+      maxMessages: 100,
+      rateDelta: 2000,  //2-seconds window
+      rateLimit: 3     //max 3 emails per window
     });
   }
   return _transporter;
@@ -88,7 +99,8 @@ function getSeverity(sensor, value, customThresholds = null) {
 }
 
 /* HTML EMAIL TEMPLATE */
-function buildEmailHTML(alerts, deviceName, location) {
+function buildEmailHTML(alerts, deviceName, location, customThresholds = null) {
+  const activeThr = customThresholds || thresholds;
   const isCritical = alerts.some(a => a.severity === 'critical');
   const accentColor = isCritical ? '#ef4444' : '#f59e0b';
   const badgeColor  = isCritical ? '#fca5a5' : '#fcd34d';
@@ -208,13 +220,14 @@ function buildEmailHTML(alerts, deviceName, location) {
 }
 
 /* PLAIN TEXT FALLBACK */
-function buildEmailText(alerts, deviceName, location) {
+function buildEmailText(alerts, deviceName, location, customThresholds = null) {
+  const activeThr = customThresholds || thresholds;
   const lines = [
     `EMOSys Alert — ${deviceName} (${location || 'unknown'})`,
     `Time: ${new Date().toLocaleString()}`,
     ``,
     ...alerts.map(a => {
-      const thr = thresholds[a.sensor];
+      const thr = activeThr[a.sensor];
       return `[${a.severity.toUpperCase()}] ${thr?.label || a.sensor}: ${Number(a.value).toFixed(1)}${thr?.unit || ''} (threshold: ${a.severity==='critical'?thr?.danger:thr?.warn}${thr?.unit || ''})`;
     }),
     ``,
@@ -291,8 +304,8 @@ async function checkAndSendAlerts(sensorData, deviceId, deviceName, location = '
       from:    `"EMOSys Alerts" <${config.from}>`,
       to:      config.to.join(', '),
       subject,
-      text:    buildEmailText(triggered, deviceName, location),
-      html:    buildEmailHTML(triggered, deviceName, location)
+      text:    buildEmailText(triggered, deviceName, location, customThresholds),
+      html:    buildEmailHTML(triggered, deviceName, location, customThresholds)
     });
 
     /* Update emailSent flag in log — cooldown was already marked above */
