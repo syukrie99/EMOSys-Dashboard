@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, intial-scale=1.0"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>EMOsys - Users</title>
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet"/>
     <link rel="stylesheet" href="assets/css/main.css"/>
@@ -277,7 +277,7 @@
             </a>
 
             <a class="nav-item" href="Alerts.html">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.32 0z"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
                 Alerts
             </a>
 
@@ -380,7 +380,7 @@
                 <div class="user-table-header">
                     <h4>Registered Users</h4>
                     <button class="btn-add-user" onclick="openModal()">
-                        <svg viewbox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                         Add User
                     </button>
                 </div>
@@ -520,6 +520,8 @@
         }
 
         async function loadUsers() {
+            document.getElementById('userTableBody').innerHTML =
+                '<tr><td colspan="6"><div class="spinner-wrap"><div class="spinner"></div><div class="spinner-text">Loading uesrs...</div></div></td></tr>';
             try {
                 const res = await fetch(`${API_BASE}/users`, { headers: authHeaders() });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);

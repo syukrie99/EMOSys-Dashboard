@@ -459,16 +459,7 @@ document.addEventListener('DOMContentLoaded', function () {
   /* Expose fetchData globally for the Refresh button */
   window.fetchData = fetchData;
 
-  /* ── LOAD DEVICES TABLE ─────────────────────────── */
-  function formatLastSeen(secondsAgo) {
-    if (secondsAgo < 10)  return 'Just now';
-    if (secondsAgo < 60)  return secondsAgo + 's ago';
-    if (secondsAgo < 3600) return Math.floor(secondsAgo / 60) + 'm ago';
-    return Math.floor(secondsAgo / 3600) + 'h ago';
-  }
-
-
-
+  
   /* ── ALL DEVICES OVERVIEW TABLE ── */
   var overviewAllRows = [];
   var overviewPage    = 1;

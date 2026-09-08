@@ -655,19 +655,6 @@ tbody tr:hover td { background: var(--light); }
 .sensor-spark.loading canvas { display: none; }
 .sensor-spark canvas         { display: block; }
 
-/* DARK MODE OVERRIDES */
-body.dark-mode .topbar        { background: var(--navy2); }
-body.dark-mode #deviceSelectorWrap { background: var(--navy2); }
-body.dark-mode .sensor-card   { background: var(--white); }
-body.dark-mode .chart-card    { background: var(--white); border-color: var(--border); }
-body.dark-mode .table-card    { background: var(--white); border-color: var(--border); }
-body.dark-mode .alerts-card   { background: var(--white); border-color: var(--border); }
-body.dark-mode .page-footer   { background: var(--white); border-color: var(--border); }
-body.dark-mode thead tr       { background: var(--navy); }
-body.dark-mode th             { color: var(--muted); }
-body.dark-mode td             { border-color: var(--border); }
-body.dark-mode tbody tr:hover td { background: var(--navy); }
-
 /* SHARED LOADING SPINNER (used across all pages) */
 .spinner-wrap {
     display: flex;

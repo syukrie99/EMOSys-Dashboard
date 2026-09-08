@@ -15,7 +15,6 @@ app.use(express.json());
 
 const path = require('path');
 const fs = require('fs');
-const { isBigInt64Array } = require('util/types');
 app.use(express.static(path.join(__dirname, '..')));
 
 // ── InfluxDB config ─────────────────────────────────────────
@@ -539,7 +538,7 @@ app.get('/api/ha/latest', requireAuth, async (req, res) => {
     const device   = DEVICES[deviceId];
 
     if (!device) {
-        return res.status(400).json({ error: `Unkcn device: ${deviceId}` });
+        return res.status(400).json({ error: `Unknown device: ${deviceId}` });
     }
 
     try {

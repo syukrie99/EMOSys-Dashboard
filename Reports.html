@@ -1053,63 +1053,6 @@
     finishPdf(doc, `EMOSys_${reportData.deviceLabel.replace(/\s+/g, '_')}_${hoursLabel.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`);
   }
 
-  /* Shrinks font size until text fits maxWidth, down to a floor, for one line */
-  function fitFontSize(doc, text, maxWidth, maxSize, minSize) {
-    let size = maxSize;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(size);
-    while (size > minSize && doc.getTextWidth(text) > maxWidth) {
-      size -= 0.5;
-      doc.setFontSize(size);
-    }
-    return size;
-  }
-
-  /* Truncates with an ellipsis if text still doesn't fit even at the font floor */
-  function truncateToWidth(doc, text, maxWidth) {
-    if (doc.getTextWidth(text) <= maxWidth) return text;
-    let t = text;
-    while (t.length > 1 && doc.getTextWidth(t + '…') > maxWidth) {
-      t = t.slice(0, -1);
-    }
-    return t + '…';
-  }
-
-  /* Draws a label/value meta grid that never lets long values collide —
-     used for the header info row on both report types. Returns the new y. */
-  function drawMetaGrid(doc, metas, y, M, CW, cols, C) {
-    const rows  = Math.ceil(metas.length / cols);
-    const mw    = CW / cols;
-    const rowH  = 16;
-    const totalH = rowH * rows;
-
-    doc.setFillColor(...C.bgGray);
-    doc.rect(M, y, CW, totalH, 'F');
-    doc.setDrawColor(...C.border);
-    doc.setLineWidth(0.3);
-    for (let r = 0; r <= rows; r++) doc.line(M, y + r * rowH, M + CW, y + r * rowH);
-    for (let c = 1; c < cols; c++) doc.line(M + c * mw, y, M + c * mw, y + totalH);
-
-    metas.forEach(([lbl, val], i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const mx  = M + col * mw + 4;
-      const my  = y + row * rowH;
-      const maxW = mw - 8;
-
-      doc.setFontSize(6); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.muted);
-      doc.text(String(lbl).toUpperCase(), mx, my + 5);
-
-      const valStr   = String(val);
-      const fitSize  = fitFontSize(doc, valStr, maxW, 9, 6.5);
-      const finalTxt = doc.getTextWidth(valStr) > maxW ? truncateToWidth(doc, valStr, maxW) : valStr;
-      doc.setFontSize(fitSize); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.text);
-      doc.text(finalTxt, mx, my + 12);
-    });
-
-    return y + totalH;
-  }
-
   /* Shared footer + save */
   function finishPdf(doc, fname) {
     const C = PDF_C;
